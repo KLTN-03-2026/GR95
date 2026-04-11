@@ -1,0 +1,208 @@
+:root {
+    --primary-olive: #5b5a41; 
+    --bg-light: #fdfbf4;
+    --border-color: #eaeaea;
+}
+
+.product-create-container {
+    background-color: var(--bg-light);
+    padding: 30px;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+}
+
+.create-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.btn-back {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    background: #f1f2f6;
+    color: #000;
+}
+
+.main-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+/* Alert */
+.custom-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-weight: 500;
+    font-size: 14px;
+}
+.alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+/* Layout 2 cột */
+.create-form-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+}
+
+.card-panel {
+    background: #fff;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    border: 1px solid #f0f0f0;
+}
+
+.panel-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Form Grid */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+}
+
+.required { color: #e74c3c; }
+
+.form-group input, .form-group select, .form-group textarea {
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background-color: #fafafa;
+    transition: all 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--primary-olive);
+    background-color: #fff;
+}
+
+/* Khu vực Upload Ảnh */
+.image-preview-box {
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 20px auto;
+    background-color: #f9f9f9;
+    border: 2px dashed #ddd;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.empty-image {
+    color: #aaa;
+}
+
+.icon-empty { margin-bottom: 10px; opacity: 0.5; }
+
+.loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--primary-olive);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.btn-upload {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid var(--primary-olive);
+    color: var(--primary-olive);
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-upload input { display: none; }
+.btn-upload:hover:not(.disabled) { background: var(--primary-olive); color: #fff; }
+.btn-upload.disabled { opacity: 0.6; cursor: not-allowed; }
+
+.help-text {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #888;
+}
+
+.divider {
+    border: none;
+    border-top: 1px dashed #ddd;
+    margin: 25px 0;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 15px;
+    background: #27ae60;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-submit:hover:not(:disabled) { background: #219653; }
+.btn-submit:disabled { opacity: 0.7; cursor: wait; }

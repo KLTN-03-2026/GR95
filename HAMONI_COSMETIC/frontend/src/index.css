@@ -1,0 +1,23 @@
+/* src/index.css */
+
+/* 1. Xóa mọi margin/padding mặc định của trình duyệt */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 2. Đảm bảo các thẻ gốc chiếm trọn 100% màn hình */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  /* Ngăn chặn scroll bar thừa nếu có */
+  overflow-x: hidden; 
+}
+
+/* Tùy chọn: Set font chữ mặc định cho toàn dự án */
+body {
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

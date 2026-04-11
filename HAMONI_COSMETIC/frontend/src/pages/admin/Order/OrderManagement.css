@@ -1,0 +1,502 @@
+/* ============================================================ */
+/* PHẦN 1: CSS CHO TRANG DANH SÁCH ĐƠN HÀNG (ORDER LIST)        */
+/* ============================================================ */
+/* ============================================================ */
+/* PHẦN 1: CSS CHO TRANG DANH SÁCH ĐƠN HÀNG (ORDER LIST)        */
+/* ============================================================ */
+
+:root {
+    --bg-light: #fdfbf4;
+    --text-main: #2d3436;
+    --yellow-accent: #f9f2d8;
+    --yellow-dark: #f1c40f;
+    --primary-olive: #5b5a41; /* Màu rêu nâu đặc trưng trong mẫu */
+}
+
+.order-admin-container {
+    background-color: #fff;
+    padding: 40px;
+    font-family: 'Inter', sans-serif;
+}
+
+.main-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.search-center-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 40px;
+}
+
+.search-input-group {
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+}
+
+.search-input-group input {
+    width: 100%;
+    padding: 15px 25px 15px 50px;
+    border-radius: 30px;
+    border: 1px solid #eee;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    outline: none;
+}
+
+/* Tabs trạng thái */
+.filter-tabs-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-light);
+    padding: 8px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+}
+
+.status-tabs { display: flex; gap: 10px; }
+
+.tab-item {
+    background: none; border: none;
+    padding: 10px 20px; color: #777;
+    cursor: pointer; font-weight: 600;
+}
+
+.tab-item.active {
+    color: #000;
+    border-bottom: 3px solid #000;
+}
+
+/* Style cho bảng danh sách */
+.modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+}
+
+.modern-table tr {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+}
+
+/* HIỆU ỨNG CLICK DÒNG (THAY CHO NÚT THAO TÁC) */
+.modern-table tr.clickable-row {
+    cursor: pointer;
+}
+
+.modern-table tr.clickable-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+    background-color: #fafafa;
+}
+
+.modern-table th {
+    color: #888;
+    font-weight: 600;
+    font-size: 13px;
+    text-align: left;
+    padding: 0 20px;
+}
+
+.modern-table td {
+    padding: 15px 20px;
+    vertical-align: middle;
+}
+
+.modern-table td:first-child { border-radius: 12px 0 0 12px; }
+.modern-table td:last-child { border-radius: 0 12px 12px 0; }
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.order-id-cell {
+    background: transparent !important;
+}
+
+.order-code {
+    font-size: 13px;
+    font-weight: 700;
+    color: #555;
+    background: #f1f2f6; 
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    font-family: monospace; 
+}
+
+/* CÁC TRẠNG THÁI (ĐÃ ĐỒNG BỘ VỚI REACT) */
+.status-HoanThanh { background: #e8f5e9; color: #2e7d32; }
+.status-DangGiao { background: #e1f5fe; color: #0288d1; }
+.status-ChoXacNhan { background: #fef5d6; color: #b7950b; }
+.status-DaHuy { background: #ffebee; color: #c62828; }
+
+.total-amount-list { font-weight: 700; color: #e74c3c; }
+
+/* BỘ LỌC NGÀY MỚI */
+.date-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: #fff;
+    padding: 5px 15px;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+.filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-inputs input[type="date"] {
+    border: none;
+    background: #f8f9fa;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #444;
+    outline: none;
+    cursor: pointer;
+}
+
+.date-separator {
+    color: #ccc;
+    font-weight: bold;
+}
+
+/* PHÂN TRANG MẪU MỚI (CHUYÊN NGHIỆP) */
+.pagination-wrapper {
+    display: flex;
+    justify-content: flex-end; 
+    align-items: center;
+    gap: 15px; 
+    margin-top: 30px;
+    padding-right: 10px; 
+}
+
+.pagi-numbers-group {
+    display: flex;
+    gap: 8px; 
+}
+
+.pagi-item {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%; 
+    border: 1px solid #eee; 
+    background: #fff; 
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    transition: all 0.2s ease;
+}
+
+.pagi-item:hover {
+    border-color: #333;
+    color: #000;
+}
+
+.pagi-item.active {
+    background: var(--primary-olive) !important;
+    color: #fff !important;
+    border-color: var(--primary-olive) !important;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(91, 90, 65, 0.2);
+}
+
+.pagi-arrow {
+    background: transparent;
+    border: none;
+    color: #999;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+}
+
+.pagi-arrow:hover:not(:disabled) {
+    color: #333;
+    transform: scale(1.1);
+}
+
+.pagi-arrow:disabled {
+    cursor: default;
+    opacity: 0.3;
+}
+
+.text-center { text-align: center; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+
+
+/* ------------------------------------------------------------ */
+/* ------------------------------------------------------------ */
+/* PHẦN 2: CSS CHO TRANG CHI TIẾT ĐƠN HÀNG (ORDER DETAIL)       */
+/* ------------------------------------------------------------ */
+/* ------------------------------------------------------------ */
+
+.order-detail-container {
+    padding: 30px;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+}
+
+.back-btn-text {
+    background: none; border: none;
+    color: #666; cursor: pointer;
+    font-weight: 500; margin-bottom: 15px;
+}
+
+/* Banner khách hàng */
+.customer-info-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 25px;
+}
+
+.customer-main { display: flex; align-items: center; gap: 20px; }
+
+.avatar-circle {
+    width: 70px; height: 70px;
+    background: #f1dfdf; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 700; color: #888;
+}
+
+.label-top {
+    font-size: 10px; color: #aaa;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* Layout 2 cột */
+.detail-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 25px;
+}
+
+/* Cột trái: Sản phẩm */
+.left-column { display: flex; flex-direction: column; gap: 20px; }
+
+.products-card {
+    background: #fff; padding: 25px; border-radius: 16px;
+}
+
+.card-header {
+    display: flex; justify-content: space-between;
+    padding-bottom: 15px; border-bottom: 1px solid #eee;
+    font-weight: 600; color: #555;
+}
+
+.product-item {
+    display: flex; align-items: center; gap: 15px;
+    padding: 20px 0; border-bottom: 1px solid #f9f9f9;
+}
+
+.product-thumb {
+    width: 90px; height: 90px; border-radius: 12px; object-fit: cover;
+}
+
+.item-info { flex: 1; }
+.item-info h4 { margin: 0 0 5px 0; font-size: 16px; }
+.variant { font-size: 12px; color: #999; }
+
+.item-price-qty { text-align: right; }
+.item-price-qty .price { display: block; font-weight: 700; font-size: 16px; }
+.item-price-qty .qty { font-size: 13px; color: #888; }
+
+/* Tổng tiền */
+.billing-summary {
+    margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;
+}
+
+.bill-row {
+    display: flex; justify-content: space-between; margin-bottom: 10px;
+    color: #666; font-size: 14px;
+}
+
+.bill-total {
+    display: flex; justify-content: space-between;
+    margin-top: 15px; padding-top: 15px;
+    border-top: 2px dashed #eee;
+    font-weight: 700;
+}
+
+.final-price { font-size: 24px; color: #ef4444; }
+
+.full-print-btn {
+    width: 100%; padding: 15px; margin-top: 20px;
+    background: #fff; border: 1px solid #ddd;
+    border-radius: 10px; cursor: pointer; font-weight: 600;
+}
+
+/* Cột phải: Trạng thái & Timeline */
+.right-column { display: flex; flex-direction: column; gap: 20px; }
+
+.status-control-card, .timeline-card {
+    background: #fff; padding: 20px; border-radius: 16px;
+}
+
+.card-sub-title { font-weight: 700; margin-bottom: 15px; font-size: 14px; }
+
+.status-dropdown {
+    width: 100%; padding: 12px; border-radius: 8px;
+    border: 1px solid #ddd; background: #f9f9f9; margin-bottom: 15px;
+}
+
+.action-btns { display: flex; gap: 10px; }
+.btn-black { flex: 1; background: #000; color: #fff; border: none; padding: 12px; border-radius: 8px; cursor: pointer; }
+.btn-white { flex: 1; background: #fff; color: #dc3545; border: 1px solid #dc3545; padding: 12px; border-radius: 8px; cursor: pointer; }
+
+/* Timeline */
+.timeline-list { margin-top: 15px; padding-left: 20px; position: relative; }
+.timeline-list::before {
+    content: ''; position: absolute; left: 0; top: 5px; bottom: 0;
+    width: 2px; background: #eee;
+}
+
+.timeline-item { position: relative; padding-bottom: 25px; }
+.timeline-item .dot {
+    position: absolute; left: -24px; top: 5px;
+    width: 10px; height: 10px; background: #ccc; border-radius: 50%;
+}
+
+.timeline-item.active .dot { background: #22c55e; box-shadow: 0 0 0 4px #dcfce7; }
+.time-content p { margin: 0; font-weight: 600; font-size: 14px; }
+.time-content small { color: #999; }
+/* ===== TIMELINE SHOPEE PRO ===== */
+
+.timeline-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 16px;
+}
+
+.timeline-list {
+    position: relative;
+    margin-top: 20px;
+    padding-left: 30px;
+}
+
+/* line */
+.timeline-list::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #eee;
+}
+
+/* item */
+.timeline-item {
+    position: relative;
+    margin-bottom: 25px;
+    opacity: 0.5;
+    transition: 0.3s;
+}
+
+.timeline-item.active {
+    opacity: 1;
+}
+
+/* dot */
+.timeline-item .dot {
+    position: absolute;
+    left: -22px;
+    top: 5px;
+    width: 14px;
+    height: 14px;
+    background: #ccc;
+    border-radius: 50%;
+    border: 3px solid #fff;
+}
+
+.timeline-item.active .dot {
+    background: #ee4d2d;
+}
+
+/* content */
+.timeline-title {
+    font-weight: 600;
+    color: #333;
+}
+
+.timeline-icon {
+    margin-right: 6px;
+}
+
+.timeline-note {
+    font-size: 13px;
+    color: #777;
+    margin: 4px 0;
+}
+
+.timeline-time {
+    font-size: 12px;
+    color: #aaa;
+}
+/* Banner thông báo thành công chuẩn xanh hồ sơ nhân viên */
+.alert-banner-success {
+    background-color: #dcfce7; /* Xanh lá nhạt */
+    border: 1px solid #bbf7d0;
+    color: #166534;            /* Chữ xanh đậm */
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    position: relative;
+    top: 0;
+    z-index: 100;
+    animation: slideDownFade 0.4s ease-out;
+}
+
+.alert-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
