@@ -58,98 +58,71 @@
   margin-top: 5px;
 }
 
-/* ===== CHART + FILTER ===== */
-.main-row {
+/* ===== HORIZONTAL FILTER (NEW) ===== */
+.horizontal-filter {
   display: flex;
-  gap: 20px;
-  padding: 15px;
-}
-
-.left-chart {
-  width: 66.66%;
-}
-
-.right-filter {
-  width: 33.33%;
-}
-
-/* ===== CHART GRID ===== */
-.chart-row {
-  display: flex;
+  flex-wrap: wrap;
   gap: 15px;
-}
-
-.chart-box {
-  flex: 1;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  background: #fff;
-}
-
-.chart-header {
-  background: #f8f9fa;
-  padding: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  border-bottom: 1px solid #eee;
-}
-
-/* ===== FILTER ===== */
-.filter-card {
-  border: 1px solid #eee;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.filter-header {
-  background: #bdca72;
-  color: white;
-  padding: 10px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.filter-body {
   padding: 15px;
+  background: #fdfdfd;
+  border-bottom: 1px solid #eee;
+  align-items: flex-end;
 }
 
-.form-group {
-  margin-bottom: 12px;
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 140px;
 }
 
-.form-group label {
+.filter-item label {
   font-size: 13px;
   font-weight: 600;
-  display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  color: #444;
 }
 
-.form-control {
-  width: 100%;
-  padding: 8px;
-  border-radius: 6px;
+.filter-item input,
+.filter-item select {
+  padding: 8px 10px;
   border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
-.form-control:focus {
+.filter-item input:focus,
+.filter-item select:focus {
   outline: none;
-  border-color: #0d6efd;
+  border-color: #bdca72;
 }
 
-.filter-actions {
+.filter-actions-row {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
-.filter-actions button {
-  flex: 1;
-  padding: 8px;
+/* ===== ĐÃ THÊM HIỆU ỨNG NHẢY CHO NÚT Ở ĐÂY ===== */
+.filter-actions-row button {
+  padding: 8px 15px;
   border-radius: 6px;
   border: none;
   font-weight: 600;
+  cursor: pointer;
+  height: 36px;
+  white-space: nowrap;
+  
+  /* Thêm transition để hiệu ứng lún mượt mà hơn */
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); 
 }
+
+/* Khi người dùng click chuột vào nút */
+.filter-actions-row button:active {
+  transform: scale(0.92) translateY(2px);
+}
+/* ============================================== */
 
 .btn-green {
   background: #cbc168;
@@ -161,9 +134,14 @@
   color: white;
 }
 
+.btn-export {
+  background: #198754;
+  color: white;
+}
+
 /* ===== TABLE ===== */
 .table-container {
-  max-height: 450px;
+  max-height: 280px; /* Giảm max-height để bảng nhỏ lại xíu */
   overflow: auto;
 }
 
@@ -174,6 +152,9 @@ table {
 
 thead {
   background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 th, td {
@@ -183,75 +164,48 @@ th, td {
   text-align: left;
 }
 
+/* ===== CHART GRID ===== */
+.chart-container-row {
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  flex-wrap: wrap;
+}
+
+.chart-box {
+  flex: 1;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background: #fff;
+  min-width: 300px;
+}
+
+.chart-header {
+  background: #f8f9fa;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .stat-col {
     width: 50%;
   }
-
-  .main-row {
+  .horizontal-filter {
     flex-direction: column;
+    align-items: stretch;
   }
-
-  .left-chart, .right-filter {
+  .filter-actions-row {
     width: 100%;
+    margin-top: 10px;
   }
-
-  .chart-row {
+  .filter-actions-row button {
+    flex: 1;
+  }
+  .chart-container-row {
     flex-direction: column;
-  }
-}
-/* ===== TOOLBAR ===== */
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.toolbar-search {
-  display: flex;
-  width: 320px;
-}
-
-.toolbar-search input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px 0 0 6px;
-  font-size: 13px;
-}
-
-.toolbar-search input:focus {
-  outline: none;
-  border-color: #bdca72;
-}
-
-.toolbar-search button {
-  background: #325368;
-  color: #fff;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 0 6px 6px 0;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.toolbar-export {
-  background: #325368;
-  color: #fff;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* responsive */
-@media (max-width: 768px) {
-  .toolbar-search {
-    width: 100%;
+ 
   }
 }

@@ -175,6 +175,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             </NavLink>
                          </li>
                     )}
+                    {/* Thêm Quản lý đánh giá vào đây */}
+{/* Thêm Quản lý đánh giá vào đây */}
+{canViewModule('HIDE_MODULE_REVIEW') && (
+    <li>
+        <NavLink 
+            to="/admin/reviews" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+            <span className="icon">⭐</span>
+            <span className="text">Quản lý Đánh giá</span>
+        </NavLink>
+    </li>
+)}
 
                     {isAdmin && (
                         <li>
