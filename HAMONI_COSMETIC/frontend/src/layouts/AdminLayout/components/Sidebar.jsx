@@ -175,6 +175,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             </NavLink>
                          </li>
                     )}
+                      {canViewModule('HIDE_MODULE_WAREHOUSE') && (
+                        <li>
+                            <NavLink to="/admin/warehouse" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                                <span className="icon">📦</span>
+                                <span className="text">Kho Hàng</span>
+                            </NavLink>
+                         </li>
+                    )}
                     {/* Thêm Quản lý đánh giá vào đây */}
 {/* Thêm Quản lý đánh giá vào đây */}
 {canViewModule('HIDE_MODULE_REVIEW') && (

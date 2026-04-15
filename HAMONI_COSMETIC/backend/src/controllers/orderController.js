@@ -180,7 +180,7 @@ exports.cancelOrder = async (req, res) => {
 
         // check tồn tại
         const [[order]] = await db.execute(
-            `SELECT MaDH FROM DonHang WHERE MaDH = ?`,
+            `SELECT TrangThai FROM DonHang WHERE MaDH = ?`,
             [id]
         );
 
@@ -188,28 +188,22 @@ exports.cancelOrder = async (req, res) => {
             return res.status(404).json({ message: "Không tìm thấy đơn" });
         }
 
-        // 🔥 XÓA CHI TIẾT TRƯỚC (quan trọng nếu có FK)
+        // ✅ KHÔNG XÓA → chỉ update trạng thái
         await db.execute(
-            `DELETE FROM ChiTietDonHang WHERE MaDH = ?`,
+            `UPDATE DonHang SET TrangThai = 'DaHuy' WHERE MaDH = ?`,
             [id]
         );
 
-        // 🔥 XÓA LOG
-        await db.execute(
-            `DELETE FROM LogDonHang WHERE MaDH = ?`,
-            [id]
-        );
+        // ✅ ghi log
+        await db.execute(`
+            INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
+            VALUES (?, ?, 'DaHuy', NOW())
+        `, [id, order.TrangThai]);
 
-        // 🔥 XÓA ĐƠN HÀNG
-        await db.execute(
-            `DELETE FROM DonHang WHERE MaDH = ?`,
-            [id]
-        );
-
-        res.json({ message: "Đã xóa đơn hàng" });
+        res.json({ message: "Đã hủy đơn hàng" });
 
     } catch (err) {
-        console.error(err);
+        console.error("🔥 CANCEL ERROR:", err); // 👈 QUAN TRỌNG
         res.status(500).json({ message: "Lỗi server" });
     }
 };
