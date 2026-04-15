@@ -159,6 +159,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                         </li>
                     )}
                     
+                    {canViewModule('HIDE_MODULE_BANNER') && (
+                        <li>
+                            <NavLink to="/admin/banners" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                                <span className="icon">🖼️</span>
+                                <span className="text">Quản lý Banner</span>
+                            </NavLink>
+                        </li>
+                    )}
+                    
                     {canViewModule('HIDE_MODULE_CATEGORY') && (
                         <li>
                             <NavLink to="/admin/categories" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>

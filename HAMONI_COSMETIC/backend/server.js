@@ -32,6 +32,7 @@ const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes'); // Thêm route cho đánh giá
 const warehouseRoutes = require('./src/routes/warehouseRoutes');
+const bannerRoutes = require('./src/routes/bannerRoutes'); // Thêm route cho banner 
 // Đăng ký route cho upload ảnh
 app.use('/api/upload', uploadRoutes);
 // Đăng ký các API vào hệ thống
@@ -48,6 +49,7 @@ app.use('/api/dashboard', dashboardRoutes); // Gắn đường dẫn cho dashboa
 app.use('/api/reports', reportRoutes); // Gắn đường dẫn cho báo cáo
 app.use('/api/reviews', reviewRoutes); // Gắn đường dẫn cho đánh giá
 app.use('/api/warehouse', warehouseRoutes);
+app.use('/api/banners', bannerRoutes); // Gắn đường dẫn cho banner
 // Route mặc định (Root)
 app.get('/', (req, res) => {
     res.json({ 
