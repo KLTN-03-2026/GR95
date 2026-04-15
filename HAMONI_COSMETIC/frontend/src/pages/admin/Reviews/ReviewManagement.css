@@ -1,0 +1,435 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+.review-management-container {
+    padding: 60px 50px;
+    background-color: #f4f1ef; /* Nền beige Hamoni */
+    min-height: 100vh;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* TIÊU ĐỀ */
+.page-title {
+    font-size: 64px;
+    font-weight: 800;
+    margin-bottom: 50px;
+    color: #000;
+    letter-spacing: -0.5px;
+}
+
+/* STATS CARDS  */
+.stats-section {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 60px;
+}
+
+.stat-card {
+    background: rgb(247, 238, 189);
+    padding: 60px 50px; 
+    border-radius: 45px;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Căn tiêu đề và số vào CHÍNH GIỮA khung dọc */
+    align-items: center;    
+    text-align: center;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.02);
+    position: relative;     /* Điểm tựa để đẩy dòng link xuống sát đáy */
+    min-height: 250px;      /* Chiều cao cố định cho 2 khung bằng nhau */
+}
+
+.stat-card-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 10px;
+}
+
+.stat-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0d0c0c;
+    letter-spacing: 1px;
+}
+
+.stat-number {
+    font-size: 58px;
+    font-weight: 800;
+    color: #B22222; /* Cả 2 số dùng chung màu đỏ đô chuẩn */
+    margin: 15px 0 0 0; 
+    line-height: 1;
+    display: block;
+}
+
+/* ĐÂY LÀ PHẦN ĐƯA DÒNG CHỮ XUỐNG DƯỚI CÙNG VÀ KHÔNG LÀM LỆCH HÀNG */
+.stat-action-link {
+    position: absolute;   /* Nhấc chữ ra khỏi khung để không đẩy số 3 lên */
+    bottom: 25px;         /* Đưa dòng chữ xuống sát đáy (cách 25px) */
+    left: 50%;
+    transform: translateX(-50%); /* Căn giữa dòng chữ */
+    
+    background: none;
+    border: none;
+    color: #B22222;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.8;
+    width: max-content;
+}
+
+.stat-action-link:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+/* TABLE AREA */
+.table-wrapper {
+    background: rgb(255, 255, 255);
+    border-radius: 45px;
+    padding: 45px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.03);
+}
+
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+}
+
+.tab-item {
+    font-size: 18px;
+    font-weight: 800;
+    border: none;
+    background: none;
+    padding-bottom: 8px;
+    border-bottom: 3px solid #000;
+    cursor: pointer;
+}
+
+.filter-button {
+    background-color: #F9F7D2;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+/* TABLE STYLES */
+.hamoni-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hamoni-table th {
+    text-align: left;
+    padding: 20px;
+    font-size: 12px;
+    color: #0f0e0e;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 1px dashed #EEE;
+}
+
+.hamoni-table td {
+    padding: 25px 20px;
+    border-bottom: 1px dashed #EEE;
+}
+
+.customer-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.customer-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+}
+
+.customer-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #333;
+}
+
+.review-date {
+    font-size: 12px;
+    color: #CCC;
+}
+
+/* --- PHẦN SAO ĐÃ SỬA --- */
+.stars {
+    font-size: 12px;
+    letter-spacing: 2px;
+}
+
+.star-icon {
+    color: #E0E0E0; /* Màu xám cho sao trống */
+}
+
+.star-icon.filled {
+    color: #F5A623; /* Màu vàng cho sao đã đánh giá */
+}
+
+.comment-cell {
+    font-style: italic;
+    color: #666;
+    max-width: 300px;
+}
+
+/* BADGES */
+.status-badge {
+    padding: 8px 18px;
+    border-radius: 25px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.status-replied { background: #E6F9F0; color: #57C78D; }
+.status-pending { background: #FFF4E6; color: #E6A23C; }
+.status-approved { background: #E7F0FF; color: #7CA3F5; }
+
+/* PAGINATION */
+.table-footer {
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #CCC;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-btn {
+    border: none;
+    background: none;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-btn.active {
+    background-color: #5F5E40; /* Nâu rêu chuẩn logo Hamoni */
+    color: white;
+    border-radius: 50%;
+}
+
+.page-arrow {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 10px;
+}
+/* ===== MODAL ===== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ===== MODAL OVERLAY ===== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
+}
+
+/* ===== BOX ===== */
+.modal-box {
+    background: #fff;
+    padding: 20px 24px;
+    border-radius: 12px;
+    width: 420px;
+    max-width: 90%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    animation: slideUp 0.25s ease;
+}
+
+/* ===== TITLE ===== */
+.modal-box h2,
+.modal-box h3 {
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+/* ===== TEXT ===== */
+.modal-box p {
+    margin: 6px 0;
+    font-size: 14px;
+}
+
+/* ===== TEXTAREA ===== */
+.modal-box textarea {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    outline: none;
+    transition: 0.2s;
+}
+
+.modal-box textarea:focus {
+    border-color: #ff6600;
+}
+
+/* ===== BUTTON GROUP ===== */
+.modal-box button {
+    margin-top: 10px;
+    margin-right: 8px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+/* ===== NÚT ĐÓNG ===== */
+.modal-box button:first-of-type {
+    background: #eee;
+}
+
+.modal-box button:first-of-type:hover {
+    background: #ddd;
+}
+
+/* ===== NÚT PHẢN HỒI ===== */
+.modal-box button:nth-of-type(2) {
+    background: #ff6600;
+    color: rgb(51, 53, 52);
+}
+
+.modal-box button:nth-of-type(2):hover {
+    background: #e65c00;
+}
+
+/* ===== NÚT GỬI ===== */
+.modal-box button:contains("Gửi") {
+    background: #28a745;
+    color: white;
+}
+
+/* fallback nếu :contains không chạy */
+.modal-box button:last-child {
+    background: #28a745;
+    color: white;
+}
+
+.modal-box button:last-child:hover {
+    background: #218838;
+}
+
+/* ===== DISABLED ===== */
+.modal-box button:disabled {
+    background: #ccc !important;
+    cursor: not-allowed;
+}
+
+/* ===== ANIMATION ===== */
+@keyframes fadeIn {
+    from { opacity: 0 }
+    to { opacity: 1 }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+/* ===== HOVER NHẢY NHẸ ===== */
+.review-row {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.review-row:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+.review-row:active {
+    transform: scale(0.98);
+}
+.Toastify__toast-container {
+    z-index: 99999999 !important;
+    position: fixed !important;
+}
+/* ===== LỌC NGÀY + SELECT ĐẸP HƠN ===== */
+.table-controls input[type="date"],
+.table-controls select {
+    padding: 10px 14px;
+    border-radius: 12px;           /* bo góc mềm */
+    border: 1px solid #ddd;
+    font-size: 14px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #fff;
+    transition: all 0.2s ease;
+}
+
+/* hover nhẹ */
+.table-controls input[type="date"]:hover,
+.table-controls select:hover {
+    border-color: #B22222;
+}
+
+/* focus đẹp */
+.table-controls input[type="date"]:focus,
+.table-controls select:focus {
+    outline: none;
+    border-color: #B22222;
+    box-shadow: 0 0 0 3px rgba(178, 34, 34, 0.1);
+}
+
+/* spacing cho đẹp */
+.table-controls input[type="date"] {
+    margin-right: 8px;
+}
+
+.table-controls select {
+    margin-left: auto;
+    cursor: pointer;
+}

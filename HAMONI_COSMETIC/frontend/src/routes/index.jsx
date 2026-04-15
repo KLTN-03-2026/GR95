@@ -28,6 +28,7 @@ import ProductCreate from '../pages/admin/Product/ProductCreate';
 import ProductDetail from '../pages/admin/Product/ProductDetail';
 import Dashboard from '../pages/admin/Dashboard/DashboardOverview';
 import ProductInventoryReport from '../pages/admin/Dashboard/ProductInventoryReport';
+import ReviewManagement from '../pages/admin/Reviews/ReviewManagement';
 
 const Home = () => <div>Trang chủ Hamoni E-Commerce</div>;
 const NotFound = () => <div>404 - Không tìm thấy trang</div>;
@@ -98,6 +99,7 @@ const AppRouter = () => {
                     <Route path="products/:id" element={<ProductDetail />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="inventory-report" element={<ProductInventoryReport />} />
+                    <Route path="reviews" element={<ReviewManagement />} />
                     
                 </Route>
                 <Route path="*" element={<NotFound />} />
