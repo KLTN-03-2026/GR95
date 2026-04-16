@@ -4,45 +4,56 @@ exports.getDashboard = async (req, res) => {
     try {
         // ===== STATS =====
         const [[totalProducts]] = await db.execute(`
-            SELECT COUNT(*) as total FROM BienTheSanPham
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT tk.MaBienThe
+                FROM TonKho tk
+                GROUP BY tk.MaBienThe
+            ) AS unique_variants
         `);
 
         const [[outOfStock]] = await db.execute(`
-            SELECT COUNT(*) as total 
-            FROM TonKho 
-            WHERE SoLuongTon = 0
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT tk.MaBienThe
+                FROM TonKho tk
+                GROUP BY tk.MaBienThe
+                HAVING SUM(tk.SoLuongTon) < 10
+            ) AS zero_stock_variants
         `);
 
         // ===== PRODUCTS =====
         const [products] = await db.execute(`
             SELECT 
-    bt.MaBienThe as id,
-    sp.TenSP as ten,
-    bt.TenBienThe,
-    tk.SoLuongTon as soLuong,
+                bt.MaBienThe AS id,
+                sp.TenSP AS tenSanPham,
+                bt.TenBienThe AS tenBienThe,
+                CONCAT(sp.TenSP, ' - ', bt.TenBienThe) AS ten,
+                SUM(tk.SoLuongTon) AS soLuong,
 
-    -- biến động gần nhất
-    (
-        SELECT SoLuongThayDoi 
-        FROM LogTonKho l 
-        WHERE l.MaBienThe = bt.MaBienThe
-        ORDER BY l.NgayTao DESC
-        LIMIT 1
-    ) as bienDong,
+                -- biến động gần nhất
+                (
+                    SELECT SoLuongThayDoi 
+                    FROM LogTonKho l 
+                    WHERE l.MaBienThe = bt.MaBienThe
+                    ORDER BY l.NgayTao DESC
+                    LIMIT 1
+                ) AS bienDong,
 
-    -- thời gian gần nhất
-    (
-        SELECT NgayTao 
-        FROM LogTonKho l 
-        WHERE l.MaBienThe = bt.MaBienThe
-        ORDER BY l.NgayTao DESC
-        LIMIT 1
-    ) as thoiGian
-
-FROM TonKho tk
-JOIN BienTheSanPham bt ON tk.MaBienThe = bt.MaBienThe
-JOIN SanPham sp ON bt.MaSP = sp.MaSP
-LIMIT 10
+                -- thời gian gần nhất
+                (
+                    SELECT NgayTao 
+                    FROM LogTonKho l 
+                    WHERE l.MaBienThe = bt.MaBienThe
+                    ORDER BY l.NgayTao DESC
+                    LIMIT 1
+                ) AS thoiGian
+            FROM TonKho tk
+            JOIN BienTheSanPham bt ON tk.MaBienThe = bt.MaBienThe
+            JOIN SanPham sp ON bt.MaSP = sp.MaSP
+            GROUP BY bt.MaBienThe, sp.TenSP, bt.TenBienThe
+            ORDER BY bt.MaBienThe DESC
+            LIMIT 10
         `);
 const [[lastLog]] = await db.execute(`
     SELECT NgayTao 
@@ -55,7 +66,8 @@ const [[lastLog]] = await db.execute(`
             SELECT 
                 l.LoaiGiaoDich,
                 l.SoLuongThayDoi,
-                sp.TenSP
+                sp.TenSP,
+                l.NgayTao AS thoiGian
             FROM LogTonKho l
             JOIN BienTheSanPham bt ON l.MaBienThe = bt.MaBienThe
             JOIN SanPham sp ON bt.MaSP = sp.MaSP

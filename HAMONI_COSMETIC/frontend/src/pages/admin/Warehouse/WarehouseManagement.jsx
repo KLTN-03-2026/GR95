@@ -112,7 +112,7 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                     <div className="stat-card">
                         <p>TỔNG SẢN PHẨM</p>
                         <div className="value-row">
-                            <h2>{data?.stats?.totalProducts?.toLocaleString() || "1,284"}</h2>
+                            <h2>{data?.stats?.totalProducts?.toLocaleString() || " "}</h2>
                             <span className="growth-text"></span>
                         </div>
                         <div className="card-line active"></div>
@@ -136,7 +136,7 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                     <div className="stat-card danger">
                         <p>HẾT HÀNG</p>
                         <div className="value-row">
-                            <h2>{String(data?.stats?.outOfStock || 8).padStart(2, '0')}</h2>
+                            <h2>{String(data?.stats?.outOfStock || 0).padStart(2, '0')}</h2>
                             <span className="import-label">Cần nhập</span>
                         </div>
                         <div className="card-dots">...</div>
@@ -173,7 +173,7 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                                             <div className="product-cell">
                                                 <div className="product-img-box"></div>
                                                 <div>
-                                                    <div className="p-name">{p.ten}</div>
+                                                    <div className="p-name">{p.ten || [p.tenSanPham, p.tenBienThe].filter(Boolean).join(" - ")}</div>
                                                     <div className="p-sku">SKU: {p.sku || 'HM-SR-012'}</div>
                                                 </div>
                                             </div>
