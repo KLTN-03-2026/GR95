@@ -31,28 +31,28 @@
 }
 
 /* ===== STAT ===== */
-.stat-row {
+.dashboard-stat-row {
   display: flex;
   flex-wrap: wrap;
 }
 
-.stat-col {
+.dashboard-stat-col {
   width: 25%;
   padding: 20px;
   text-align: center;
   border-right: 1px solid #eee;
 }
 
-.stat-col:last-child {
+.dashboard-stat-col:last-child {
   border-right: none;
 }
 
-.stat-title {
+.dashboard-stat-title {
   font-size: 13px;
   color: #666;
 }
 
-.stat-value {
+.dashboard-stat-value {
   font-size: 20px;
   font-weight: bold;
   margin-top: 5px;

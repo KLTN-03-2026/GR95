@@ -79,22 +79,22 @@ const CategoryManagement = () => {
             <div className="category-wrapper">
                 <h2 className="page-title">QUẢN LÝ DANH MỤC SẢN PHẨM</h2>
 
-                <div className="stats-container">
-                    <div className="stat-card">
-                        <div className="stat-info">
-                            <p className="stat-label">Tổng danh mục</p>
+                <div className="category-stats-container">
+                    <div className="category-stat-card">
+                        <div className="category-stat-info">
+                            <p className="category-stat-label">Tổng danh mục</p>
                             {/* Đã thêm ?.length || 0 */}
-                            <span className="stat-number text-italic">{categories?.length || 0}</span>
+                            <span className="category-stat-number text-italic">{categories?.length || 0}</span>
                         </div>
-                        <div className="stat-icon blue"><Box size={20} /></div>
+                        <div className="category-stat-icon blue"><Box size={20} /></div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-info">
-                            <p className="stat-label">Đang hoạt động</p>
+                    <div className="category-stat-card">
+                        <div className="category-stat-info">
+                            <p className="category-stat-label">Đang hoạt động</p>
                             {/* Đã thêm ?.length || 0 */}
-                            <span className="stat-number text-italic text-green">{categories?.length || 0}</span>
+                            <span className="category-stat-number text-italic category-text-green">{categories?.length || 0}</span>
                         </div>
-                        <div className="stat-icon green"><CheckCircle size={20} /></div>
+                        <div className="category-stat-icon green"><CheckCircle size={20} /></div>
                     </div>
                 </div>
 

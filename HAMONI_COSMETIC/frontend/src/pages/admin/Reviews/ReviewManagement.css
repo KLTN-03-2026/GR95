@@ -17,13 +17,13 @@
 }
 
 /* STATS CARDS  */
-.stats-section {
+.review-stats-section {
     display: flex;
     gap: 30px;
     margin-bottom: 60px;
 }
 
-.stat-card {
+.review-stat-card {
     background: rgb(247, 238, 189);
     padding: 60px 50px; 
     border-radius: 45px;
@@ -39,7 +39,7 @@
     min-height: 250px;      /* Chiều cao cố định cho 2 khung bằng nhau */
 }
 
-.stat-card-header {
+.review-stat-card-header {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -48,14 +48,14 @@
     gap: 10px;
 }
 
-.stat-label {
+.review-stat-label {
     font-size: 13px;
     font-weight: 700;
     color: #0d0c0c;
     letter-spacing: 1px;
 }
 
-.stat-number {
+.review-stat-number {
     font-size: 58px;
     font-weight: 800;
     color: #B22222; /* Cả 2 số dùng chung màu đỏ đô chuẩn */
@@ -65,7 +65,7 @@
 }
 
 /* ĐÂY LÀ PHẦN ĐƯA DÒNG CHỮ XUỐNG DƯỚI CÙNG VÀ KHÔNG LÀM LỆCH HÀNG */
-.stat-action-link {
+.review-stat-action-link {
     position: absolute;   /* Nhấc chữ ra khỏi khung để không đẩy số 3 lên */
     bottom: 25px;         /* Đưa dòng chữ xuống sát đáy (cách 25px) */
     left: 50%;
@@ -83,7 +83,7 @@
     width: max-content;
 }
 
-.stat-action-link:hover {
+.review-stat-action-link:hover {
     opacity: 1;
     text-decoration: underline;
 }

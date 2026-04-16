@@ -131,13 +131,14 @@ CREATE TABLE SanPham_KhuyenMai (
 
 CREATE TABLE Voucher (
     MaVoucher CHAR(20) PRIMARY KEY,
-    PhanTramGiam INT NULL,
-    SoTienGiam DECIMAL(18,2) NULL,
-    GiamToiDa DECIMAL(18,2) NULL,
-    DonTaiThieu DECIMAL(18,2) NULL,
-    SoLuong INT,
-    NgayBatDau DATETIME,
-    NgayKetThuc DATETIME
+    LoaiGiamGia VARCHAR(50) NOT NULL DEFAULT 'PhanTram',
+    GiaTriGiam DECIMAL(18,2) NOT NULL,
+    DonHangToiThieu DECIMAL(18,2) NOT NULL DEFAULT 0,
+    SoLuongToiDa INT NOT NULL,
+    SoLuongDaDung INT NOT NULL DEFAULT 0,
+    NgayBatDau DATETIME NOT NULL,
+    NgayKetThuc DATETIME NOT NULL,
+    TrangThai VARCHAR(50) NOT NULL DEFAULT 'KichHoat'
 );
 
 -- ==========================================
@@ -267,6 +268,9 @@ CREATE TABLE ChiTietChatAI (
     CONSTRAINT FK_ChiTietChat_Phien FOREIGN KEY (MaPhien) REFERENCES PhienChatAI(MaPhien) ON DELETE CASCADE
 );
 
+ALTER TABLE Voucher 
+ADD COLUMN SoLuongDaDung INT DEFAULT 0 AFTER SoLuong,
+ADD COLUMN TrangThai ENUM('KichHoat', 'TamDung', 'HetHan') DEFAULT 'KichHoat' AFTER NgayKetThuc;
 
 -- ==========================================
 -- 1. PHÂN QUYỀN & NGƯỜI DÙNG

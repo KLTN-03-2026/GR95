@@ -31,6 +31,8 @@ const productRoutes = require('./src/routes/productRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes'); // Thêm route cho đánh giá
+const voucherRoutes = require('./src/routes/voucherRoutes'); // Thêm route cho voucher
+const promotionRoutes = require('./src/routes/promotionRoutes'); // Thêm route cho khuyến mãi
 
 // Đăng ký route cho upload ảnh
 app.use('/api/upload', uploadRoutes);
@@ -48,6 +50,8 @@ app.use('/api/dashboard', dashboardRoutes); // Gắn đường dẫn cho dashboa
 app.use('/api/reports', reportRoutes); // Gắn đường dẫn cho báo cáo
 app.use('/api/reviews', reviewRoutes); // Gắn đường dẫn cho đánh giá
 
+app.use('/api/vouchers', voucherRoutes); // Gắn đường dẫn cho voucher
+app.use('/api/promotions', promotionRoutes); // Gắn đường dẫn cho khuyến mãi
 // Route mặc định (Root)
 app.get('/', (req, res) => {
     res.json({ 

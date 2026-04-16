@@ -30,7 +30,7 @@
    KHU VỰC 2: STATS CARDS (ĐÃ NÂNG CẤP)
    ========================================= */
 /* Layout tổng cho lưới thống kê */
-.stats-cards-grid {
+.inventory-stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
@@ -38,7 +38,7 @@
 }
 
 /* Card thống kê - Thu gọn padding và bo góc */
-.stat-card {
+.inventory-stat-card {
     background-color: #ffffff;
     padding: 20px; /* Giảm từ 25px xuống 20px để card thanh thoát hơn */
     border-radius: 16px; /* Bo góc 16px thay vì 20px để trông hiện đại hơn */
@@ -48,14 +48,14 @@
 }
 
 /* Hiệu ứng hover - Làm mượt và giảm độ nảy */
-.stat-card:hover {
+.inventory-stat-card:hover {
     transform: translateY(-3px); /* Giảm độ nảy để tránh rối mắt */
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
     border-color: #e2e8f0;
 }
 
 /* Header của card */
-.stat-card-header {
+.inventory-stat-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -63,7 +63,7 @@
 }
 
 /* Khối Icon */
-.stat-icon {
+.inventory-stat-icon {
     font-size: 1.25rem; /* Giảm size icon cho cân đối */
     background: #f8fafc;
     width: 40px; /* Thu nhỏ container của icon */
@@ -75,7 +75,7 @@
 }
 
 /* Huy hiệu (Badge) */
-.stat-badge {
+.inventory-stat-badge {
     padding: 4px 10px;
     border-radius: 12px;
     font-size: 0.7rem; /* Font nhỏ lại để làm label phụ */
@@ -84,12 +84,12 @@
 }
 
 /* Bảng màu Badge chuẩn UI hệ thống */
-.stat-badge.green { background-color: #ecfdf5; color: #059669; }
-.stat-badge.red { background-color: #fef2f2; color: #dc2626; }
-.stat-badge.gold { background-color: #fffbeb; color: #d97706; }
+.inventory-stat-badge.green { background-color: #ecfdf5; color: #059669; }
+.inventory-stat-badge.red { background-color: #fef2f2; color: #dc2626; }
+.inventory-stat-badge.gold { background-color: #fffbeb; color: #d97706; }
 
 /* Nhãn (Title của thông số) */
-.stat-label { 
+.inventory-stat-label { 
     color: #64748b; /* Mã màu xám chuyên dụng cho text phụ */
     font-size: 0.875rem; /* Kích thước chuẩn 14px cho label */
     margin-bottom: 6px; 
@@ -97,7 +97,7 @@
 }
 
 /* Thông số chính - ĐÃ ĐIỀU CHỈNH KÍCH THƯỚC */
-.stat-value { 
+.inventory-stat-value { 
     font-size: 1.5rem; /* Giảm mạnh từ 2.5rem (40px) xuống 1.5rem (24px) */
     font-weight: 700; 
     margin: 0; 
@@ -106,7 +106,7 @@
 }
 
 /* Text màu đỏ cho cảnh báo */
-.text-red { 
+.inventory-text-red { 
     color: #dc2626 !important; 
 }
 /* =========================================
