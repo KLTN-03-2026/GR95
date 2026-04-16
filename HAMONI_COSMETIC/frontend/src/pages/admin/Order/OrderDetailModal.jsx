@@ -51,6 +51,7 @@ const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaH
     useEffect(() => {
         if (order) {
             setStatus(order.trangThai);
+            setIsPrinted(!!order.daInHoaDon);
         }
     }, [order]);
 
@@ -60,7 +61,7 @@ const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaH
 
     // --- 2. CẬP NHẬT HÀM UPDATE (Bỏ Alert) ---
     const handleUpdateStatus = async () => {
-    if (!isPrinted) {
+    if (!order?.daInHoaDon) {
         showSuccess("⚠️ Phải in hóa đơn trước khi cập nhật trạng thái!");
         return;
     }
@@ -77,6 +78,40 @@ const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaH
         showSuccess("❌ Lỗi cập nhật trạng thái!");
     }
 };
+
+    const handleOpenInvoice = () => {
+        if (isPrinted || order?.daInHoaDon) {
+            showSuccess("⚠️ Đơn hàng này đã in hóa đơn, không thể in lại.");
+            return;
+        }
+
+        setIsInvoiceOpen(true);
+    };
+
+    const handleConfirmPrintInvoice = async () => {
+        if (isPrinted || order?.daInHoaDon) {
+            showSuccess("⚠️ Đơn hàng này đã in hóa đơn, không thể in lại.");
+            return;
+        }
+
+        try {
+            await axiosClient.put(`/orders/${id}/print`);
+            setIsPrinted(true);
+            setIsInvoiceOpen(false);
+            showSuccess("🖨️ Đã xác nhận in hóa đơn!");
+            await fetchOrderDetail();
+            window.print();
+        } catch (err) {
+            if (err?.response?.status === 409) {
+                setIsPrinted(true);
+                showSuccess("⚠️ Đơn hàng này đã in hóa đơn, không thể in lại.");
+                await fetchOrderDetail();
+                return;
+            }
+            console.error("Lỗi xác nhận in hóa đơn:", err);
+            showSuccess("❌ Lỗi khi xác nhận in hóa đơn!");
+        }
+    };
     // --- 3. CẬP NHẬT HÀM HỦY (Bỏ Alert) ---
 const handleCancelOrder = async () => {
     try {
@@ -108,6 +143,9 @@ const handleCancelOrder = async () => {
             if (log.moTa.includes("→")) {
                 const newStatus = log.moTa.split("→")[1].trim();
                 displayLabel = statusMap[newStatus] || newStatus;
+            }
+            if (displayLabel === "DaInHoaDon") {
+                displayLabel = "Đã in hóa đơn";
             }
             if (timeline.length === 0 || timeline[timeline.length - 1].label !== displayLabel) {
                 timeline.push({ label: displayLabel, time: log.thoiGian });
@@ -189,11 +227,13 @@ const handleCancelOrder = async () => {
                         </div>
                         <div style={{ display: "flex", gap: "10px" }}>
                             {canPrint && (
-                                <button className="full-print-btn" style={{ flex: 1 }} onClick={() => {
-    setIsInvoiceOpen(true);
-    setIsPrinted(true);
-    showSuccess("🖨️ Đã in hóa đơn!");
-}}>
+                                <button
+                                    className="full-print-btn"
+                                    style={{ flex: 1 }}
+                                    onClick={handleOpenInvoice}
+                                    disabled={isPrinted || order?.daInHoaDon}
+                                    title={isPrinted || order?.daInHoaDon ? 'Đơn hàng đã in hóa đơn' : ''}
+                                >
                                     🖨️ IN HÓA ĐƠN
                                 </button>
                             )}
@@ -283,7 +323,7 @@ const handleCancelOrder = async () => {
                 <InvoiceModal 
                     order={order} 
                     onClose={() => setIsInvoiceOpen(false)} 
-                    onPrint={() => window.print()}
+                    onPrint={handleConfirmPrintInvoice}
                 />
             )}
         </div>
