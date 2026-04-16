@@ -109,44 +109,44 @@ const ProductInventoryReport = () => {
             </div>
 
             {/* --- STATS --- */}
-            <div className="stats-cards-grid">
-                <div className="stat-card">
-                    <div className="stat-card-header">
-                        <span className="stat-icon">📦</span>
-                        <span className="stat-badge green">+4.2%</span>
+            <div className="inventory-stats-grid">
+                <div className="inventory-stat-card">
+                    <div className="inventory-stat-card-header">
+                        <span className="inventory-stat-icon">📦</span>
+                        <span className="inventory-stat-badge green">+4.2%</span>
                     </div>
-                    <p className="stat-label">Tổng sản phẩm</p>
-                    <h2 className="stat-value">{reportData.summary.totalProducts}</h2>
+                    <p className="inventory-stat-label">Tổng sản phẩm</p>
+                    <h2 className="inventory-stat-value">{reportData.summary.totalProducts}</h2>
                 </div>
 
-                <div className="stat-card">
-                    <div className="stat-card-header">
-                        <span className="stat-icon">🏠</span>
-                        <span className="stat-badge green">+12%</span>
+                <div className="inventory-stat-card">
+                    <div className="inventory-stat-card-header">
+                        <span className="inventory-stat-icon">🏠</span>
+                        <span className="inventory-stat-badge green">+12%</span>
                     </div>
-                    <p className="stat-label">Tổng tồn kho</p>
-                    <h2 className="stat-value">
+                    <p className="inventory-stat-label">Tổng tồn kho</p>
+                    <h2 className="inventory-stat-value">
                         {Number(reportData.summary.totalInventory).toLocaleString()}
                     </h2>
                 </div>
 
-                <div className="stat-card danger-card">
-                    <div className="stat-card-header">
-                        <span className="stat-icon">⚠️</span>
+                <div className="inventory-stat-card inventory-danger-card">
+                    <div className="inventory-stat-card-header">
+                        <span className="inventory-stat-icon">⚠️</span>
                         {/* Đã sửa text cứng "-2 vùng" thành "Chú ý" cho hợp logic nghiệp vụ */}
-                        <span className="stat-badge red">Chú ý</span>
+                        <span className="inventory-stat-badge red">Chú ý</span>
                     </div>
-                    <p className="stat-label text-red">Sản phẩm sắp hết hàng</p>
-                    <h2 className="stat-value text-red">{reportData.summary.lowStock}</h2>
+                    <p className="inventory-stat-label inventory-text-red">Sản phẩm sắp hết hàng</p>
+                    <h2 className="inventory-stat-value inventory-text-red">{reportData.summary.lowStock}</h2>
                 </div>
 
-                <div className="stat-card">
-                    <div className="stat-card-header">
-                        <span className="stat-icon">📈</span>
-                        <span className="stat-badge gold">Top 5</span>
+                <div className="inventory-stat-card">
+                    <div className="inventory-stat-card-header">
+                        <span className="inventory-stat-icon">📈</span>
+                        <span className="inventory-stat-badge gold">Top 5</span>
                     </div>
-                    <p className="stat-label">Sản phẩm bán chạy</p>
-                    <h2 className="stat-value">{reportData.summary.topSelling}</h2>
+                    <p className="inventory-stat-label">Sản phẩm bán chạy</p>
+                    <h2 className="inventory-stat-value">{reportData.summary.topSelling}</h2>
                 </div>
             </div>
 

@@ -1,0 +1,150 @@
+const db = require('../config/db');
+
+const promotionController = {
+    // 1. LẤY DANH SÁCH (Không check trạng thái nữa vì dùng Hard Delete)
+    getAllPromotions: async (req, res) => {
+        try {
+            const [rows] = await db.execute(`SELECT * FROM ChuongTrinhKhuyenMai ORDER BY NgayBatDau DESC`);
+            res.status(200).json(rows);
+        } catch (error) {
+            console.error("Lỗi lấy danh sách KM:", error);
+            res.status(500).json({ message: "Lỗi server" });
+        }
+    },
+
+    // 2. LẤY SẢN PHẨM & BIẾN THỂ 
+    getVariantsForPromo: async (req, res) => {
+        try {
+            const [rows] = await db.execute(`
+                SELECT bt.MaBienThe, bt.TenBienThe, sp.TenSP 
+                FROM BienTheSanPham bt
+                JOIN SanPham sp ON bt.MaSP = sp.MaSP
+                ORDER BY sp.TenSP ASC
+            `);
+            res.status(200).json(rows);
+        } catch (error) {
+            console.error("Lỗi lấy SP cho Promo:", error);
+            res.status(500).json({ message: "Lỗi server" });
+        }
+    },
+
+    // 3. TẠO KHUYẾN MÃI MỚI
+    createPromotion: async (req, res) => {
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+
+            const { TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner, danhSachBienThe } = req.body;
+
+            const [kmResult] = await conn.execute(`
+                INSERT INTO ChuongTrinhKhuyenMai (TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner || null]);
+
+            const newMaCTKM = kmResult.insertId;
+
+            if (danhSachBienThe && danhSachBienThe.length > 0) {
+                for (let maBienThe of danhSachBienThe) {
+                    await conn.execute(`INSERT INTO SanPham_KhuyenMai (MaCTKM, MaBienThe) VALUES (?, ?)`, [newMaCTKM, maBienThe]);
+                }
+            }
+
+            await conn.commit();
+            res.status(201).json({ message: "Tạo chương trình khuyến mãi thành công!" });
+        } catch (error) {
+            await conn.rollback(); 
+            console.error("Lỗi tạo KM:", error);
+            res.status(500).json({ message: "Lỗi server khi tạo khuyến mãi" });
+        } finally {
+            conn.release();
+        }
+    },
+
+    // 4. LẤY CHI TIẾT 1 KHUYẾN MÃI
+    getPromotionDetail: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const [[promotion]] = await db.execute(`SELECT * FROM ChuongTrinhKhuyenMai WHERE MaCTKM = ?`, [id]);
+            if (!promotion) return res.status(404).json({ message: "Không tìm thấy chương trình này!" });
+
+            const [variants] = await db.execute(`SELECT MaBienThe FROM SanPham_KhuyenMai WHERE MaCTKM = ?`, [id]);
+            const danhSachBienThe = variants.map(v => v.MaBienThe);
+
+            res.status(200).json({ ...promotion, danhSachBienThe });
+        } catch (error) {
+            console.error("Lỗi chi tiết KM:", error);
+            res.status(500).json({ message: "Lỗi server" });
+        }
+    },
+
+    // 5. CẬP NHẬT KHUYẾN MÃI
+    updatePromotion: async (req, res) => {
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+            const { id } = req.params;
+            const { TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner, danhSachBienThe } = req.body;
+
+            await conn.execute(`
+                UPDATE ChuongTrinhKhuyenMai 
+                SET TenCTKM = ?, LoaiGiamGia = ?, GiaTriGiam = ?, NgayBatDau = ?, NgayKetThuc = ?, Banner = ?
+                WHERE MaCTKM = ?
+            `, [TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner || null, id]);
+
+            await conn.execute(`DELETE FROM SanPham_KhuyenMai WHERE MaCTKM = ?`, [id]);
+
+            if (danhSachBienThe && danhSachBienThe.length > 0) {
+                for (let maBienThe of danhSachBienThe) {
+                    await conn.execute(`INSERT INTO SanPham_KhuyenMai (MaCTKM, MaBienThe) VALUES (?, ?)`, [id, maBienThe]);
+                }
+            }
+
+            await conn.commit();
+            res.status(200).json({ message: "Cập nhật khuyến mãi thành công!" });
+        } catch (error) {
+            await conn.rollback();
+            console.error("Lỗi cập nhật KM:", error);
+            res.status(500).json({ message: "Lỗi server" });
+        } finally {
+            conn.release();
+        }
+    },
+
+    // 6. XÓA KHUYẾN MÃI (HARD DELETE)
+    deletePromotion: async (req, res) => {
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+            const { id } = req.params;
+
+            // Xóa ở bảng con (Sản phẩm) trước
+            await conn.execute(`DELETE FROM SanPham_KhuyenMai WHERE MaCTKM = ?`, [id]);
+            
+            // Xóa ở bảng cha sau
+            const [deleteResult] = await conn.execute(`DELETE FROM ChuongTrinhKhuyenMai WHERE MaCTKM = ?`, [id]);
+
+            if (deleteResult.affectedRows === 0) {
+                await conn.rollback();
+                return res.status(404).json({ message: "Không tìm thấy chương trình khuyến mãi để xóa." });
+            }
+
+            await conn.commit();
+            res.status(200).json({ message: "Xóa khuyến mãi thành công!" });
+        } catch (error) {
+            await conn.rollback();
+            console.error("Lỗi xóa KM:", error);
+            
+            // Bắt lỗi khóa ngoại nếu chương trình này đã được áp dụng vào Đơn Hàng thực tế
+            if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+                return res.status(409).json({ message: "Không thể xóa vì khuyến mãi này đã được sử dụng trong Đơn Hàng." });
+            }
+            
+            res.status(500).json({ message: "Lỗi server khi xóa" });
+        } finally {
+            conn.release();
+        }
+    }
+};
+
+module.exports = promotionController;

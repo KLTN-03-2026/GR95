@@ -38,6 +38,13 @@ const allPermissions = [
     { MaChucNang: 'EDIT_PROMOTION', TenChucNang: 'Sửa Khuyến mãi', NhomChucNang: 'Khuyến mãi' },
     { MaChucNang: 'DELETE_PROMOTION', TenChucNang: 'Xoá Khuyến mãi', NhomChucNang: 'Khuyến mãi' },
 
+    // ---------------- Nhóm Voucher ----------------
+    { MaChucNang: 'HIDE_MODULE_VOUCHER', TenChucNang: 'Ẩn Voucher', NhomChucNang: 'Voucher' },
+    { MaChucNang: 'VIEW_VOUCHER', TenChucNang: 'Xem Voucher', NhomChucNang: 'Voucher' },
+    { MaChucNang: 'ADD_VOUCHER', TenChucNang: 'Thêm Voucher', NhomChucNang: 'Voucher' },
+    { MaChucNang: 'EDIT_VOUCHER', TenChucNang: 'Sửa Voucher', NhomChucNang: 'Voucher' },
+    { MaChucNang: 'DELETE_VOUCHER', TenChucNang: 'Xoá Voucher', NhomChucNang: 'Voucher' },
+
     // ---------------- Nhóm Đơn hàng ----------------
     { MaChucNang: 'HIDE_MODULE_ORDER', TenChucNang: 'Ẩn Đơn hàng', NhomChucNang: 'Đơn hàng' },
     { MaChucNang: 'VIEW_ORDER', TenChucNang: 'Xem Đơn hàng', NhomChucNang: 'Đơn hàng' },

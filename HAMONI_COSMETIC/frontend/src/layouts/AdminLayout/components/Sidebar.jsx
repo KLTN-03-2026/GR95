@@ -203,6 +203,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         </NavLink>
     </li>
 )}
+                    {canViewModule('HIDE_MODULE_VOUCHER') && (
+                        <li>
+                            <NavLink to="/admin/vouchers" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                                <span className="icon">🎟️</span>
+                                <span className="text">Mã giảm giá</span>
+                            </NavLink>
+                        </li>
+                    )}
+                    {canViewModule('HIDE_MODULE_PROMOTION') && (
+                        <li>
+                            <NavLink to="/admin/promotions" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                                <span className="icon">🎉</span>
+                                <span className="text">Khuyến mãi</span>
+                            </NavLink>
+                        </li>
+                    )}
 
                     {isAdmin && (
                         <li>

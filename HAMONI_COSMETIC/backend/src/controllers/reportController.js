@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const ExcelJS = require('exceljs');
 
+const TONKHO_STOCK_COLUMNS = ['SoLuongTon', 'TonKho', 'SoLuong', 'SLTon'];
 const PRODUCT_STOCK_COLUMNS = ['SoLuongTon', 'TonKho', 'SoLuong', 'SLTon'];
 const VARIANT_STOCK_COLUMNS = ['SoLuongTon', 'TonKho', 'SoLuong', 'SLTon'];
 
@@ -47,6 +48,21 @@ const getTableColumns = async (tableName) => {
 const resolveStockConfig = async () => {
     // 🔥 TỐI ƯU HIỆU NĂNG: Nếu đã cache thì trả về luôn, không query DB nữa
     if (cachedStockConfig) return cachedStockConfig;
+
+    try {
+        const tonKhoColumns = await getTableColumns('TonKho');
+        const tonKhoStockColumn = TONKHO_STOCK_COLUMNS.find((col) => tonKhoColumns.includes(col));
+
+        if (tonKhoStockColumn) {
+            cachedStockConfig = {
+                stockMode: 'inventory',
+                stockExpression: `COALESCE(SUM(tk.\`${tonKhoStockColumn}\`), 0)`
+            };
+            return cachedStockConfig;
+        }
+    } catch (error) {
+        console.error('Không thể kiểm tra cột bảng TonKho:', error.message);
+    }
 
     try {
         const productColumns = await getTableColumns('SanPham');
@@ -99,9 +115,14 @@ const buildInventorySql = (stockConfig, hasCategoryFilter) => {
     `;
 
     const joins = [
-        `LEFT JOIN DanhMuc dm ON sp.MaDM = dm.MaDM`, 
+        `LEFT JOIN DANHMUC dm ON sp.MaDM = dm.MaDM`, 
         `LEFT JOIN (${soldSubquery}) sold ON sold.MaSP = sp.MaSP`
     ];
+
+    if (stockConfig.stockMode === 'inventory') {
+        joins.push('LEFT JOIN BienTheSanPham bt ON bt.MaSP = sp.MaSP');
+        joins.push('LEFT JOIN TonKho tk ON tk.MaBienThe = bt.MaBienThe');
+    }
 
     if (stockConfig.stockMode === 'variant') {
         joins.push('LEFT JOIN BienTheSanPham bt ON bt.MaSP = sp.MaSP');
@@ -113,7 +134,7 @@ const buildInventorySql = (stockConfig, hasCategoryFilter) => {
     }
 
     let groupBy = '';
-    if (stockConfig.stockMode === 'variant') {
+    if (stockConfig.stockMode === 'variant' || stockConfig.stockMode === 'inventory') {
         groupBy = 'GROUP BY sp.MaSP, sp.TenSP, dm.TenDM, sold.totalSold';
     }
 

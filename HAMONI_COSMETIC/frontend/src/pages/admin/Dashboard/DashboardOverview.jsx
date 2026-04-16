@@ -129,22 +129,22 @@ const DashboardOverview = () => {
       {/* ===== SECTION 1: THỐNG KÊ NHANH ===== */}
       <div className="custom-card">
         <div className="section-header">📊 Thống kê nhanh</div>
-        <div className="stat-row">
-          <div className="stat-col">
-            <div className="stat-title">🧾 Tổng số đơn</div>
-            <div className="stat-value text-primary">{stats.tongDon || 0}</div>
+        <div className="dashboard-stat-row">
+          <div className="dashboard-stat-col">
+            <div className="dashboard-stat-title">🧾 Tổng số đơn</div>
+            <div className="dashboard-stat-value text-primary">{stats.tongDon || 0}</div>
           </div>
-          <div className="stat-col">
-            <div className="stat-title">💰 Tổng doanh thu (VNĐ)</div>
-            <div className="stat-value text-success">{stats.tongDoanhThu?.toLocaleString() || 0}</div>
+          <div className="dashboard-stat-col">
+            <div className="dashboard-stat-title">💰 Tổng doanh thu (VNĐ)</div>
+            <div className="dashboard-stat-value text-success">{stats.tongDoanhThu?.toLocaleString() || 0}</div>
           </div>
-          <div className="stat-col">
-            <div className="stat-title">📦 Tổng sản phẩm đã bán</div>
-            <div className="stat-value text-info">{stats.tongSoLuong || 0}</div>
+          <div className="dashboard-stat-col">
+            <div className="dashboard-stat-title">📦 Tổng sản phẩm đã bán</div>
+            <div className="dashboard-stat-value text-info">{stats.tongSoLuong || 0}</div>
           </div>
-          <div className="stat-col">
-            <div className="stat-title">📊 TB mỗi đơn (VNĐ)</div>
-            <div className="stat-value text-warning">{stats.trungBinhDon?.toLocaleString() || 0}</div>
+          <div className="dashboard-stat-col">
+            <div className="dashboard-stat-title">📊 TB mỗi đơn (VNĐ)</div>
+            <div className="dashboard-stat-value text-warning">{stats.trungBinhDon?.toLocaleString() || 0}</div>
           </div>
         </div>
       </div>

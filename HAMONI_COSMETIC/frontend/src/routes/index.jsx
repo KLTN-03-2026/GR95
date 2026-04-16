@@ -29,6 +29,11 @@ import ProductDetail from '../pages/admin/Product/ProductDetail';
 import Dashboard from '../pages/admin/Dashboard/DashboardOverview';
 import ProductInventoryReport from '../pages/admin/Dashboard/ProductInventoryReport';
 import ReviewManagement from '../pages/admin/Reviews/ReviewManagement';
+import VoucherManagement from '../pages/admin/Voucher/VoucherManagement';
+import VoucherDetail from '../pages/admin/Voucher/VoucherDetail';
+import PromotionManagement from '../pages/admin/Promotion/PromotionManagement';
+import PromotionCreate from '../pages/admin/Promotion/PromotionCreate';
+import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
 import WarehouseManagement from "../pages/admin/Warehouse/WarehouseManagement";
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
@@ -81,7 +86,7 @@ const AppRouter = () => {
                             </AdminRoute>
                         )}
                     >
-                    <Route index element={<Dashboard />} />
+                    <Route index element={<ProductManagement />} />
                     <Route path="customers" element={<CustomerManagement />} />
                     <Route path="customer-detail/:id" element={<CustomerDetail />} />
                     <Route path="categories" element={<CategoryManagement />} />
@@ -102,6 +107,14 @@ const AppRouter = () => {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="inventory-report" element={<ProductInventoryReport />} />
                     <Route path="reviews" element={<ReviewManagement />} />
+                    <Route path="vouchers" element={<VoucherManagement />} />
+                    <Route path="vouchers/:id" element={<VoucherDetail />} />
+                    <Route path="voucher-detail/:id" element={<VoucherDetail />} />
+                    <Route path="voucherdetail/:id" element={<VoucherDetail />} />
+                    <Route path="promotions" element={<PromotionManagement />} />
+                    <Route path="promotions/create" element={<PromotionCreate />} />
+                    <Route path="promotions/:id" element={<PromotionDetail />} />
+
                     <Route path="warehouse" element={<WarehouseManagement />} />
                     <Route path="warehouse-logs" element={<WarehouseLog />} />
                     <Route path="banners" element={<BannerManagement />} />

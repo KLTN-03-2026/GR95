@@ -95,20 +95,20 @@ const ReviewManagement = () => {
                 <div className="review-management-container">
                     <h1 className="page-title">QUẢN LÝ ĐÁNH GIÁ</h1>
 
-                    <section className="stats-section">
-                        <div className="stat-card">
-                            <span className="stat-label">TỔNG ĐÁNH GIÁ</span>
-                            <h2 className="stat-number">{stats.total?.toLocaleString() || 0}</h2>
+                    <section className="review-stats-section">
+                        <div className="review-stat-card">
+                            <span className="review-stat-label">TỔNG ĐÁNH GIÁ</span>
+                            <h2 className="review-stat-number">{stats.total?.toLocaleString() || 0}</h2>
                         </div>
 
-                        <div className="stat-card highlight-card">
-                            <div className="stat-card-header">
-                                <span className="stat-label">CHƯA PHẢN HỒI</span>
-                                <h2 className="stat-number">{stats.pending || 0}</h2>
+                        <div className="review-stat-card review-highlight-card">
+                            <div className="review-stat-card-header">
+                                <span className="review-stat-label">CHƯA PHẢN HỒI</span>
+                                <h2 className="review-stat-number">{stats.pending || 0}</h2>
                             </div>
                     
                             <button 
-                                className="stat-action-link" 
+                                className="review-stat-action-link" 
                                 onClick={() => setFilter('CHUA_PHAN_HOI')}
                             >
                                 Xem ngay danh sách
