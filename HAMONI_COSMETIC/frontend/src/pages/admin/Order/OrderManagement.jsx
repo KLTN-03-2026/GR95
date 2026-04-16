@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; 
-import axiosClient from '../../../services/axiosClient';
+import orderApi from '../../../services/orderApi';
 import './OrderManagement.css';
 
 const OrderManagement = () => {
@@ -18,36 +18,33 @@ const OrderManagement = () => {
     const loadOrders = useCallback(async () => {
         setLoading(true);
         try {
-            // 🔥 XỬ LÝ LOGIC ÉP GIỜ Ở ĐÂY 🔥
             let finalStartDate = dateRange.start;
             let finalEndDate = dateRange.end;
 
-            // Ép ngày bắt đầu thành 00:00:00
             if (finalStartDate) {
                 finalStartDate = `${finalStartDate} 00:00:00`;
             }
 
-            // Ép ngày kết thúc thành 23:59:59
             if (finalEndDate) {
                 finalEndDate = `${finalEndDate} 23:59:59`;
             }
 
-            const res = await axiosClient.get('/orders', {
-                params: { 
-                    search: search.trim(), 
-                    status: statusFilter,
-                    startDate: finalStartDate, // Truyền biến đã xử lý
-                    endDate: finalEndDate,     // Truyền biến đã xử lý
-                    page: currentPage,
-                    limit: 5 
-                }
-            });
+           const res = await orderApi.getOrders({
+    search: search.trim(),
+    status: statusFilter,
+    startDate: finalStartDate,
+    endDate: finalEndDate,
+    page: currentPage,
+    limit: 5
+});
 
-            let dataList = res.data || [];
-            let totalPages = res.pagination?.totalPages || 1;
+console.log("🔥 API:", res.data);
 
-            setOrders(dataList);
-            setTotalPages(totalPages);
+let dataList = res.data || [];
+let totalPages = res.pagination?.totalPages || 1;
+
+setOrders(dataList);
+setTotalPages(totalPages);
         } catch (err) {
             console.error("❌ Lỗi loadOrders:", err);
             setOrders([]);
@@ -75,11 +72,28 @@ const OrderManagement = () => {
         new Intl.NumberFormat('vi-VN').format(amount || 0) + 'đ';
 
     const getStatusClass = (status) => {
-        return `status-badge status-${status}`;
+    if (!status) return "status-badge";
+
+    const clean = status
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // bỏ dấu
+        .replace(/\s+/g, "")             // bỏ space
+        .replace(/_/g, "");              // bỏ underscore
+
+    const map = {
+        hoanthanh: "status-HoanThanh",
+        danggiao: "status-DangGiao",
+        choxacnhan: "status-ChoXacNhan",
+        dahuy: "status-DaHuy"
     };
 
+    return `status-badge ${map[clean] || ""}`;
+};
+
     const tabs = [
-        { id: 'all', label: 'Tất cả' },
+        { id: 'all', label: 'Tất cả trạng thái' },
         { id: 'ChoXacNhan', label: 'Chờ xác nhận' }, 
         { id: 'DangGiao', label: 'Đang giao' },     
         { id: 'HoanThanh', label: 'Hoàn thành' },   
@@ -90,32 +104,36 @@ const OrderManagement = () => {
         <div className="order-admin-container">
             <h1 className="main-title">QUẢN LÝ ĐƠN HÀNG</h1>
 
-            {/* SEARCH */}
-            <div className="search-center-wrapper">
-                <div className="search-input-group">
+            {/* ===== THANH CÔNG CỤ LỌC & TÌM KIẾM ===== */}
+            <div className="action-bar-container">
+                
+                {/* 1. Dropdown Trạng thái */}
+                <div className="status-dropdown-wrapper">
+                    <select 
+                        className="status-select"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        {tabs.map(tab => (
+                            <option key={tab.id} value={tab.id}>
+                                {tab.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* 2. Ô Tìm kiếm đã được dời xuống */}
+                <div className="search-wrapper">
                     <input 
                         type="text" 
+                        className="search-input"
                         placeholder="Tìm theo Mã đơn hàng, Tên khách hàng..." 
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-            </div>
 
-            {/* FILTER */}
-            <div className="filter-tabs-container">
-                <div className="status-tabs">
-                    {tabs.map(tab => (
-                        <button 
-                            key={tab.id}
-                            className={`tab-item ${statusFilter === tab.id ? 'active' : ''}`}
-                            onClick={() => setStatusFilter(tab.id)}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                
+                {/* 3. Lọc theo ngày */}
                 <div className="date-filter-group">
                     <span className="filter-label">Lọc theo ngày:</span>
                     <div className="date-inputs">
@@ -134,7 +152,7 @@ const OrderManagement = () => {
                 </div>
             </div>
 
-            {/* TABLE */}
+            {/* ===== TABLE ===== */}
             <div className="order-table-wrapper">
                 <table className="modern-table">
                     <thead>

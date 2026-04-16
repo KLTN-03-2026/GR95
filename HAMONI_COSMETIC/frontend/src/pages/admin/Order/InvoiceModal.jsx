@@ -88,7 +88,7 @@ const InvoiceModal = forwardRef(({ order, onClose, onPrint }, ref) => {
 
         <div className="invoice-modal-footer">
           <button className="btn-print" onClick={onPrint}>📄 Xác nhận In</button>
-          <button className="btn-close" onClick={onClose}>Đóng</button>
+          <button className="btn-cancel-modal" onClick={onClose}> Đóng </button>
         </div>
       </div>
     </div>
