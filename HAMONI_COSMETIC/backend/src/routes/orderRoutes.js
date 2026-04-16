@@ -13,5 +13,6 @@ router.get('/:id', orderController.getOrderDetail);
 
 router.put('/:id/status', orderController.updateOrderStatus);
 router.put('/:id/cancel', orderController.cancelOrder);
+router.put('/:id/print', orderController.markOrderPrinted);
 
 module.exports = router;

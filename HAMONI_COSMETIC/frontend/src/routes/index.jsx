@@ -34,8 +34,9 @@ import VoucherDetail from '../pages/admin/Voucher/VoucherDetail';
 import PromotionManagement from '../pages/admin/Promotion/PromotionManagement';
 import PromotionCreate from '../pages/admin/Promotion/PromotionCreate';
 import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
-
-
+import WarehouseManagement from "../pages/admin/Warehouse/WarehouseManagement";
+import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
+import BannerManagement from '../pages/admin/Banner/BannerManagement';
 const Home = () => <div>Trang chủ Hamoni E-Commerce</div>;
 const NotFound = () => <div>404 - Không tìm thấy trang</div>;
 
@@ -114,6 +115,12 @@ const AppRouter = () => {
                     <Route path="promotions/create" element={<PromotionCreate />} />
                     <Route path="promotions/:id" element={<PromotionDetail />} />
 
+                    <Route path="warehouse" element={<WarehouseManagement />} />
+                    <Route path="warehouse-logs" element={<WarehouseLog />} />
+                    <Route path="banners" element={<BannerManagement />} />
+                    <Route path="banners/add" element={<BannerManagement />} />
+                    <Route path="banners/edit/:id" element={<BannerManagement />} />
+                    
                 </Route>
                 <Route path="*" element={<NotFound />} />
             </Routes>

@@ -260,3 +260,87 @@
     background-color: #fee2e2;
     color: #ef4444; 
 }
+
+.save-action-bar {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.variant-table {
+    border-collapse: collapse;
+}
+
+.variant-table th,
+.variant-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.variant-table thead th {
+    font-size: 12px;
+    color: #64748b;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.variant-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+@media (max-width: 1200px) {
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .right-col {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-detail-container {
+        padding: 16px;
+    }
+
+    .detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .detail-layout {
+        gap: 16px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .full-width {
+        grid-column: span 1;
+    }
+
+    .add-variant-compact {
+        flex-wrap: wrap;
+        align-items: stretch;
+    }
+
+    .variant-name-input,
+    .variant-price-input,
+    .btn-add-variant {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .save-action-bar {
+        justify-content: stretch;
+    }
+
+    .btn-save-primary {
+        width: 100%;
+        justify-content: center;
+    }
+}

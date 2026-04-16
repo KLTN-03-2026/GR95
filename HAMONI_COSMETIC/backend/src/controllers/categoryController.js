@@ -5,7 +5,7 @@ const ExcelJS = require('exceljs');
 exports.getAllCategories = async (req, res) => {
   try {
     const { search } = req.query;
-    let sql = 'SELECT * FROM danhmuc'; 
+    let sql = 'SELECT * FROM DANHMUC'; 
     let params = [];
 
     if (search) {
@@ -25,7 +25,7 @@ exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
     // Xóa theo cột MaDM
-    await db.execute('DELETE FROM danhmuc WHERE MaDM = ?', [id]);
+    await db.execute('DELETE FROM DANHMUC WHERE MaDM = ?', [id]);
     res.json({ message: "Xóa thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -38,7 +38,7 @@ exports.createCategory = async (req, res) => {
     const { MaDM, TenDM } = req.body; 
     
     
-    const sql = 'INSERT INTO danhmuc (MaDM, TenDM) VALUES (?, ?)';
+    const sql = 'INSERT INTO DANHMUC (MaDM, TenDM) VALUES (?, ?)';
     await db.execute(sql, [MaDM, TenDM]); 
     
     res.status(201).json({ message: "Thêm thành công" });
@@ -54,7 +54,7 @@ exports.updateCategory = async (req, res) => {
     const { id } = req.params;
     const { TenDM } = req.body; 
 
-    const sql = 'UPDATE danhmuc SET TenDM = ? WHERE MaDM = ?';
+    const sql = 'UPDATE DANHMUC SET TenDM = ? WHERE MaDM = ?';
     await db.execute(sql, [TenDM, id]);
 
     res.json({ message: "Cập nhật thành công" });
@@ -67,7 +67,7 @@ exports.updateCategory = async (req, res) => {
 // XUẤT FILE EXCEL
 exports.exportCategoryExcel = async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT MaDM, TenDM FROM danhmuc');
+    const [rows] = await db.execute('SELECT MaDM, TenDM FROM DANHMUC');
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Danh_Muc_San_Pham');

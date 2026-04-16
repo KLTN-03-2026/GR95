@@ -1,16 +1,13 @@
 /* ============================================================ */
 /* PHẦN 1: CSS CHO TRANG DANH SÁCH ĐƠN HÀNG (ORDER LIST)        */
 /* ============================================================ */
-/* ============================================================ */
-/* PHẦN 1: CSS CHO TRANG DANH SÁCH ĐƠN HÀNG (ORDER LIST)        */
-/* ============================================================ */
 
 :root {
     --bg-light: #fdfbf4;
     --text-main: #2d3436;
     --yellow-accent: #f9f2d8;
     --yellow-dark: #f1c40f;
-    --primary-olive: #5b5a41; /* Màu rêu nâu đặc trưng trong mẫu */
+    --primary-olive: #5b5a41;
 }
 
 .order-admin-container {
@@ -26,6 +23,7 @@
     margin-bottom: 30px;
 }
 
+/* ================= SEARCH ================= */
 .search-center-wrapper {
     display: flex;
     justify-content: center;
@@ -47,7 +45,7 @@
     outline: none;
 }
 
-/* Tabs trạng thái */
+/* ================= FILTER TABS ================= */
 .filter-tabs-container {
     display: flex;
     justify-content: space-between;
@@ -58,12 +56,18 @@
     margin-bottom: 25px;
 }
 
-.status-tabs { display: flex; gap: 10px; }
+.status-tabs {
+    display: flex;
+    gap: 10px;
+}
 
 .tab-item {
-    background: none; border: none;
-    padding: 10px 20px; color: #777;
-    cursor: pointer; font-weight: 600;
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    color: #777;
+    cursor: pointer;
+    font-weight: 600;
 }
 
 .tab-item.active {
@@ -71,7 +75,7 @@
     border-bottom: 3px solid #000;
 }
 
-/* Style cho bảng danh sách */
+/* ================= TABLE ================= */
 .modern-table {
     width: 100%;
     border-collapse: separate;
@@ -84,7 +88,6 @@
     transition: all 0.2s ease;
 }
 
-/* HIỆU ỨNG CLICK DÒNG (THAY CHO NÚT THAO TÁC) */
 .modern-table tr.clickable-row {
     cursor: pointer;
 }
@@ -108,45 +111,63 @@
     vertical-align: middle;
 }
 
-.modern-table td:first-child { border-radius: 12px 0 0 12px; }
-.modern-table td:last-child { border-radius: 0 12px 12px 0; }
-
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
+.modern-table td:first-child {
+    border-radius: 12px 0 0 12px;
 }
 
-.order-id-cell {
-    background: transparent !important;
+.modern-table td:last-child {
+    border-radius: 0 12px 12px 0;
 }
 
+/* ================= ORDER CODE ================= */
 .order-code {
     font-size: 13px;
     font-weight: 700;
     color: #555;
-    background: #f1f2f6; 
+    background: #f1f2f6;
     padding: 4px 10px;
     border-radius: 6px;
     display: inline-block;
-    font-family: monospace; 
+    font-family: monospace;
 }
 
-/* CÁC TRẠNG THÁI (ĐÃ ĐỒNG BỘ VỚI REACT) */
-.status-HoanThanh { background: #e8f5e9; color: #2e7d32; }
-.status-DangGiao { background: #e1f5fe; color: #0288d1; }
-.status-ChoXacNhan { background: #fef5d6; color: #b7950b; }
-.status-DaHuy { background: #ffebee; color: #c62828; }
+/* ================= STATUS BADGE (FIXED CORE) ================= */
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    text-align: center;
+    min-width: 100px;
+}
 
-.total-amount-list { font-weight: 700; color: #e74c3c; }
+/* FIX: thêm độ ưu tiên */
+.status-badge.status-HoanThanh {
+    background-color: #d4edda;
+    color: #28a745;
+}
 
-/* BỘ LỌC NGÀY MỚI */
+.status-badge.status-DaHuy {
+    background-color: #f8d7da;
+    color: #dc3545;
+}
+
+.status-badge.status-DangGiao {
+    background-color: #cce5ff;
+    color: #007bff;
+}
+
+.status-badge.status-ChoXacNhan {
+    background-color: #fff3cd;
+    color: #ffc107;
+}
+
+/* ================= DATE FILTER ================= */
 .date-filter-group {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
     background: #fff;
     padding: 5px 15px;
     border-radius: 10px;
@@ -181,19 +202,19 @@
     font-weight: bold;
 }
 
-/* PHÂN TRANG MẪU MỚI (CHUYÊN NGHIỆP) */
+/* ================= PAGINATION ================= */
 .pagination-wrapper {
     display: flex;
-    justify-content: flex-end; 
+    justify-content: flex-end;
     align-items: center;
-    gap: 15px; 
+    gap: 15px;
     margin-top: 30px;
-    padding-right: 10px; 
+    padding-right: 10px;
 }
 
 .pagi-numbers-group {
     display: flex;
-    gap: 8px; 
+    gap: 8px;
 }
 
 .pagi-item {
@@ -202,26 +223,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%; 
-    border: 1px solid #eee; 
-    background: #fff; 
+    border-radius: 50%;
+    border: 1px solid #eee;
+    background: #fff;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
     color: #333;
-    transition: all 0.2s ease;
 }
 
 .pagi-item:hover {
     border-color: #333;
-    color: #000;
 }
 
 .pagi-item.active {
-    background: var(--primary-olive) !important;
-    color: #fff !important;
-    border-color: var(--primary-olive) !important;
-    font-weight: 600;
+    background: var(--primary-olive);
+    color: #fff;
+    border-color: var(--primary-olive);
     box-shadow: 0 4px 10px rgba(91, 90, 65, 0.2);
 }
 
@@ -231,25 +249,50 @@
     color: #999;
     font-size: 22px;
     cursor: pointer;
+}
+
+/* ================= ACTION BAR ================= */
+.action-bar-container {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    padding: 0 5px;
+    background-color: #fff;
+    padding: 15px 25px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+    gap: 20px;
+    border: 1px solid #f0f0f0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
-.pagi-arrow:hover:not(:disabled) {
-    color: #333;
-    transform: scale(1.1);
+.search-wrapper {
+    flex-grow: 1;
+    max-width: 500px;
 }
 
-.pagi-arrow:disabled {
-    cursor: default;
-    opacity: 0.3;
+.search-input {
+    width: 100%;
+    padding: 12px 20px 12px 45px;
+    border-radius: 30px;
+    border: 1px solid #e0e0e0;
+    outline: none;
+    font-size: 14px;
 }
 
+.status-select {
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: 1px solid #e0e0e0;
+    outline: none;
+    font-size: 14px;
+    min-width: 190px;
+    cursor: pointer;
+    background: white;
+}
+
+/* UTILS */
 .text-center { text-align: center; }
-.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-
+.py-4 { padding: 1rem 0; }
 
 /* ------------------------------------------------------------ */
 /* ------------------------------------------------------------ */

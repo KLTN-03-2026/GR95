@@ -113,6 +113,8 @@ exports.getOrderDetail = async (req, res) => {
             ORDER BY NgayTao ASC
         `, [id]);
 
+        const isPrinted = logs.some(l => l.TrangThaiMoi === 'DaInHoaDon');
+
         // Mapping lại dữ liệu trả về cho chuẩn với React
         res.json({
             id: order.MaDH,
@@ -128,6 +130,7 @@ exports.getOrderDetail = async (req, res) => {
             giamGia: Number(order.TienGiamGia || 0),
             phiShip: Number(order.PhiShip || 0),
             tongTien: Number(order.ThanhTien),
+            daInHoaDon: isPrinted,
             chiTiet: items, // Trong items này đã có TenSP (viết hoa T và SP)
             lichSu: logs.map(l => ({
                 moTa: `${l.TrangThaiCu || "Khởi tạo"} → ${l.TrangThaiMoi}`,
@@ -155,6 +158,15 @@ exports.updateOrderStatus = async (req, res) => {
 
         if (!old) return res.status(404).json({ message: "Không tìm thấy" });
 
+        const [[printLog]] = await db.execute(
+            `SELECT MaLog FROM LogDonHang WHERE MaDH = ? AND TrangThaiMoi = 'DaInHoaDon' LIMIT 1`,
+            [id]
+        );
+
+        if (!printLog) {
+            return res.status(409).json({ message: "Phải xác nhận in hóa đơn trước khi cập nhật trạng thái" });
+        }
+
         await db.execute(
             `UPDATE DonHang SET TrangThai = ? WHERE MaDH = ?`,
             [newStatus, id]
@@ -180,6 +192,40 @@ exports.cancelOrder = async (req, res) => {
 
         // check tồn tại
         const [[order]] = await db.execute(
+            `SELECT TrangThai FROM DonHang WHERE MaDH = ?`,
+            [id]
+        );
+
+        if (!order) {
+            return res.status(404).json({ message: "Không tìm thấy đơn" });
+        }
+
+        // ✅ KHÔNG XÓA → chỉ update trạng thái
+        await db.execute(
+            `UPDATE DonHang SET TrangThai = 'DaHuy' WHERE MaDH = ?`,
+            [id]
+        );
+
+        // ✅ ghi log
+        await db.execute(`
+            INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
+            VALUES (?, ?, 'DaHuy', NOW())
+        `, [id, order.TrangThai]);
+
+        res.json({ message: "Đã hủy đơn hàng" });
+
+    } catch (err) {
+        console.error("🔥 CANCEL ERROR:", err); // 👈 QUAN TRỌNG
+        res.status(500).json({ message: "Lỗi server" });
+    }
+};
+
+// ================= MARK PRINTED (ONLY ONCE) =================
+exports.markOrderPrinted = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const [[order]] = await db.execute(
             `SELECT MaDH FROM DonHang WHERE MaDH = ?`,
             [id]
         );
@@ -188,28 +234,23 @@ exports.cancelOrder = async (req, res) => {
             return res.status(404).json({ message: "Không tìm thấy đơn" });
         }
 
-        // 🔥 XÓA CHI TIẾT TRƯỚC (quan trọng nếu có FK)
-        await db.execute(
-            `DELETE FROM ChiTietDonHang WHERE MaDH = ?`,
+        const [[printLog]] = await db.execute(
+            `SELECT MaLog FROM LogDonHang WHERE MaDH = ? AND TrangThaiMoi = 'DaInHoaDon' LIMIT 1`,
             [id]
         );
 
-        // 🔥 XÓA LOG
-        await db.execute(
-            `DELETE FROM LogDonHang WHERE MaDH = ?`,
-            [id]
-        );
+        if (printLog) {
+            return res.status(409).json({ message: "Đơn hàng đã in hóa đơn trước đó" });
+        }
 
-        // 🔥 XÓA ĐƠN HÀNG
-        await db.execute(
-            `DELETE FROM DonHang WHERE MaDH = ?`,
-            [id]
-        );
+        await db.execute(`
+            INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, GhiChu, NgayTao)
+            VALUES (?, NULL, 'DaInHoaDon', 'In hóa đơn lần đầu', NOW())
+        `, [id]);
 
-        res.json({ message: "Đã xóa đơn hàng" });
-
+        res.json({ message: "Đã ghi nhận in hóa đơn" });
     } catch (err) {
-        console.error(err);
+        console.error("🔥 ERROR markOrderPrinted:", err);
         res.status(500).json({ message: "Lỗi server" });
     }
 };

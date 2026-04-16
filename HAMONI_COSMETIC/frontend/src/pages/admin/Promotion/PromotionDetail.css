@@ -16,20 +16,20 @@
     font-size: 20px;
 }
 
-.btn-back {
+.promo-dashboard .btn-back {
     display: flex; align-items: center; padding: 8px 16px; background: #f1f5f9;
     color: #475569; border: 1px solid #cbd5e1; border-radius: 6px;
     font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: 0.2s;
 }
 
-.btn-back:hover { background: #e2e8f0; color: #0f172a; }
+.promo-dashboard .btn-back:hover { background: #e2e8f0; color: #0f172a; }
 
-.badge {
+.promo-dashboard .badge {
     padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-left: 10px;
 }
-.badge.active { background: #dcfce7; color: #15803d; }
-.badge.upcoming { background: #fef9c3; color: #a16207; }
-.badge.ended { background: #fee2e2; color: #b91c1c; }
+.promo-dashboard .badge.active { background: #dcfce7; color: #15803d; }
+.promo-dashboard .badge.upcoming { background: #fef9c3; color: #a16207; }
+.promo-dashboard .badge.ended { background: #fee2e2; color: #b91c1c; }
 
 /* =========================================================
    2. LAYOUT CHIA NGANG 2:3 VÀ KHẮC PHỤC LỖI TRÀN TRANG
@@ -77,13 +77,13 @@
 /* =========================================================
    3. TRANG TRÍ CÁC Ô NHẬP LIỆU (FORM)
    ========================================================= */
-.form-group {
+.promo-dashboard .form-group {
     display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
 }
-.form-group label {
+.promo-dashboard .form-group label {
     font-size: 13.5px; font-weight: 600; color: #475569;
 }
-.form-group input, .form-group select {
+.promo-dashboard .form-group input, .promo-dashboard .form-group select {
     padding: 10px 12px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
@@ -92,7 +92,7 @@
     outline: none;
     transition: 0.2s;
 }
-.form-group input:focus, .form-group select:focus {
+.promo-dashboard .form-group input:focus, .promo-dashboard .form-group select:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
@@ -234,7 +234,7 @@
 /* =========================================================
    8. MÀN HÌNH CHỜ (LOADING)
    ========================================================= */
-.loading-screen { 
+.promo-dashboard .loading-screen { 
     display: flex; justify-content: center; align-items: center; 
     height: 100vh; font-size: 18px; color: #64748b; font-weight: 600;
 }
