@@ -37,6 +37,11 @@ import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
 import WarehouseManagement from "../pages/admin/Warehouse/WarehouseManagement";
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
+
+
+import OrderPayment from '../pages/client/orderpayment';
+
+
 const Home = () => <div>Trang chủ Hamoni E-Commerce</div>;
 const NotFound = () => <div>404 - Không tìm thấy trang</div>;
 
@@ -77,6 +82,7 @@ const AppRouter = () => {
                 <Route path="/" element={<div className="client-wrapper"><Home /></div>}>
                     <Route index element={<Home />} />
                 </Route>
+                <Route path="/orderpayment" element={<OrderPayment />} />
 
                     <Route
                         path="/admin"

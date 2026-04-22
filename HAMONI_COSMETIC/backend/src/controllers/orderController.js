@@ -1,5 +1,120 @@
 const db = require('../config/db');
 
+const STOCK_OUTGOING_STATUS = 'DaXacNhan';
+const STOCK_RETURN_STATUS = 'DaHuy';
+
+const loadOrderItems = async (conn, orderId) => {
+    const [items] = await conn.execute(`
+        SELECT MaBienThe, SoLuong
+        FROM ChiTietDonHang
+        WHERE MaDH = ?
+    `, [orderId]);
+
+    return items;
+};
+
+const deductOrderStock = async (conn, orderId) => {
+    const items = await loadOrderItems(conn, orderId);
+
+    for (const item of items) {
+        const quantity = Number(item.SoLuong || 0);
+
+        const [stocks] = await conn.query(`
+            SELECT MaKho, SoLuongTon
+            FROM TonKho
+            WHERE MaBienThe = ?
+            ORDER BY MaKho ASC
+            FOR UPDATE
+        `, [item.MaBienThe]);
+
+        const totalStock = stocks.reduce((sum, row) => sum + Number(row.SoLuongTon || 0), 0);
+
+        if (totalStock < quantity) {
+            throw new Error(`Không đủ tồn kho cho biến thể ${item.MaBienThe}`);
+        }
+
+        let remain = quantity;
+        for (const stock of stocks) {
+            if (remain <= 0) break;
+
+            const available = Number(stock.SoLuongTon || 0);
+            if (available <= 0) continue;
+
+            const deduct = Math.min(available, remain);
+
+            await conn.query(`
+                UPDATE TonKho
+                SET SoLuongTon = SoLuongTon - ?
+                WHERE MaKho = ? AND MaBienThe = ?
+            `, [deduct, stock.MaKho, item.MaBienThe]);
+
+            remain -= deduct;
+        }
+
+        await conn.query(`
+            INSERT INTO LogTonKho
+            (MaBienThe, LoaiGiaoDich, SoLuongThayDoi, SoLuongTonHienTai, MaThamChieu, GhiChu)
+            VALUES (?, 'XUAT_DON_HANG', ?, ?, ?, 'Trừ kho khi xác nhận đơn hàng')
+        `, [item.MaBienThe, -quantity, totalStock - quantity, orderId]);
+    }
+};
+
+const restoreOrderStock = async (conn, orderId) => {
+    const items = await loadOrderItems(conn, orderId);
+
+    for (const item of items) {
+        const quantity = Number(item.SoLuong || 0);
+
+        const [stocks] = await conn.query(`
+            SELECT MaKho, SoLuongTon
+            FROM TonKho
+            WHERE MaBienThe = ?
+            ORDER BY MaKho ASC
+            FOR UPDATE
+        `, [item.MaBienThe]);
+
+        const primaryStock = stocks[0];
+
+        if (primaryStock) {
+            await conn.query(`
+                UPDATE TonKho
+                SET SoLuongTon = SoLuongTon + ?
+                WHERE MaKho = ? AND MaBienThe = ?
+            `, [quantity, primaryStock.MaKho, item.MaBienThe]);
+        } else {
+            await conn.query(`
+                INSERT INTO TonKho (MaKho, MaBienThe, SoLuongTon)
+                VALUES (1, ?, ?)
+            `, [item.MaBienThe, quantity]);
+        }
+
+        const [[totalRow]] = await conn.query(`
+            SELECT COALESCE(SUM(SoLuongTon), 0) AS SoLuongTon
+            FROM TonKho
+            WHERE MaBienThe = ?
+        `, [item.MaBienThe]);
+
+        await conn.query(`
+            INSERT INTO LogTonKho
+            (MaBienThe, LoaiGiaoDich, SoLuongThayDoi, SoLuongTonHienTai, MaThamChieu, GhiChu)
+            VALUES (?, 'NHAP_DON_HUY', ?, ?, ?, 'Hoàn kho khi hủy đơn hàng')
+        `, [item.MaBienThe, quantity, Number(totalRow?.SoLuongTon || 0), orderId]);
+    }
+};
+
+const getLatestOrderStockMovement = async (conn, orderId) => {
+    const [[row]] = await conn.query(`
+        SELECT LoaiGiaoDich
+        FROM LogTonKho
+        WHERE MaThamChieu = ?
+          AND LoaiGiaoDich IN ('XUAT_DON_HANG', 'NHAP_DON_HUY')
+        ORDER BY NgayTao DESC, MaLog DESC
+        LIMIT 1
+    `, [orderId]);
+
+    return row?.LoaiGiaoDich || null;
+};
+
 // ================= GET LIST =================
 // ================= GET LIST =================
 exports.getOrders = async (req, res) => {
@@ -147,76 +262,131 @@ exports.getOrderDetail = async (req, res) => {
 
 // ================= UPDATE STATUS =================
 exports.updateOrderStatus = async (req, res) => {
+    const conn = await db.getConnection();
+
     try {
         const { id } = req.params;
         const { newStatus } = req.body;
 
-        const [[old]] = await db.execute(
+        await conn.beginTransaction();
+
+        const [[old]] = await conn.execute(
             `SELECT TrangThai FROM DonHang WHERE MaDH = ?`,
             [id]
         );
 
-        if (!old) return res.status(404).json({ message: "Không tìm thấy" });
-
-        const [[printLog]] = await db.execute(
-            `SELECT MaLog FROM LogDonHang WHERE MaDH = ? AND TrangThaiMoi = 'DaInHoaDon' LIMIT 1`,
-            [id]
-        );
-
-        if (!printLog) {
-            return res.status(409).json({ message: "Phải xác nhận in hóa đơn trước khi cập nhật trạng thái" });
+        if (!old) {
+            await conn.rollback();
+            return res.status(404).json({ message: "Không tìm thấy" });
         }
 
-        await db.execute(
+        if (old.TrangThai === newStatus) {
+            await conn.rollback();
+            return res.json({ message: "OK" });
+        }
+
+        const latestStockMovement = await getLatestOrderStockMovement(conn, id);
+
+        if (
+            newStatus === STOCK_OUTGOING_STATUS &&
+            old.TrangThai !== STOCK_OUTGOING_STATUS &&
+            latestStockMovement !== 'XUAT_DON_HANG'
+        ) {
+            await deductOrderStock(conn, id);
+        }
+
+        if (newStatus === STOCK_RETURN_STATUS && old.TrangThai !== STOCK_RETURN_STATUS) {
+            if (
+                (
+                    old.TrangThai === 'ChoXacNhan' ||
+                    old.TrangThai === STOCK_OUTGOING_STATUS ||
+                    old.TrangThai === 'DangGiao'
+                ) &&
+                latestStockMovement === 'XUAT_DON_HANG'
+            ) {
+                await restoreOrderStock(conn, id);
+            }
+        }
+
+        await conn.execute(
             `UPDATE DonHang SET TrangThai = ? WHERE MaDH = ?`,
             [newStatus, id]
         );
 
-        await db.execute(`
+        await conn.execute(`
             INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
             VALUES (?, ?, ?, NOW())
         `, [id, old.TrangThai, newStatus]);
 
+        await conn.commit();
         res.json({ message: "OK" });
 
     } catch (err) {
+        await conn.rollback();
         console.error(err);
+        if (err.message && err.message.includes('Không đủ tồn kho')) {
+            return res.status(409).json({ message: err.message });
+        }
         res.status(500).json({ message: "Lỗi server" });
+    } finally {
+        conn.release();
     }
 };
 
 // ================= CANCEL ORDER =================
 exports.cancelOrder = async (req, res) => {
+    const conn = await db.getConnection();
+
     try {
         const { id } = req.params;
 
+        await conn.beginTransaction();
+
         // check tồn tại
-        const [[order]] = await db.execute(
+        const [[order]] = await conn.execute(
             `SELECT TrangThai FROM DonHang WHERE MaDH = ?`,
             [id]
         );
 
         if (!order) {
+            await conn.rollback();
             return res.status(404).json({ message: "Không tìm thấy đơn" });
         }
 
+        const latestStockMovement = await getLatestOrderStockMovement(conn, id);
+
+        if (
+            (
+                order.TrangThai === 'ChoXacNhan' ||
+                order.TrangThai === STOCK_OUTGOING_STATUS ||
+                order.TrangThai === 'DangGiao'
+            ) &&
+            latestStockMovement === 'XUAT_DON_HANG'
+        ) {
+            await restoreOrderStock(conn, id);
+        }
+
         // ✅ KHÔNG XÓA → chỉ update trạng thái
-        await db.execute(
+        await conn.execute(
             `UPDATE DonHang SET TrangThai = 'DaHuy' WHERE MaDH = ?`,
             [id]
         );
 
         // ✅ ghi log
-        await db.execute(`
+        await conn.execute(`
             INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
             VALUES (?, ?, 'DaHuy', NOW())
         `, [id, order.TrangThai]);
 
+        await conn.commit();
         res.json({ message: "Đã hủy đơn hàng" });
 
     } catch (err) {
+        await conn.rollback();
         console.error("🔥 CANCEL ERROR:", err); // 👈 QUAN TRỌNG
         res.status(500).json({ message: "Lỗi server" });
+    } finally {
+        conn.release();
     }
 };
 

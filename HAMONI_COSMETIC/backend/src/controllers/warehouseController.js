@@ -53,7 +53,6 @@ exports.getDashboard = async (req, res) => {
             JOIN SanPham sp ON bt.MaSP = sp.MaSP
             GROUP BY bt.MaBienThe, sp.TenSP, bt.TenBienThe
             ORDER BY bt.MaBienThe DESC
-            LIMIT 10
         `);
 const [[lastLog]] = await db.execute(`
     SELECT NgayTao 

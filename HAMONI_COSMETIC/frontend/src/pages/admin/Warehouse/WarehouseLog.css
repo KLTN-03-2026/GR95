@@ -86,6 +86,10 @@ td {
     border-bottom: 1px solid #f3f3f3;
 }
 
+td:first-child {
+    position: relative;
+}
+
 tr:hover {
     background: #fafafa;
 }
@@ -120,6 +124,101 @@ td button {
 
 td button:hover {
     background: #f8d7da;
+}
+
+/* ===== PRODUCT SEARCH PICKER ===== */
+.product-picker {
+    position: relative;
+}
+
+.product-picker input {
+    margin-bottom: 0;
+}
+
+.product-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e7e2d5;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+    z-index: 20;
+}
+
+.product-picker-option {
+    width: 100%;
+    border: none;
+    background: #fff;
+    text-align: left;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    border-bottom: 1px solid #f3f3f3;
+}
+
+.product-picker-option:hover {
+    background: #faf7ef;
+}
+
+.product-picker-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+}
+
+.product-picker-variant {
+    font-size: 12px;
+    color: var(--text-sub);
+}
+
+.product-picker-empty {
+    padding: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-sub);
+}
+
+.price-input-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.price-input-cell input {
+    margin-bottom: 0;
+}
+
+.price-validation {
+    font-size: 11px;
+    line-height: 1.35;
+    border-radius: 8px;
+    padding: 6px 8px;
+}
+
+.price-validation.ok {
+    background: #e8f5e9;
+    color: #1e4620;
+}
+
+.price-validation.warning {
+    background: #fff4e5;
+    color: #9c5a00;
+}
+
+.price-validation.error {
+    background: #fdecea;
+    color: #b42318;
+}
+
+.price-validation.neutral {
+    background: #f4f4f4;
+    color: #666;
 }
 
 /* ===== MAIN SUBMIT BUTTON ===== */

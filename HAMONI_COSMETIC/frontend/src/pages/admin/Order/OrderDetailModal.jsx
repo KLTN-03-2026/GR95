@@ -61,11 +61,6 @@ const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaH
 
     // --- 2. CẬP NHẬT HÀM UPDATE (Bỏ Alert) ---
     const handleUpdateStatus = async () => {
-    if (!order?.daInHoaDon) {
-        showSuccess("⚠️ Phải in hóa đơn trước khi cập nhật trạng thái!");
-        return;
-    }
-
     try {
         await axiosClient.put(`/orders/${id}/status`, {
             newStatus: status
@@ -97,6 +92,7 @@ const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaH
         try {
             await axiosClient.put(`/orders/${id}/print`);
             setIsPrinted(true);
+            setOrder((prev) => (prev ? { ...prev, daInHoaDon: true } : prev));
             setIsInvoiceOpen(false);
             showSuccess("🖨️ Đã xác nhận in hóa đơn!");
             await fetchOrderDetail();
@@ -249,6 +245,9 @@ const handleCancelOrder = async () => {
                 <div className="right-column">
                     <div className="status-control-card">
                         <p className="card-sub-title">📦 Trạng thái đơn hàng</p>
+                        <div className={`print-status-badge ${(isPrinted || order?.daInHoaDon) ? 'printed' : 'not-printed'}`}>
+                            {(isPrinted || order?.daInHoaDon) ? '✔ Đã in' : '⏳ Chưa in'}
+                        </div>
                         <select 
                             className="status-dropdown"
                             value={status}
