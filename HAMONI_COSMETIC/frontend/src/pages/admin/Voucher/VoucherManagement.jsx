@@ -101,33 +101,72 @@ const VoucherManagement = () => {
 
     const handleAddVoucher = async (e) => {
         e.preventDefault();
-        if (!newVoucher.MaVoucher || !newVoucher.GiaTriGiam || !newVoucher.SoLuongToiDa || !newVoucher.NgayBatDau || !newVoucher.NgayKetThuc) {
-            toast.warning("Vui lòng điền đầy đủ các thông tin bắt buộc!");
+        // === VALIDATE DỮ LIỆU BẮT BUỘC ===
+        if (!newVoucher.MaVoucher?.trim()) {
+            toast.warning("Vui lòng nhập mã voucher!");
             return;
         }
-        if (new Date(newVoucher.NgayBatDau) > new Date(newVoucher.NgayKetThuc)) {
-            toast.error("Lỗi: Ngày bắt đầu không thể diễn ra sau ngày kết thúc!");
+
+        if (!newVoucher.GiaTriGiam || Number(newVoucher.GiaTriGiam) <= 0) {
+            toast.warning("Giá trị giảm phải lớn hơn 0!");
             return;
         }
+
+        if (newVoucher.LoaiGiamGia === 'PhanTram' && Number(newVoucher.GiaTriGiam) > 100) {
+            toast.warning("Giảm theo % không được vượt quá 100%!");
+            return;
+        }
+
+        if (!newVoucher.SoLuongToiDa || Number(newVoucher.SoLuongToiDa) <= 0) {
+            toast.warning("Số lượng tối đa phải lớn hơn 0!");
+            return;
+        }
+
+        if (!newVoucher.NgayBatDau || !newVoucher.NgayKetThuc) {
+            toast.warning("Vui lòng chọn ngày bắt đầu và kết thúc!");
+            return;
+        }
+
+        // === VALIDATE LOGIC NGÀY ===
+        const startDate = new Date(newVoucher.NgayBatDau);
+        const endDate = new Date(newVoucher.NgayKetThuc);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            toast.error("Định dạng ngày không hợp lệ!");
+            return;
+        }
+
+        if (endDate <= startDate) {
+            toast.error("Ngày kết thúc phải sau ngày bắt đầu!");
+            return;
+        }
+
+        // === VALIDATE ĐƠNHÀNG TỐI THIỂU ===
+        const donHangToiThieu = Number(newVoucher.DonHangToiThieu) || 0;
+        if (donHangToiThieu < 0) {
+            toast.warning("Đơn hàng tối thiểu không được âm!");
+            return;
+        }
+
         try {
             const payload = {
-                MaVoucher: newVoucher.MaVoucher.toUpperCase(),
+                MaVoucher: newVoucher.MaVoucher.toUpperCase().trim(),
                 LoaiGiamGia: newVoucher.LoaiGiamGia,
                 GiaTriGiam: Number(newVoucher.GiaTriGiam),
-                DonHangToiThieu: Number(newVoucher.DonHangToiThieu) || 0,
+                DonHangToiThieu: donHangToiThieu,
                 SoLuongToiDa: Number(newVoucher.SoLuongToiDa),
                 NgayBatDau: newVoucher.NgayBatDau,
                 NgayKetThuc: newVoucher.NgayKetThuc
             };
             await axiosClient.post('vouchers', payload);
-            toast.success("Đã thêm Voucher thành công vào hệ thống!"); 
+            toast.success("Đã thêm Voucher thành công vào hệ thống!");
             setNewVoucher({ MaVoucher: '', LoaiGiamGia: 'PhanTram', GiaTriGiam: '', DonHangToiThieu: '', SoLuongToiDa: '', NgayBatDau: '', NgayKetThuc: '' });
             fetchVouchers(); 
         } catch (error) {
             if (error.response && error.response.data && error.response.data.message) {
-                toast.error(`Lỗi: ${error.response.data.message}`); 
+                toast.error(`Lỗi: ${error.response.data.message}`);
             } else {
-                toast.error("Có lỗi xảy ra khi lưu Voucher!"); 
+                toast.error("Có lỗi xảy ra khi lưu Voucher!");
             }
         }
     };

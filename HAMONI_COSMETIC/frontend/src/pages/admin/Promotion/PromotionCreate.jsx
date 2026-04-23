@@ -72,20 +72,57 @@ const PromotionCreate = () => {
 
     const handleAddPromotion = async (e) => {
         e.preventDefault();
-        if (!newPromo.TenCTKM || !newPromo.GiaTriGiam || !newPromo.NgayBatDau || !newPromo.NgayKetThuc) {
+        // === VALIDATE DỮ LIỆU BẮT BUỘC ===
+        if (!newPromo.TenCTKM?.trim()) {
+            return toast.warning("Vui lòng nhập tên chương trình!");
+        }
+
+        if (!['PhanTram', 'SoTien'].includes(newPromo.LoaiGiamGia)) {
+            return toast.warning("Loại giảm giá không hợp lệ!");
+        }
+
+        if (!newPromo.GiaTriGiam || Number(newPromo.GiaTriGiam) <= 0) {
+            return toast.warning("Mức giảm phải lớn hơn 0!");
+        }
+
+        if (newPromo.LoaiGiamGia === 'PhanTram' && Number(newPromo.GiaTriGiam) > 100) {
+            return toast.warning("Giảm theo % không được vượt quá 100%!");
+        }
+
+        if (!newPromo.NgayBatDau || !newPromo.NgayKetThuc) {
             return toast.warning("Vui lòng điền đầy đủ thông tin!");
         }
+
+        // === VALIDATE LOGIC NGÀY ===
+        const startDate = new Date(newPromo.NgayBatDau);
+        const endDate = new Date(newPromo.NgayKetThuc);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            return toast.error("Định dạng ngày không hợp lệ!");
+        }
+
+        if (endDate <= startDate) {
+            return toast.error("Ngày kết thúc phải sau ngày bắt đầu!");
+        }
+
+        // === VALIDATE SẢN PHẨM ===
         if (selectedVariants.length === 0) {
             return toast.warning("Vui lòng chọn ít nhất 1 sản phẩm!");
         }
 
         try {
-            const payload = { ...newPromo, GiaTriGiam: Number(newPromo.GiaTriGiam), danhSachBienThe: selectedVariants };
+            const payload = {
+                ...newPromo,
+                TenCTKM: newPromo.TenCTKM.trim(),
+                GiaTriGiam: Number(newPromo.GiaTriGiam),
+                danhSachBienThe: selectedVariants
+            };
             await axiosClient.post('promotions', payload);
             toast.success("Tạo thành công! Đang chuyển hướng...");
             setTimeout(() => navigate('/admin/promotions'), 1500);
-        } catch  {
-            toast.error("Có lỗi xảy ra!");
+        } catch (error) {
+            const errorMsg = error?.response?.data?.message || "Có lỗi xảy ra khi tạo chương trình!";
+            toast.error(errorMsg);
         }
     };
 

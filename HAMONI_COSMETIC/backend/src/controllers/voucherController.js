@@ -32,12 +32,47 @@ const voucherController = {
                 SoLuongToiDa, NgayBatDau, NgayKetThuc 
             } = req.body;
 
-            if (!NgayBatDau || !NgayKetThuc) return res.status(400).json({ message: "Thiếu ngày!" });
-            if (new Date(NgayKetThuc) < new Date(NgayBatDau)) return res.status(400).json({ message: "Ngày kết thúc bị sai!" });
+            // === VALIDATE DỮ LIỆU BẮT BUỘC ===
+            if (!MaVoucher || !GiaTriGiam || !SoLuongToiDa || !NgayBatDau || !NgayKetThuc) {
+                return res.status(400).json({ message: "Thiếu thông tin bắt buộc!" });
+            }
 
+            if (!['PhanTram', 'SoTien'].includes(LoaiGiamGia)) {
+                return res.status(400).json({ message: "Loại giảm giá không hợp lệ!" });
+            }
+
+            // === VALIDATE NGÀY THÁNG ===
+            const startDate = new Date(NgayBatDau);
+            const endDate = new Date(NgayKetThuc);
+            
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                return res.status(400).json({ message: "Định dạng ngày không hợp lệ!" });
+            }
+
+            if (endDate <= startDate) {
+                return res.status(400).json({ message: "Ngày kết thúc phải sau ngày bắt đầu!" });
+            }
+
+            // === VALIDATE GIÁ TRỊ SỐ ===
             const giaTriGiam = Number(GiaTriGiam);
             const donHangToiThieu = Number(DonHangToiThieu) || 0;
             const soLuongToiDa = Number(SoLuongToiDa);
+
+            if (!Number.isFinite(giaTriGiam) || giaTriGiam <= 0) {
+                return res.status(400).json({ message: "Giá trị giảm phải lớn hơn 0!" });
+            }
+
+            if (LoaiGiamGia === 'PhanTram' && (giaTriGiam > 100)) {
+                return res.status(400).json({ message: "Giảm theo % không được vượt quá 100%!" });
+            }
+
+            if (!Number.isFinite(donHangToiThieu) || donHangToiThieu < 0) {
+                return res.status(400).json({ message: "Đơn hàng tối thiểu không hợp lệ!" });
+            }
+
+            if (!Number.isFinite(soLuongToiDa) || soLuongToiDa <= 0) {
+                return res.status(400).json({ message: "Số lượng tối đa phải lớn hơn 0!" });
+            }
 
             const phanTramGiam = LoaiGiamGia === 'PhanTram' ? giaTriGiam : null;
             const soTienGiam = LoaiGiamGia === 'SoTien' ? giaTriGiam : null;
@@ -49,7 +84,7 @@ const voucherController = {
                 VALUES (?, ?, ?, NULL, ?, ?, 0, ?, ?, ?)
             `;
             const values = [
-                String(MaVoucher).toUpperCase(),
+                String(MaVoucher).toUpperCase().trim(),
                 phanTramGiam,
                 soTienGiam,
                 donHangToiThieu,
@@ -60,7 +95,7 @@ const voucherController = {
             ];
 
             await db.execute(sql, values);
-            res.status(201).json({ message: "Tạo thành công", MaVoucher });
+            res.status(201).json({ message: "Tạo thành công", MaVoucher: String(MaVoucher).toUpperCase() });
 
         } catch (error) {
             console.error("Lỗi tạo voucher:", error);
