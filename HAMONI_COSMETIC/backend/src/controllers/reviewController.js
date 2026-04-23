@@ -23,10 +23,33 @@ const reviewController = {
         }
     },
 
+    // 🔥 [MỚI THÊM] ===== LẤY DANH SÁCH SẢN PHẨM CHO SIDEBAR =====
+    getSidebarProducts: async (req, res) => {
+        try {
+            const query = `
+                SELECT 
+                    sp.MaSP, 
+                    sp.TenSP, 
+                    COUNT(dg.MaDG) as TotalReviews,
+                    SUM(CASE WHEN dg.TrangThai = 'CHUA_PHAN_HOI' THEN 1 ELSE 0 END) as PendingReviews
+                FROM SanPham sp
+                JOIN DanhGia dg ON sp.MaSP = dg.MaSP
+                GROUP BY sp.MaSP, sp.TenSP
+                ORDER BY PendingReviews DESC, TotalReviews DESC
+            `;
+            const [rows] = await db.query(query);
+            res.json(rows);
+        } catch (error) {
+            console.error("GET SIDEBAR ERROR:", error);
+            res.status(500).json({ message: error.message });
+        }
+    },
+
     // ===== GET ALL + FILTER + SEARCH + DATE =====
     getAllReviews: async (req, res) => {
         try {
-            let { status, search, rating, startDate, endDate } = req.query;
+            // 🔥 Thêm MaSP vào biến destructuring
+            let { status, search, rating, startDate, endDate, MaSP } = req.query;
 
             let query = `
                 SELECT 
@@ -45,19 +68,16 @@ const reviewController = {
 
             let params = [];
 
-            // ===== FILTER STATUS =====
             if (status && status !== 'ALL') {
                 query += " AND dg.TrangThai = ?";
                 params.push(status);
             }
 
-            // ===== FILTER RATING =====
             if (rating && rating !== 'ALL') {
                 query += " AND dg.SoSao = ?";
                 params.push(Number(rating));
             }
 
-            // ===== 🔥 FIX FILTER NGÀY CHUẨN =====
             if (startDate) {
                 query += " AND dg.NgayDanhGia >= ?";
                 params.push(startDate);
@@ -68,7 +88,12 @@ const reviewController = {
                 params.push(endDate);
             }
 
-            // ===== SEARCH =====
+            // 🔥 [MỚI THÊM] Lọc theo sản phẩm được chọn bên Sidebar
+            if (MaSP && MaSP !== 'ALL') {
+query += " AND dg.MaSP = ?"; 
+                params.push(MaSP); 
+            }
+
             if (search) {
                 query += " AND (nd.HoTen LIKE ? OR sp.TenSP LIKE ?)";
                 params.push(`%${search}%`, `%${search}%`);
@@ -76,16 +101,53 @@ const reviewController = {
 
             query += " ORDER BY dg.NgayDanhGia DESC";
 
-            // ===== DEBUG (có thể xoá sau) =====
-            console.log("QUERY:", query);
-            console.log("PARAMS:", params);
-
             const [rows] = await db.query(query, params);
+
+            // 🔥 GẮN REPLIES VÀO MỖI REVIEW
+            for (let review of rows) {
+                const [replies] = await db.query(`
+                    SELECT 
+                        ph.MaPH,
+                        ph.NoiDung,
+                        ph.NgayTao,
+                        nd.HoTen
+                    FROM DanhGia_PhanHoi ph
+                    JOIN NguoiDung nd ON ph.MaND = nd.MaND
+                    WHERE ph.MaDG = ?
+                    ORDER BY ph.NgayTao ASC
+                `, [review.MaDG]);
+
+                review.replies = replies;
+            }
 
             res.json(rows);
 
         } catch (error) {
             console.error("GET REVIEWS ERROR:", error);
+            res.status(500).json({ message: error.message });
+        }
+    },
+
+    // ===== GET REPLIES (OPTION - dùng riêng nếu cần) =====
+    getRepliesByReview: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const [rows] = await db.query(`
+                SELECT 
+                    ph.MaPH,
+                    ph.NoiDung,
+                    ph.NgayTao,
+                    nd.HoTen
+                FROM DanhGia_PhanHoi ph
+                JOIN NguoiDung nd ON ph.MaND = nd.MaND
+                WHERE ph.MaDG = ?
+                ORDER BY ph.NgayTao ASC
+            `, [id]);
+
+            res.json(rows);
+        } catch (error) {
+            console.error("GET REPLIES ERROR:", error);
             res.status(500).json({ message: error.message });
         }
     },
@@ -108,29 +170,41 @@ const reviewController = {
         }
     },
 
-    // ===== REPLY =====
+    // ===== REPLY (CHUẨN THREAD) =====
     replyReview: async (req, res) => {
         try {
             const { id } = req.params;
-            const { replyComment } = req.body;
+            let { replyComment } = req.body;
 
+            // ép kiểu an toàn
+            replyComment = String(replyComment || "").trim();
+
+            if (!replyComment) {
+                return res.status(400).json({ message: "Nội dung phản hồi rỗng!" });
+            }
+
+            // ✅ INSERT vào bảng DanhGia_PhanHoi (CHO PHÉP NHIỀU LẦN)
             await db.query(
-                "UPDATE DanhGia SET BinhLuan = CONCAT(BinhLuan, '\\nAdmin: ', ?) WHERE MaDG = ?",
-                [replyComment, id]
+`INSERT INTO DanhGia_PhanHoi (MaDG, MaND, NoiDung)
+                 VALUES (?, ?, ?)`,
+                [id, 1, replyComment] // 1 = admin (sau này lấy từ login)
             );
 
+            // ✅ cập nhật trạng thái
             await db.query(
-                "UPDATE DanhGia SET TrangThai = 'DA_PHAN_HOI' WHERE MaDG = ?",
+                `UPDATE DanhGia 
+                 SET TrangThai = 'DA_PHAN_HOI' 
+                 WHERE MaDG = ?`,
                 [id]
             );
 
             res.json({ message: "Đã phản hồi" });
+
         } catch (error) {
             console.error("REPLY ERROR:", error);
             res.status(500).json({ message: error.message });
         }
     },
-
 };
 
 module.exports = reviewController;

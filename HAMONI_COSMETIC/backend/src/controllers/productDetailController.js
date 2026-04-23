@@ -38,6 +38,164 @@ const getProductById = async (req, res) => {
 };
 
 // ==========================================
+// 1.1 CHI TIẾT SẢN PHẨM CHO CLIENT
+// ==========================================
+const getPublicProductDetail = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [productRows] = await db.execute(
+            `SELECT sp.MaSP, sp.MaDM, sp.TenSP, sp.MoTa, sp.ThanhPhan, sp.CachSuDung, sp.LoaiDaPhuHop, dm.TenDM
+             FROM SanPham sp
+             LEFT JOIN DanhMuc dm ON dm.MaDM = sp.MaDM
+             WHERE sp.MaSP = ?`,
+            [id]
+        );
+
+        if (productRows.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy sản phẩm!' });
+        }
+
+        const [imageRows] = await db.execute(
+            `SELECT MaHinhAnh, DuongDanAnh, LaAnhChinh, ThuTuHienThi
+             FROM HinhAnh
+             WHERE LoaiThamChieu = 'SanPham' AND MaThamChieu = ?
+             ORDER BY LaAnhChinh DESC, ThuTuHienThi ASC, MaHinhAnh ASC`,
+            [id]
+        );
+
+        const [variantRows] = await db.execute(
+            `SELECT
+                bt.MaBienThe,
+                bt.TenBienThe,
+                bt.Gia,
+                COALESCE(SUM(tk.SoLuongTon), 0) AS SoLuongTon
+             FROM BienTheSanPham bt
+             LEFT JOIN TonKho tk ON tk.MaBienThe = bt.MaBienThe
+             WHERE bt.MaSP = ?
+             GROUP BY bt.MaBienThe, bt.TenBienThe, bt.Gia
+             ORDER BY bt.Gia ASC, bt.MaBienThe ASC`,
+            [id]
+        );
+
+        const [stockRows] = await db.execute(
+            `SELECT COALESCE(SUM(tk.SoLuongTon), 0) AS SoLuongTon
+             FROM BienTheSanPham bt
+             LEFT JOIN TonKho tk ON tk.MaBienThe = bt.MaBienThe
+             WHERE bt.MaSP = ?`,
+            [id]
+        );
+
+        const [ratingRows] = await db.execute(
+            `SELECT
+                COALESCE(ROUND(AVG(SoSao), 1), 0) AS SoSaoTB,
+                COUNT(*) AS LuotDanhGia
+             FROM DanhGia
+             WHERE MaSP = ? AND IsHidden = 0`,
+            [id]
+        );
+
+        const lowestPrice = variantRows.length > 0 ? Number(variantRows[0].Gia || 0) : 0;
+
+        res.status(200).json({
+            info: {
+                ...productRows[0],
+                GiaBan: lowestPrice,
+                SoLuongTon: Number(stockRows[0]?.SoLuongTon || 0),
+                SoSaoTB: Number(ratingRows[0]?.SoSaoTB || 0),
+                LuotDanhGia: Number(ratingRows[0]?.LuotDanhGia || 0)
+            },
+            images: imageRows,
+            variants: variantRows
+        });
+    } catch (error) {
+        console.error('Lỗi lấy chi tiết sản phẩm client:', error);
+        res.status(500).json({ message: 'Lỗi Server!' });
+    }
+};
+
+// ==========================================
+// 1.2 ĐÁNH GIÁ SẢN PHẨM CHO CLIENT
+// ==========================================
+const getProductReviews = async (req, res) => {
+    const { id } = req.params;
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 4);
+    const safeLimit = Number.isFinite(limit) ? limit : 4;
+
+    try {
+        const [rows] = await db.execute(
+            `SELECT
+                dg.MaDG,
+                dg.SoSao,
+                dg.BinhLuan,
+                dg.NgayDanhGia,
+                nd.HoTen
+             FROM DanhGia dg
+             JOIN NguoiDung nd ON nd.MaND = dg.MaND
+             WHERE dg.MaSP = ? AND dg.IsHidden = 0
+             ORDER BY dg.NgayDanhGia DESC
+             LIMIT ${safeLimit}`,
+            [id]
+        );
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Lỗi lấy đánh giá sản phẩm:', error);
+        res.status(500).json({ message: 'Lỗi Server!' });
+    }
+};
+
+// ==========================================
+// 1.3 SẢN PHẨM GỢI Ý CHO CLIENT
+// ==========================================
+const getSuggestedProducts = async (req, res) => {
+    const { id } = req.params;
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 4);
+    const safeLimit = Number.isFinite(limit) ? limit : 4;
+
+    try {
+        const [categoryRows] = await db.execute(
+            'SELECT MaDM FROM SanPham WHERE MaSP = ?',
+            [id]
+        );
+
+        if (categoryRows.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy sản phẩm!' });
+        }
+
+        const maDM = categoryRows[0].MaDM;
+
+        const [rows] = await db.execute(
+            `SELECT
+                sp.MaSP,
+                sp.TenSP,
+                COALESCE(MIN(bt.Gia), 0) AS GiaBan,
+                COALESCE(ROUND(AVG(dg.SoSao), 1), 0) AS SoSaoTB,
+                (
+                    SELECT ha.DuongDanAnh
+                    FROM HinhAnh ha
+                    WHERE ha.LoaiThamChieu = 'SanPham' AND ha.MaThamChieu = sp.MaSP
+                    ORDER BY ha.LaAnhChinh DESC, ha.ThuTuHienThi ASC, ha.MaHinhAnh ASC
+                    LIMIT 1
+                ) AS AnhChinh
+             FROM SanPham sp
+             LEFT JOIN BienTheSanPham bt ON bt.MaSP = sp.MaSP
+             LEFT JOIN DanhGia dg ON dg.MaSP = sp.MaSP AND dg.IsHidden = 0
+             WHERE sp.MaDM = ? AND sp.MaSP <> ?
+             GROUP BY sp.MaSP, sp.TenSP
+             ORDER BY SoSaoTB DESC, sp.NgayTao DESC
+             LIMIT ${safeLimit}`,
+            [maDM, id]
+        );
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Lỗi lấy sản phẩm gợi ý:', error);
+        res.status(500).json({ message: 'Lỗi Server!' });
+    }
+};
+
+// ==========================================
 // 2. CẬP NHẬT THÔNG TIN CƠ BẢN CỦA SẢN PHẨM
 // ==========================================
 const updateProductInfo = async (req, res) => {
@@ -115,6 +273,9 @@ const deleteProductVariant = async (req, res) => {
 
 module.exports = {
     getProductById,
+    getPublicProductDetail,
+    getProductReviews,
+    getSuggestedProducts,
     updateProductInfo,
     addProductImage,
     deleteProductImage,

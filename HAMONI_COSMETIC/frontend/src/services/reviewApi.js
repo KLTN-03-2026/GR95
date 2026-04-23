@@ -7,6 +7,11 @@ const reviewApi = {
         return axiosClient.get('/reviews/stats');
     },
 
+    // 🔥 [MỚI THÊM] ===== LẤY DANH SÁCH SẢN PHẨM CHO SIDEBAR =====
+    getSidebarProducts: () => {
+        return axiosClient.get('/reviews/sidebar-products');
+    },
+
     // ===== GET ALL + FILTER + SEARCH =====
     getAll: (params = {}) => {
         return axiosClient.get('/reviews', { params });

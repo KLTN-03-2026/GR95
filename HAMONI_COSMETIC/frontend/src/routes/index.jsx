@@ -8,6 +8,7 @@ import AdminLayout from '../layouts/AdminLayout/AdminLayout';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register'; 
 import OTP from '../pages/auth/OTP';
+import ForgotPassword from '../pages/auth/ForgotPassword';
 
 // Import Admin Pages
 import RoleManagement from '../pages/admin/RoleManagement';
@@ -19,7 +20,6 @@ import EmployeeManagement from '../pages/admin/Employee/EmployeeManagement';
 import EmployeeDetail from '../pages/admin/Employee/EmployeeDetail';
 import EmployeeForm from '../pages/admin/Employee/EmployeeForm';
 import Profile from '../pages/admin/Profile/Profile';
-import ForgotPassword from '../pages/auth/ForgotPassword';
 import OrderManagement from '../pages/admin/Order/OrderManagement';
 import OrderDetail from "../pages/admin/Order/OrderDetailModal";
 import OrderLogsPage from '../pages/admin/Order/OrderLogsPage';
@@ -37,6 +37,11 @@ import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
 import WarehouseManagement from "../pages/admin/Warehouse/WarehouseManagement";
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
+import OrderPayment from '../pages/client/Payment/orderpayment';
+// Import Client Pages
+import ProductDetailView from '../pages/client/ProductView/ProductDetailView';
+import ShoppingCart from '../pages/client/Cart/ShoppingCart';   
+
 const Home = () => <div>Trang chủ Hamoni E-Commerce</div>;
 const NotFound = () => <div>404 - Không tìm thấy trang</div>;
 
@@ -69,23 +74,38 @@ const AppRouter = () => {
     return (
         <BrowserRouter>
             <Routes>
+                {/* =========================================
+                    PHẦN 1: PUBLIC ROUTES (KHÔNG CẦN ĐĂNG NHẬP) 
+                ========================================= */}
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/otp" element={<OTP />} />
                 
+                {/* =========================================
+                    PHẦN 2: CLIENT ROUTES (DÀNH CHO KHÁCH HÀNG) 
+                ========================================= */}
+                {/* Đã đưa Giỏ Hàng ra ngoài khu vực Admin */}
+                <Route path="/gio-hang" element={<ShoppingCart />} /> 
+                <Route path="/cart" element={<ShoppingCart />} />
+                <Route path="/product/:productId" element={<ProductDetailView />} />
+
                 <Route path="/" element={<div className="client-wrapper"><Home /></div>}>
                     <Route index element={<Home />} />
                 </Route>
+                <Route path="/orderpayment" element={<OrderPayment />} />
 
-                    <Route
-                        path="/admin"
-                        element={(
-                            <AdminRoute>
-                                <AdminLayout />
-                            </AdminRoute>
-                        )}
-                    >
+                {/* =========================================
+                    PHẦN 3: ADMIN ROUTES (PHẢI CÓ QUYỀN TRUY CẬP) 
+                ========================================= */}
+                <Route
+                    path="/admin"
+                    element={(
+                        <AdminRoute>
+                            <AdminLayout />
+                        </AdminRoute>
+                    )}
+                >
                     <Route index element={<ProductManagement />} />
                     <Route path="customers" element={<CustomerManagement />} />
                     <Route path="customer-detail/:id" element={<CustomerDetail />} />
@@ -114,14 +134,14 @@ const AppRouter = () => {
                     <Route path="promotions" element={<PromotionManagement />} />
                     <Route path="promotions/create" element={<PromotionCreate />} />
                     <Route path="promotions/:id" element={<PromotionDetail />} />
-
                     <Route path="warehouse" element={<WarehouseManagement />} />
                     <Route path="warehouse-logs" element={<WarehouseLog />} />
                     <Route path="banners" element={<BannerManagement />} />
                     <Route path="banners/add" element={<BannerManagement />} />
                     <Route path="banners/edit/:id" element={<BannerManagement />} />
-                    
                 </Route>
+
+                {/* Trang 404 cho các đường dẫn sai */}
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </BrowserRouter>

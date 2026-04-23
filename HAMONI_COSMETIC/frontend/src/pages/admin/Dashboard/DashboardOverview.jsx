@@ -129,27 +129,27 @@ const DashboardOverview = () => {
       {/* ===== SECTION 1: THỐNG KÊ NHANH ===== */}
       <div className="custom-card">
         <div className="section-header">📊 Thống kê nhanh</div>
-        <div className="dashboard-stat-row">
-          <div className="dashboard-stat-col">
-            <div className="dashboard-stat-title">🧾 Tổng số đơn</div>
-            <div className="dashboard-stat-value text-primary">{stats.tongDon || 0}</div>
+        <div className="stat-row">
+          <div className="stat-col">
+            <div className="stat-title">🧾 Tổng số đơn</div>
+            <div className="stat-value text-primary">{stats.tongDon || 0}</div>
           </div>
-          <div className="dashboard-stat-col">
-            <div className="dashboard-stat-title">💰 Tổng doanh thu (VNĐ)</div>
-            <div className="dashboard-stat-value text-success">{stats.tongDoanhThu?.toLocaleString() || 0}</div>
+          <div className="stat-col">
+            <div className="stat-title">💰 Tổng doanh thu (VNĐ)</div>
+            <div className="stat-value text-success">{stats.tongDoanhThu?.toLocaleString() || 0}</div>
           </div>
-          <div className="dashboard-stat-col">
-            <div className="dashboard-stat-title">📦 Tổng sản phẩm đã bán</div>
-            <div className="dashboard-stat-value text-info">{stats.tongSoLuong || 0}</div>
+          <div className="stat-col">
+            <div className="stat-title">📦 Tổng sản phẩm đã bán</div>
+            <div className="stat-value text-info">{stats.tongSoLuong || 0}</div>
           </div>
-          <div className="dashboard-stat-col">
-            <div className="dashboard-stat-title">📊 TB mỗi đơn (VNĐ)</div>
-            <div className="dashboard-stat-value text-warning">{stats.trungBinhDon?.toLocaleString() || 0}</div>
+          <div className="stat-col">
+            <div className="stat-title">📊 TB mỗi đơn (VNĐ)</div>
+            <div className="stat-value text-warning">{stats.trungBinhDon?.toLocaleString() || 0}</div>
           </div>
         </div>
       </div>
 
-      {/* ===== SECTION 2: BIỂU ĐỒ (Đã đưa lên trên) ===== */}
+      {/* ===== SECTION 2: BIỂU ĐỒ ===== */}
       <div className="custom-card">
         <div className="section-header-blue">📈 Biểu đồ thống kê</div>
         
@@ -174,6 +174,7 @@ const DashboardOverview = () => {
           </div>
           
           <div className="filter-actions-row">
+
             <button className="btn-green" onClick={handleFilterChart}>📌 Xem biểu đồ</button>
             <button className="btn-gray" onClick={handleResetChart}>🔄 Làm mới</button>
           </div>
@@ -185,9 +186,10 @@ const DashboardOverview = () => {
           {/* Chart Doanh Thu */}
           <div className="chart-box">
             <div className="chart-header">Doanh thu hàng tháng</div>
-            <div style={{ height: "260px", padding: "10px" }}>
+            <div style={{ padding: "10px" }}> {/* Đã bỏ height: 260px ở div này */}
               {chartData && chartData.length > 0 && chartData.some(d => d.revenue > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
+                /* Đã thay height="100%" thành height={260} để fix lỗi Recharts */
+                <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -197,7 +199,7 @@ const DashboardOverview = () => {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#999" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px", color: "#999" }}>
                   ⚠️ Chưa có dữ liệu doanh thu
                 </div>
               )}
@@ -207,9 +209,10 @@ const DashboardOverview = () => {
           {/* Chart Số Đơn */}
           <div className="chart-box">
             <div className="chart-header">Số đơn hàng theo tháng</div>
-            <div style={{ height: "260px", padding: "10px" }}>
+            <div style={{ padding: "10px" }}> {/* Đã bỏ height: 260px ở div này */}
               {chartData && chartData.length > 0 && chartData.some(d => d.orders > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
+                /* Đã thay height="100%" thành height={260} để fix lỗi Recharts */
+                <ResponsiveContainer width="100%" height={260}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -219,7 +222,7 @@ const DashboardOverview = () => {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#999" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px", color: "#999" }}>
                   ⚠️ Chưa có dữ liệu đơn hàng
                 </div>
               )}
@@ -229,7 +232,7 @@ const DashboardOverview = () => {
         </div>
       </div>
 
-      {/* ===== SECTION 3: DANH SÁCH ĐƠN HÀNG (Đã đưa xuống dưới) ===== */}
+      {/* ===== SECTION 3: DANH SÁCH ĐƠN HÀNG ===== */}
       <div className="custom-card">
         <div className="section-header" style={{ backgroundColor: "#bdca72" }}>📋 Danh sách đơn hàng</div>
         
@@ -251,7 +254,7 @@ const DashboardOverview = () => {
           </div>
           <div className="filter-item">
             <label>Đến ngày</label>
-            <input type="date" value={denNgay} onChange={e => setDenNgay(e.target.value)} />
+            <input type="date" value={denNgay} onChange={e => setCDenNgay(e.target.value)} />
           </div>
           <div className="filter-item">
             <label>Sản phẩm</label>
