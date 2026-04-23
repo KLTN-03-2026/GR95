@@ -202,7 +202,7 @@ const BannerManagement = () => {
                                     <td>
                                         <div className={`status-badge ${bn.TrangThai === 'Active' ? 'active' : 'hidden'}`}>
                                             <span className="dot"></span>
-                                            {bn.TrangThai === 'Active' ? 'Đang hiển thị' : 'Đã ẩn'}
+                                            {bn.TrangThai === 'Active' ? 'Đang hiển thị' : 'Tạm ẩn'}
                                         </div>
                                     </td>
                                     <td>

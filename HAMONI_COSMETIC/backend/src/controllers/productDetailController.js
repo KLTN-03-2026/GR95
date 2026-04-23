@@ -69,12 +69,30 @@ const getPublicProductDetail = async (req, res) => {
                 bt.MaBienThe,
                 bt.TenBienThe,
                 bt.Gia,
+                CASE
+                    WHEN km.MaCTKM IS NOT NULL
+                         AND NOW() BETWEEN km.NgayBatDau AND km.NgayKetThuc
+                    THEN CASE
+                        WHEN km.LoaiGiamGia = 'PhanTram' THEN GREATEST(0, bt.Gia - (bt.Gia * km.GiaTriGiam / 100))
+                        WHEN km.LoaiGiamGia = 'SoTien' THEN GREATEST(0, bt.Gia - km.GiaTriGiam)
+                        ELSE bt.Gia
+                    END
+                    ELSE bt.Gia
+                END AS GiaBan,
+                CASE
+                    WHEN km.MaCTKM IS NOT NULL
+                         AND NOW() BETWEEN km.NgayBatDau AND km.NgayKetThuc
+                    THEN bt.Gia
+                    ELSE NULL
+                END AS GiaGoc,
                 COALESCE(SUM(tk.SoLuongTon), 0) AS SoLuongTon
              FROM BienTheSanPham bt
              LEFT JOIN TonKho tk ON tk.MaBienThe = bt.MaBienThe
+             LEFT JOIN SanPham_KhuyenMai spkm ON spkm.MaBienThe = bt.MaBienThe
+             LEFT JOIN ChuongTrinhKhuyenMai km ON km.MaCTKM = spkm.MaCTKM
              WHERE bt.MaSP = ?
-             GROUP BY bt.MaBienThe, bt.TenBienThe, bt.Gia
-             ORDER BY bt.Gia ASC, bt.MaBienThe ASC`,
+             GROUP BY bt.MaBienThe, bt.TenBienThe, bt.Gia, km.MaCTKM, km.NgayBatDau, km.NgayKetThuc, km.LoaiGiamGia, km.GiaTriGiam
+             ORDER BY GiaBan ASC, bt.MaBienThe ASC`,
             [id]
         );
 
@@ -95,18 +113,23 @@ const getPublicProductDetail = async (req, res) => {
             [id]
         );
 
-        const lowestPrice = variantRows.length > 0 ? Number(variantRows[0].Gia || 0) : 0;
+        const sortedVariants = [...variantRows].sort((a, b) => Number(a.GiaBan || 0) - Number(b.GiaBan || 0));
+        const lowestPrice = sortedVariants.length > 0 ? Number(sortedVariants[0].GiaBan || 0) : 0;
+        const lowestOldPrice = sortedVariants.length > 0 && sortedVariants[0].GiaGoc != null
+            ? Number(sortedVariants[0].GiaGoc)
+            : null;
 
         res.status(200).json({
             info: {
                 ...productRows[0],
                 GiaBan: lowestPrice,
+                GiaGoc: lowestOldPrice,
                 SoLuongTon: Number(stockRows[0]?.SoLuongTon || 0),
                 SoSaoTB: Number(ratingRows[0]?.SoSaoTB || 0),
                 LuotDanhGia: Number(ratingRows[0]?.LuotDanhGia || 0)
             },
             images: imageRows,
-            variants: variantRows
+            variants: sortedVariants
         });
     } catch (error) {
         console.error('Lỗi lấy chi tiết sản phẩm client:', error);
