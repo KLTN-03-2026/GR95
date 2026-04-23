@@ -17,7 +17,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         TieuDe: '',
         URLDich: '',
         ViTriHienThi: 'TrangChu',
-        ThuTuHienThi: 0,
+        ThuTuHienThi: 1,
         TrangThai: 'Active',
         NgayBatDau: '',
         NgayHetHan: ''
@@ -37,7 +37,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                     TieuDe: data.TieuDe || '',
                     URLDich: data.URLDich || '',
                     ViTriHienThi: data.ViTriHienThi || 'TrangChu',
-                    ThuTuHienThi: data.ThuTuHienThi || 0,
+                    ThuTuHienThi: normalizeOrderValue(data.ThuTuHienThi),
                     TrangThai: data.TrangThai || 'Active',
                     NgayBatDau: toDateInputValue(data.NgayBatDau),
                     NgayHetHan: toDateInputValue(data.NgayHetHan)
@@ -48,7 +48,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                     TieuDe: '',
                     URLDich: '',
                     ViTriHienThi: 'TrangChu',
-                    ThuTuHienThi: 0,
+                    ThuTuHienThi: 1,
                     TrangThai: 'Active',
                     NgayBatDau: '',
                     NgayHetHan: ''
@@ -86,6 +86,10 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
 
         if (formValues.NgayBatDau && formValues.NgayHetHan && formValues.NgayBatDau > formValues.NgayHetHan) {
             newErrors.NgayBatDau = 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày hết hạn';
+        }
+
+        if (normalizeOrderValue(formValues.ThuTuHienThi) < 1) {
+            newErrors.ThuTuHienThi = 'Thứ tự phải lớn hơn hoặc bằng 1';
         }
 
         setErrors(newErrors);
@@ -131,6 +135,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
 
             const dataToSend = {
                 ...formValues,
+                ThuTuHienThi: normalizeOrderValue(formValues.ThuTuHienThi),
                 DuongDanAnh: urlToSave 
             };
 
@@ -151,9 +156,9 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
     return createPortal(
         <div 
             className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050 }}
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050, padding: '24px 16px', overflowY: 'auto' }}
         >
-            <div className="card shadow-lg border-0 rounded-4" style={{ width: '100%', maxWidth: '550px' }}>
+            <div className="card shadow-lg border-0 rounded-4" style={{ width: '100%', maxWidth: '550px', maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
                 
                 {/* Header */}
                 <div className="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 pb-2 px-4">
@@ -163,7 +168,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                     <X style={{ cursor: 'pointer', color: '#777' }} onClick={onClose} />
                 </div>
 
-                <div className="card-body px-4 pb-4">
+                <div className="card-body px-4 pb-4" style={{ overflowY: 'auto' }}>
                     {alert.show && (
                         <div className={`alert alert-${alert.type} d-flex align-items-center p-3 mb-4`} role="alert">
                             {alert.type === 'success' ? <CheckCircle size={20} className="me-2" /> : <AlertCircle size={20} className="me-2" />}
@@ -259,10 +264,31 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Thứ tự</label>
                                 <input
                                     type="number"
+                                    min="1"
                                     className="form-control bg-light border-1 py-2 px-3 rounded-3"
                                     value={formValues.ThuTuHienThi}
-                                    onChange={(e) => setFormValues({ ...formValues, ThuTuHienThi: e.target.value })}
+                                    onChange={(e) => {
+                                        const rawValue = e.target.value;
+                                        if (rawValue === '') {
+                                            setFormValues({ ...formValues, ThuTuHienThi: '' });
+                                            if (errors.ThuTuHienThi) setErrors({ ...errors, ThuTuHienThi: null });
+                                            return;
+                                        }
+
+                                        const parsedValue = Number.parseInt(rawValue, 10);
+                                        if (Number.isNaN(parsedValue) || parsedValue < 1) {
+                                            return;
+                                        }
+
+                                        setFormValues({ ...formValues, ThuTuHienThi: parsedValue });
+                                        if (errors.ThuTuHienThi) setErrors({ ...errors, ThuTuHienThi: null });
+                                    }}
                                 />
+                                {errors.ThuTuHienThi && (
+                                    <div className="text-danger mt-1" style={{ fontSize: '13px' }}>
+                                        {errors.ThuTuHienThi}
+                                    </div>
+                                )}
                             </div>
                             <div className="col-md-6">
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Trạng thái</label>
@@ -353,6 +379,15 @@ function toDateInputValue(dateValue) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function normalizeOrderValue(value) {
+    const parsedValue = Number.parseInt(String(value).replace(/\D/g, ''), 10);
+    if (Number.isNaN(parsedValue) || parsedValue < 1) {
+        return 0;
+    }
+
+    return parsedValue;
 }
 
 function formatDateDisplay(dateInputValue) {

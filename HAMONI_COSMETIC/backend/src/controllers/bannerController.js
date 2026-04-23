@@ -1,10 +1,33 @@
 const db = require('../config/db');
 
+async function syncExpiredBannerStatuses() {
+    await db.execute(`
+        UPDATE bannertoancuc
+        SET TrangThai = 'Hidden'
+        WHERE TrangThai = 'Active'
+          AND NgayHetHan IS NOT NULL
+          AND CURDATE() > NgayHetHan
+    `);
+}
+
+function shouldBeActiveByDate(endDateValue) {
+    if (!endDateValue) return false;
+
+    const normalizedEndDate = String(endDateValue).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedEndDate)) return false;
+
+    const today = new Date();
+    const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return normalizedEndDate >= todayDate;
+}
+
 const bannerController = {
 
     getBanners: async (req, res) => {
         try {
             console.log("🔥 API banner được gọi");
+
+            await syncExpiredBannerStatuses();
 
             const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
             const limit = Math.max(parseInt(req.query.limit, 10) || 5, 1);
@@ -25,7 +48,17 @@ const bannerController = {
             const safeOffset = (safePage - 1) * limit;
 
             const sql = `
-                SELECT * FROM bannertoancuc
+                SELECT 
+                    MaBanner,
+                    TieuDe,
+                    DuongDanAnh,
+                    URLDich,
+                    ViTriHienThi,
+                    ThuTuHienThi,
+                    TrangThai,
+                    DATE_FORMAT(NgayBatDau, '%Y-%m-%d') AS NgayBatDau,
+                    DATE_FORMAT(NgayHetHan, '%Y-%m-%d') AS NgayHetHan
+                FROM bannertoancuc
                 ORDER BY MaBanner DESC
                 LIMIT ? OFFSET ?
             `;
@@ -56,8 +89,20 @@ const bannerController = {
 
     getBannerById: async (req, res) => {
         try {
+            await syncExpiredBannerStatuses();
+
             const sql = `
-                SELECT * FROM bannertoancuc 
+                SELECT 
+                    MaBanner,
+                    TieuDe,
+                    DuongDanAnh,
+                    URLDich,
+                    ViTriHienThi,
+                    ThuTuHienThi,
+                    TrangThai,
+                    DATE_FORMAT(NgayBatDau, '%Y-%m-%d') AS NgayBatDau,
+                    DATE_FORMAT(NgayHetHan, '%Y-%m-%d') AS NgayHetHan
+                FROM bannertoancuc 
                 WHERE MaBanner = ?
             `;
 
@@ -104,6 +149,7 @@ const bannerController = {
     updateBanner: async (req, res) => {
 const { id } = req.params;
     const { TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai, NgayBatDau, NgayHetHan } = req.body;
+    const effectiveStatus = shouldBeActiveByDate(NgayHetHan) ? 'Active' : (TrangThai || 'Hidden');
     
     try {
         await db.execute(
@@ -116,7 +162,7 @@ const { id } = req.params;
                 URLDich,
                 ViTriHienThi,
                 ThuTuHienThi,
-                TrangThai,
+                effectiveStatus,
                 NgayBatDau || null,
                 NgayHetHan || null,
                 id
