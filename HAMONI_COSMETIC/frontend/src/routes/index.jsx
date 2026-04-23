@@ -1,27 +1,43 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+// ==========================================
+// 1. IMPORT LAYOUTS
+// ==========================================
 import AdminLayout from '../layouts/AdminLayout/AdminLayout';
-// import ClientLayout from '../layouts/ClientLayout/ClientLayout'; // Sẽ tạo sau
+import ClientLayout from '../layouts/ClientLayout/ClientLayout';
 
-// Import Auth Pages
+// ==========================================
+// 2. IMPORT CLIENT PAGES (Khách hàng)
+// ==========================================
+import Home from '../pages/client/home/Home';
+import ClientProducts from '../pages/client/products/ClientProducts';
+import ProductDetailView from '../pages/client/ProductView/ProductDetailView';
+import ShoppingCart from '../pages/client/Cart/ShoppingCart';
+import OrderPayment from '../pages/client/Payment/orderpayment';
+
+// ==========================================
+// 3. IMPORT AUTH PAGES (Xác thực)
+// ==========================================
 import Login from '../pages/auth/Login';
-import Register from '../pages/auth/Register'; 
+import Register from '../pages/auth/Register';
 import OTP from '../pages/auth/OTP';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 
-// Import Admin Pages
+// ==========================================
+// 4. IMPORT ADMIN PAGES (Quản trị)
+// ==========================================
 import RoleManagement from '../pages/admin/RoleManagement';
 import CustomerManagement from '../pages/admin/Customer/CustomerManagement';
 import CustomerDetail from '../pages/admin/Customer/CustomerDetail';
-import CategoryManagement from '../pages/admin/category/CategoryManagement';    
+import CategoryManagement from '../pages/admin/category/CategoryManagement';
 import CategoryForm from '../pages/admin/category/CategoryForm';
 import EmployeeManagement from '../pages/admin/Employee/EmployeeManagement';
 import EmployeeDetail from '../pages/admin/Employee/EmployeeDetail';
 import EmployeeForm from '../pages/admin/Employee/EmployeeForm';
 import Profile from '../pages/admin/Profile/Profile';
 import OrderManagement from '../pages/admin/Order/OrderManagement';
-import OrderDetail from "../pages/admin/Order/OrderDetailModal";
+import OrderDetail from '../pages/admin/Order/OrderDetailModal';
 import OrderLogsPage from '../pages/admin/Order/OrderLogsPage';
 import ProductManagement from '../pages/admin/Product/ProductManagement';
 import ProductCreate from '../pages/admin/Product/ProductCreate';
@@ -34,17 +50,17 @@ import VoucherDetail from '../pages/admin/Voucher/VoucherDetail';
 import PromotionManagement from '../pages/admin/Promotion/PromotionManagement';
 import PromotionCreate from '../pages/admin/Promotion/PromotionCreate';
 import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
-import WarehouseManagement from "../pages/admin/Warehouse/WarehouseManagement";
+import WarehouseManagement from '../pages/admin/Warehouse/WarehouseManagement';
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
-import OrderPayment from '../pages/client/Payment/orderpayment';
-// Import Client Pages
-import ProductDetailView from '../pages/client/ProductView/ProductDetailView';
-import ShoppingCart from '../pages/client/Cart/ShoppingCart';   
 
-const Home = () => <div>Trang chủ Hamoni E-Commerce</div>;
-const NotFound = () => <div>404 - Không tìm thấy trang</div>;
+const NotFound = () => (
+    <div className="flex justify-center items-center h-screen text-2xl font-bold text-gray-500">
+        404 - Không tìm thấy trang
+    </div>
+);
 
+// --- BẢO VỆ ĐƯỜNG DẪN ADMIN ---
 const AdminRoute = ({ children }) => {
     const token = localStorage.getItem('token');
     const userRaw = localStorage.getItem('user');
@@ -74,39 +90,40 @@ const AppRouter = () => {
     return (
         <BrowserRouter>
             <Routes>
-                {/* =========================================
-                    PHẦN 1: PUBLIC ROUTES (KHÔNG CẦN ĐĂNG NHẬP) 
-                ========================================= */}
+                {/* ==========================================
+                    KHU VỰC 1: XÁC THỰC (Không cần Layout)
+                    ========================================== */}
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/otp" element={<OTP />} />
-                
-                {/* =========================================
-                    PHẦN 2: CLIENT ROUTES (DÀNH CHO KHÁCH HÀNG) 
-                ========================================= */}
-                {/* Đã đưa Giỏ Hàng ra ngoài khu vực Admin */}
-                <Route path="/gio-hang" element={<ShoppingCart />} /> 
-                <Route path="/cart" element={<ShoppingCart />} />
-                <Route path="/product/:productId" element={<ProductDetailView />} />
 
-                <Route path="/" element={<div className="client-wrapper"><Home /></div>}>
+                {/* ==========================================
+                    KHU VỰC 2: KHÁCH HÀNG (Sử dụng ClientLayout)
+                    ========================================== */}
+                <Route path="/" element={<ClientLayout />}>
                     <Route index element={<Home />} />
+                    <Route path="products" element={<ClientProducts />} />
+                    <Route path="gio-hang" element={<ShoppingCart />} />
+                    <Route path="cart" element={<ShoppingCart />} />
+                    <Route path="product/:productId" element={<ProductDetailView />} />
+                    <Route path="orderpayment" element={<OrderPayment />} />
                 </Route>
-                <Route path="/orderpayment" element={<OrderPayment />} />
 
-                {/* =========================================
-                    PHẦN 3: ADMIN ROUTES (PHẢI CÓ QUYỀN TRUY CẬP) 
-                ========================================= */}
+                {/* ==========================================
+                    KHU VỰC 3: QUẢN TRỊ VIÊN (Sử dụng AdminLayout + Bọc AdminRoute)
+                    ========================================== */}
                 <Route
                     path="/admin"
-                    element={(
+                    element={
                         <AdminRoute>
                             <AdminLayout />
                         </AdminRoute>
-                    )}
+                    }
                 >
                     <Route index element={<ProductManagement />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="profile" element={<Profile />} />
                     <Route path="customers" element={<CustomerManagement />} />
                     <Route path="customer-detail/:id" element={<CustomerDetail />} />
                     <Route path="categories" element={<CategoryManagement />} />
@@ -117,28 +134,26 @@ const AppRouter = () => {
                     <Route path="employee/add" element={<EmployeeForm />} />
                     <Route path="employee/edit/:id" element={<EmployeeForm />} />
                     <Route path="employee-detail/:id" element={<EmployeeDetail />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="orders" element={<OrderManagement />} />
-                    <Route path="orders/:id/logs" element={<OrderLogsPage />} />
-                    <Route path="orders/:id" element={<OrderDetail />} />
                     <Route path="products" element={<ProductManagement />} />
                     <Route path="products/add" element={<ProductCreate />} />
                     <Route path="products/:id" element={<ProductDetail />} />
-                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="orders" element={<OrderManagement />} />
+                    <Route path="orders/:id" element={<OrderDetail />} />
+                    <Route path="orders/:id/logs" element={<OrderLogsPage />} />
+                    <Route path="warehouse" element={<WarehouseManagement />} />
+                    <Route path="warehouse-logs" element={<WarehouseLog />} />
                     <Route path="inventory-report" element={<ProductInventoryReport />} />
-                    <Route path="reviews" element={<ReviewManagement />} />
+                    <Route path="banners" element={<BannerManagement />} />
+                    <Route path="banners/add" element={<BannerManagement />} />
+                    <Route path="banners/edit/:id" element={<BannerManagement />} />
+                    <Route path="promotions" element={<PromotionManagement />} />
+                    <Route path="promotions/create" element={<PromotionCreate />} />
+                    <Route path="promotions/:id" element={<PromotionDetail />} />
                     <Route path="vouchers" element={<VoucherManagement />} />
                     <Route path="vouchers/:id" element={<VoucherDetail />} />
                     <Route path="voucher-detail/:id" element={<VoucherDetail />} />
                     <Route path="voucherdetail/:id" element={<VoucherDetail />} />
-                    <Route path="promotions" element={<PromotionManagement />} />
-                    <Route path="promotions/create" element={<PromotionCreate />} />
-                    <Route path="promotions/:id" element={<PromotionDetail />} />
-                    <Route path="warehouse" element={<WarehouseManagement />} />
-                    <Route path="warehouse-logs" element={<WarehouseLog />} />
-                    <Route path="banners" element={<BannerManagement />} />
-                    <Route path="banners/add" element={<BannerManagement />} />
-                    <Route path="banners/edit/:id" element={<BannerManagement />} />
+                    <Route path="reviews" element={<ReviewManagement />} />
                 </Route>
 
                 {/* Trang 404 cho các đường dẫn sai */}

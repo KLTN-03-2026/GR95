@@ -7,6 +7,9 @@ import './ProductDetail.css';
 const ProductDetail = () => {
     const { id } = useParams(); 
     const navigate = useNavigate();
+    const userPermissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    const canDeleteProduct = userInfo?.maQuyen === 'ADMIN' || userPermissions.includes('ALL') || userPermissions.includes('DELETE_PRODUCT');
     
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -126,6 +129,26 @@ const ProductDetail = () => {
         }
     };
 
+    const handleDeleteProduct = async () => {
+        if (!canDeleteProduct) {
+            alert('Bạn không có quyền xóa sản phẩm này!');
+            return;
+        }
+
+        const isConfirmed = window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác.');
+        if (!isConfirmed) return;
+
+        try {
+            await axiosClient.delete(`/products/${id}`);
+            alert('Đã xóa sản phẩm thành công!');
+            navigate('/admin/products');
+        } catch (error) {
+            const message = error?.response?.data?.message || 'Lỗi xóa sản phẩm!';
+            alert(message);
+            console.error(error);
+        }
+    };
+
     if (loading) return <div className="p-5 text-center fw-bold text-muted mt-5">Đang tải dữ liệu sản phẩm...</div>;
 
     return (
@@ -138,6 +161,11 @@ const ProductDetail = () => {
                     </button>
                     <h2 className="m-0 fw-bold">CHI TIẾT SẢN PHẨM: {String(product.TenSP || '').padStart(3, '0')}</h2>
                 </div>
+                {canDeleteProduct && (
+                    <button className="btn btn-danger d-flex align-items-center gap-2" onClick={handleDeleteProduct}>
+                        <Trash2 size={16} /> Xóa sản phẩm
+                    </button>
+                )}
             </div>
 
             <div className="detail-layout">

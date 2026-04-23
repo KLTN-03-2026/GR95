@@ -17,13 +17,15 @@ const ProductManagement = () => {
     const [totalPages, setTotalPages] = useState(1);
 
     // =================================================================
-    // PHÂN QUYỀN (Đã đổi thành 'ALL' theo đúng ý bạn)
+    // PHÂN QUYỀN
     // =================================================================
     const userPermissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdminRole = userInfo?.maQuyen === 'ADMIN';
     
     const hasPermission = (permissionCode) => {
-        // 🔥 NẾU LÀ 'ALL' HOẶC CÓ MÃ QUYỀN THÌ CHO PHÉP
-        return userPermissions.includes('ALL') || userPermissions.includes(permissionCode);
+        // ADMIN luôn có full quyền kể cả khi localStorage chưa kịp đồng bộ userPermissions
+        return isAdminRole || userPermissions.includes('ALL') || userPermissions.includes(permissionCode);
     };
 
     // ===== TẢI DANH MỤC TỪ DATABASE =====

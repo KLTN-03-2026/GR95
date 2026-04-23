@@ -2,37 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, UploadCloud, Trash2, Plus } from 'lucide-react';
 import axiosClient from '../../../services/axiosClient';
-import './ProductDetail.css'; // Dùng chung CSS với trang Detail luôn cho đồng bộ!
+import './ProductCreate.css'; // <-- Đã tách biệt hoàn toàn CSS
 
 const ProductCreate = () => {
     const navigate = useNavigate();
     
-    //const [loading, setLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [categories, setCategories] = useState([]);
 
-    // --- STATE QUẢN LÝ 3 KHỐI DỮ LIỆU CHỜ ĐỂ LƯU ---
     const [product, setProduct] = useState({
         TenSP: '', MaDM: '', LoaiDaPhuHop: '', MoTa: '', ThanhPhan: '', CachSuDung: ''
     });
     
-    // Lưu tạm hình ảnh và biến thể ở Frontend trước khi bấm "Lưu"
     const [images, setImages] = useState([]); 
     const [variants, setVariants] = useState([]);
-
     const [newVariant, setNewVariant] = useState({ TenBienThe: '', Gia: '' });
 
-    // ==========================================
-    // 1. TẢI DANH MỤC BAN ĐẦU
-    // ==========================================
     useEffect(() => {
         const loadCategories = async () => {
             try {
                 const catRes = await axiosClient.get('/categories');
                 const catData = catRes.data || catRes || [];
                 setCategories(catData);
-                // Gán mặc định danh mục đầu tiên nếu có
                 if (catData.length > 0) {
                     setProduct(prev => ({ ...prev, MaDM: catData[0].MaDM }));
                 }
@@ -43,16 +35,10 @@ const ProductCreate = () => {
         loadCategories();
     }, []);
 
-    // ==========================================
-    // 2. XỬ LÝ NHẬP THÔNG TIN CƠ BẢN
-    // ==========================================
     const handleInfoChange = (e) => {
         setProduct({ ...product, [e.target.name]: e.target.value });
     };
 
-    // ==========================================
-    // 3. XỬ LÝ HÌNH ẢNH (CHỈ LƯU TẠM VÀO STATE)
-    // ==========================================
     const handleUploadImage = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -62,15 +48,11 @@ const ProductCreate = () => {
         setIsUploading(true);
 
         try {
-            // Đẩy lên Cloudinary lấy Link tạm
             const uploadRes = await axiosClient.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
-            // Lưu link vào State tạm, chưa lưu DB
-            const tempId = Date.now(); // Tạo ID giả để render
+            const tempId = Date.now(); 
             setImages([...images, { MaHinhAnh: tempId, DuongDanAnh: uploadRes.url }]);
-            
         } catch (error) {
             alert("Lỗi tải ảnh lên hệ thống!");
             console.error(error);
@@ -83,15 +65,11 @@ const ProductCreate = () => {
         setImages(images.filter(img => img.MaHinhAnh !== imageId));
     };
 
-    // ==========================================
-    // 4. XỬ LÝ BIẾN THỂ (CHỈ LƯU TẠM VÀO STATE)
-    // ==========================================
     const handleAddVariant = () => {
         if (!newVariant.TenBienThe || !newVariant.Gia) {
             return alert("Vui lòng nhập đầy đủ tên phân loại và giá bán!");
         }
-        
-        const tempId = Date.now(); // Tạo ID giả
+        const tempId = Date.now();
         setVariants([...variants, { MaBienThe: tempId, ...newVariant }]);
         setNewVariant({ TenBienThe: '', Gia: '' }); 
     };
@@ -100,29 +78,20 @@ const ProductCreate = () => {
         setVariants(variants.filter(v => v.MaBienThe !== variantId));
     };
 
-    // ==========================================
-    // 5. LƯU TOÀN BỘ DỮ LIỆU XUỐNG DATABASE
-    // ==========================================
     const handleSaveNewProduct = async () => {
         if (!product.TenSP || !product.MaDM) {
             return alert("Vui lòng nhập Tên sản phẩm và chọn Danh mục!");
         }
-
         setIsSaving(true);
         try {
-            // Chuẩn bị cục Data khổng lồ gom cả 3 thứ
             const payload = {
                 productInfo: product,
-                images: images.map(img => img.DuongDanAnh), // Chỉ gửi mảng Link
-                variants: variants.map(v => ({ TenBienThe: v.TenBienThe, Gia: v.Gia })) // Bỏ ID giả
+                images: images.map(img => img.DuongDanAnh),
+                variants: variants.map(v => ({ TenBienThe: v.TenBienThe, Gia: v.Gia }))
             };
-
-            // Gọi API Tạo Mới (Đã viết ở bài trước)
             await axiosClient.post('/products', payload);
-            
             alert("Tạo sản phẩm mới thành công!");
-            navigate('/admin/products'); // Quay về danh sách
-
+            navigate('/admin/products');
         } catch (error) {
             alert("Lỗi khi lưu sản phẩm mới!");
             console.error(error);
@@ -132,9 +101,9 @@ const ProductCreate = () => {
     };
 
     return (
-        <div className="product-detail-container">
+        <div className="product-create-container">
             {/* HEADER */}
-            <div className="detail-header">
+            <div className="create-header">
                 <div className="d-flex align-items-center gap-3">
                     <button className="btn-back" onClick={() => navigate(-1)}>
                         <ArrowLeft size={20} />
@@ -143,10 +112,10 @@ const ProductCreate = () => {
                 </div>
             </div>
 
-            <div className="detail-layout">
+            <div className="create-layout">
                 {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
-                <div className="left-col">
-                    <div className="detail-card">
+                <div className="create-left-col">
+                    <div className="create-card">
                         <h5 className="card-title">Thông tin cơ bản</h5>
                         <div className="form-grid">
                             <div className="form-group full-width">
@@ -178,7 +147,6 @@ const ProductCreate = () => {
                             </div>
                         </div>
 
-                        {/* NÚT LƯU ĐẶT Ở CUỐI CÙNG */}
                         <div className="save-action-bar">
                             <button className="btn-save-primary" onClick={handleSaveNewProduct} disabled={isSaving}>
                                 <Save size={18} /> {isSaving ? 'Đang tạo...' : 'Lưu sản phẩm mới'}
@@ -188,14 +156,11 @@ const ProductCreate = () => {
                 </div>
 
                 {/* CỘT PHẢI: HÌNH ẢNH + BIẾN THỂ */}
-                <div className="right-col d-flex flex-column gap-4">
+                <div className="create-right-col d-flex flex-column gap-4">
                     
                     {/* KHỐI 1: THƯ VIỆN ẢNH */}
-                    <div className="detail-card">
+                    <div className="create-card">
                         <h5 className="card-title mb-3">Thư viện ảnh</h5>
-                        {/* <p className="text-muted mb-3" style={{fontSize: '12px'}}>
-                            Lưu ý: Ảnh sẽ được lưu cùng sản phẩm khi bạn bấm "Lưu sản phẩm mới".
-                        </p> */}
                         <div className="image-gallery-grid">
                             <label className={`upload-card ${isUploading ? 'loading' : ''}`}>
                                 {isUploading ? (
@@ -221,7 +186,7 @@ const ProductCreate = () => {
                     </div>
 
                     {/* KHỐI 2: BIẾN THỂ SẢN PHẨM */}
-                    <div className="detail-card">
+                    <div className="create-card">
                         <h5 className="card-title mb-3">Phân loại & Giá bán</h5>
                         
                         <div className="add-variant-compact">

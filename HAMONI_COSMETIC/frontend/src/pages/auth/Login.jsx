@@ -1,12 +1,15 @@
 // src/pages/auth/Login.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import authApi from '../../services/authApi'; // Import API Service thay vì axios thuần
+import { useStore } from '../../store/useStore';
 import './Login.css'; 
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
+  const loginSuccess = useStore((state) => state.loginSuccess);
 
   const handleLogin = async () => {
     const payload = {
@@ -22,13 +25,30 @@ export default function Login() {
 
     try {
       const response = await authApi.login(payload);
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      const normalizedUser = {
+        ...response.user,
+        name: response.user?.name || response.user?.hoTen || response.user?.HoTen || '',
+      };
 
-      alert(`Chào mừng ${response.user.hoTen} quay trở lại!`);
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
+      loginSuccess(normalizedUser);
+
+      toast.success(`Chào mừng ${normalizedUser.name} quay trở lại!`);
 
       // Điều hướng thông minh dựa trên mã quyền thực tế từ DB
-      const roleCode = response.user.maQuyen;
+      const roleCode = normalizedUser.maQuyen;
+
+      if (roleCode === 'ADMIN') {
+        localStorage.setItem('userPermissions', JSON.stringify(['ALL']));
+      } else {
+        try {
+          const meRes = await authApi.getCurrentUser();
+          localStorage.setItem('userPermissions', JSON.stringify(meRes?.user?.permissions || []));
+        } catch {
+          localStorage.setItem('userPermissions', JSON.stringify([]));
+        }
+      }
 
       if (roleCode === 'ADMIN' || roleCode === 'STAFF' || roleCode === 'KHO') {
         navigate("/admin/dashboard");
@@ -38,7 +58,7 @@ export default function Login() {
     } catch (err) {
       // Xử lý thông báo lỗi từ Backend trả về
       const errorMsg = err.response?.data?.message || err.response?.data || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!";
-      alert(errorMsg);
+      toast.error(errorMsg);
       console.error("Lỗi đăng nhập:", err);
     }
   };

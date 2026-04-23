@@ -320,7 +320,7 @@ const ProductDetailView = () => {
       <div className="loading-container">
         <div>
           <div className="spinner" />
-          <p className="text-muted mt-3">Đang tải dữ liệu sản phẩm...</p>
+          <p className="mt-3 text-slate-500">Đang tải dữ liệu sản phẩm...</p>
         </div>
       </div>
     );
@@ -328,17 +328,17 @@ const ProductDetailView = () => {
 
   if (!product) {
     return (
-      <div className="container py-5">
-        <div className="alert alert-warning mb-0">Không tìm thấy sản phẩm.</div>
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mb-0 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">Không tìm thấy sản phẩm.</div>
       </div>
     );
   }
 
   return (
     <>
-      <div className="container py-4 py-lg-5">
-      <div className="row g-4 g-lg-5">
-        <div className="col-12 col-lg-6">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+        <div>
           <div className="image-gallery">
             <div className="main-image-container">
               <img src={images[selectedImageIndex]} alt={product.name} />
@@ -359,7 +359,7 @@ const ProductDetailView = () => {
           </div>
         </div>
 
-        <div className="col-12 col-lg-6">
+        <div>
           <div className="product-info">
             <div className="product-header">
               <h1 className="product-title">{product.name}</h1>
@@ -380,8 +380,8 @@ const ProductDetailView = () => {
               </div>
             </div>
 
-            <div className="p-3 rounded border-start border-4 border-danger-subtle bg-danger-subtle bg-opacity-10">
-              <p className="mb-0 text-secondary">{product.description}</p>
+            <div className="rounded border-l-4 border-rose-200 bg-rose-50 p-3">
+              <p className="mb-0 text-slate-600">{product.description}</p>
             </div>
 
             {variantOptions.length > 0 && (
@@ -451,7 +451,7 @@ const ProductDetailView = () => {
                   +
                 </button>
               </div>
-              <small className="text-muted">Tối đa: {availableStock} sản phẩm</small>
+              <small className="text-slate-500">Tối đa: {availableStock} sản phẩm</small>
             </div>
 
             <div className="action-buttons">
@@ -512,7 +512,7 @@ const ProductDetailView = () => {
         </div>
 
         {reviews.length === 0 ? (
-          <div className="alert alert-light border">Chưa có đánh giá nào.</div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600">Chưa có đánh giá nào.</div>
         ) : (
           <div className="reviews-list">
             {reviews.map((review) => (
@@ -544,7 +544,7 @@ const ProductDetailView = () => {
         </div>
 
         {suggestedProducts.length === 0 ? (
-          <div className="alert alert-light border">Không có sản phẩm gợi ý.</div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600">Không có sản phẩm gợi ý.</div>
         ) : (
           <div className="products-grid products-grid--featured">
             {suggestedProducts.map((item) => (

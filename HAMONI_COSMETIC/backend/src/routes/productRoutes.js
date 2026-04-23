@@ -20,6 +20,7 @@ router.get('/:id/reviews', productDetailController.getProductReviews);
 router.get('/:id/suggestions', productDetailController.getSuggestedProducts);
 router.get('/:id', productDetailController.getProductById);
 router.put('/:id', productDetailController.updateProductInfo);
+router.delete('/:id', productDetailController.deleteProduct);
 
 // ===============================
 // ROUTE QUẢN LÝ HÌNH ẢNH (Image)

@@ -11,7 +11,7 @@
   background-color: var(--bg-color);
   min-height: 100vh;
   padding: 40px 20px;
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
 }
 
 .checkout-wrapper {

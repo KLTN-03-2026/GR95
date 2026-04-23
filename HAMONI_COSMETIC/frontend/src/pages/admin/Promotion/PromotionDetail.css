@@ -238,3 +238,31 @@
     display: flex; justify-content: center; align-items: center; 
     height: 100vh; font-size: 18px; color: #64748b; font-weight: 600;
 }
+/* =======================================================
+   ÉP BUỘC CHECKBOX VÀ CHỮ SÁT LỀ TRÁI (KHÔNG CHO RA GIỮA)
+   ======================================================= */
+
+.promo-dashboard .header-checkbox-group {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important; /* Ép tuyệt đối về bên trái */
+    gap: 10px !important;
+    flex: 1 !important;
+    width: 100% !important;
+}
+
+.promo-dashboard .variant-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important; /* Ép tuyệt đối về bên trái */
+    gap: 8px !important;
+}
+
+/* Đảm bảo ô vuông checkbox có kích thước chuẩn, không bị bóp méo hay lùi dòng */
+.promo-dashboard .header-checkbox-group input[type="checkbox"],
+.promo-dashboard .variant-item input[type="checkbox"] {
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    width: 16px !important;
+    height: 16px !important;
+}
