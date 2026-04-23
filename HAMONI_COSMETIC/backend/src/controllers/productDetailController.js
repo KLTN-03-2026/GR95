@@ -113,11 +113,82 @@ const deleteProductVariant = async (req, res) => {
     }
 };
 
+// ==========================================
+// 5. XÓA SẢN PHẨM
+// ==========================================
+const deleteProduct = async (req, res) => {
+    const { id } = req.params;
+    const conn = await db.getConnection();
+
+    try {
+        const [productRows] = await conn.execute('SELECT MaSP FROM SanPham WHERE MaSP = ?', [id]);
+        if (productRows.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy sản phẩm để xóa!' });
+        }
+
+        // Chặn xóa khi sản phẩm đã phát sinh đơn hàng qua biến thể
+        const [usedInOrderRows] = await conn.execute(
+            `SELECT 1
+             FROM ChiTietDonHang ct
+             JOIN BienTheSanPham bt ON ct.MaBienThe = bt.MaBienThe
+             WHERE bt.MaSP = ?
+             LIMIT 1`,
+            [id]
+        );
+
+        if (usedInOrderRows.length > 0) {
+            return res.status(409).json({
+                message: 'Không thể xóa sản phẩm đã phát sinh đơn hàng. Hãy ẩn sản phẩm thay vì xóa.'
+            });
+        }
+
+        await conn.beginTransaction();
+
+        // Dọn dữ liệu liên quan trước khi xóa sản phẩm
+        await conn.execute(
+            `DELETE FROM LichSuTonKho
+             WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
+            [id]
+        );
+
+        await conn.execute(
+            `DELETE FROM TonKho
+             WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
+            [id]
+        );
+
+        await conn.execute(
+            `DELETE FROM SanPham_KhuyenMai
+             WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
+            [id]
+        );
+
+        await conn.execute(
+            `DELETE FROM HinhAnh
+             WHERE LoaiThamChieu = 'SanPham' AND MaThamChieu = ?`,
+            [id]
+        );
+
+        await conn.execute('DELETE FROM BienTheSanPham WHERE MaSP = ?', [id]);
+        await conn.execute('DELETE FROM SanPham WHERE MaSP = ?', [id]);
+
+        await conn.commit();
+        return res.status(200).json({ message: 'Xóa sản phẩm thành công!' });
+    } catch (error) {
+        await conn.rollback();
+        console.error('Lỗi xóa sản phẩm:', error);
+        return res.status(500).json({ message: 'Lỗi server khi xóa sản phẩm!' });
+    } finally {
+        conn.release();
+    }
+};
+
 module.exports = {
     getProductById,
     updateProductInfo,
     addProductImage,
     deleteProductImage,
     addProductVariant,
-    deleteProductVariant
+    deleteProductVariant,
+    deleteProduct
 };

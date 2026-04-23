@@ -1,0 +1,115 @@
+/* =========================================================
+   CSS DÀNH RIÊNG CHO KHU VỰC KHÁCH HÀNG (CLIENT LAYOUT)
+   ========================================================= */
+
+.client-theme {
+    --bs-primary: #e11d48;
+    --bs-primary-rgb: 225, 29, 72;
+    --bs-link-color: #e11d48;
+    --bs-link-color-rgb: 225, 29, 72;
+    --bs-link-hover-color: #be123c;
+    --bs-link-hover-color-rgb: 190, 18, 60;
+}
+
+.client-icon-tooltip {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+}
+
+.client-user-menu {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+}
+
+.client-user-menu.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.group:hover .client-icon-tooltip,
+.group:focus-within .client-icon-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.group:hover .client-user-menu,
+.group:focus-within .client-user-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 1. HIỆU ỨNG ANIMATION CUỘN (FADE IN UP) */
+@keyframes fadeInUp {
+    0% { 
+        opacity: 0; 
+        transform: translateY(30px); 
+    }
+    100% { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0; /* Bắt đầu ẩn đi chờ cuộn tới */
+}
+
+/* 2. HIỆU ỨNG MARQUEE CHẠY NGANG (DẢI HÌNH ẢNH) */
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); } /* Chạy trượt 50% độ dài để lặp vô tận mượt mà */
+}
+
+.animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 30s linear infinite;
+    will-change: transform;
+}
+
+/* Đẩy nhanh tốc độ lướt trên Mobile */
+@media (max-width: 768px) {
+    .animate-marquee { 
+        animation: marquee 15s linear infinite; 
+    }
+}
+
+/* Tạm dừng chạy khi khách hàng rê chuột vào xem ảnh */
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+
+/* 3. BÓNG ĐỔ CAO CẤP (COMPLEX SHADOW TỪ PROMPT VIKTOR ODDY) */
+
+/* Nút Primary (Nền đậm chữ sáng) - Tạo khối sâu 3D */
+.shadow-btn-primary {
+    box-shadow: 
+        0 1px 2px 0 rgba(5,26,36,0.1), 
+        0 4px 4px 0 rgba(5,26,36,0.09), 
+        0 9px 6px 0 rgba(5,26,36,0.05), 
+        0 17px 7px 0 rgba(5,26,36,0.01), 
+        0 26px 7px 0 rgba(5,26,36,0), 
+        inset 0 2px 8px 0 rgba(255,255,255,0.3); /* Ánh sáng hắt viền trong */
+}
+
+/* Nút Secondary (Nền trắng) - Đổ bóng tỏa mờ nhẹ nhàng */
+.shadow-btn-secondary {
+    box-shadow: 
+        0 0 0 0.5px rgba(0,0,0,0.05), 
+        0 4px 30px rgba(0,0,0,0.08);
+}
+
+/* 4. HIỆU ỨNG KÍNH MỜ (LIQUID GLASS / GLASSMORPHISM) */
+.liquid-glass {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}

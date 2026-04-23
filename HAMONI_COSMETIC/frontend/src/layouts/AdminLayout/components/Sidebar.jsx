@@ -26,6 +26,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.hoTen}&backgroundColor=635F40`,
                     permissions: userData.permissions || [] 
                 });
+                localStorage.setItem('userPermissions', JSON.stringify(userData.permissions || []));
             } catch (error) {
                 console.error('Lỗi tải dữ liệu cá nhân:', error);
                 setUserInfo({
@@ -44,6 +45,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
             localStorage.removeItem('user');
             localStorage.removeItem('user_info');
+            localStorage.removeItem('userPermissions');
             localStorage.removeItem('token'); 
             navigate('/login');
         }

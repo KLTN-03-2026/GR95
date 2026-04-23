@@ -17,6 +17,7 @@ router.post('/', productCreateController.createProduct);
 // ===============================
 router.get('/:id', productDetailController.getProductById);
 router.put('/:id', productDetailController.updateProductInfo);
+router.delete('/:id', productDetailController.deleteProduct);
 
 // ===============================
 // ROUTE QUẢN LÝ HÌNH ẢNH (Image)

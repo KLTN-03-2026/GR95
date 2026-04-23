@@ -123,7 +123,7 @@ const PromotionDetail = () => {
         return <span className="badge active">Đang hoạt động</span>;
     };
 
-    if (isLoading) return <div className="loading-screen">Đang tải dữ liệu...</div>;
+        if (isLoading) return <div className="loading-screen">Đang tải dữ liệu...</div>;
 
     return (
         <div className="promo-dashboard">
