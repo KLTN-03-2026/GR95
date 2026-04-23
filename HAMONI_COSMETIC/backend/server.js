@@ -34,11 +34,10 @@ const reviewRoutes = require('./src/routes/reviewRoutes'); // Thêm route cho đ
 const voucherRoutes = require('./src/routes/voucherRoutes'); // Thêm route cho voucher
 const promotionRoutes = require('./src/routes/promotionRoutes'); // Thêm route cho khuyến mãi
 const orderpaymentRoutes = require('./src/routes/orderpaymentRoutes');
-
+const shoppingcartRoutes = require('./src/routes/shoppingcartRoutes');
 const warehouseRoutes = require('./src/routes/warehouseRoutes');
 const bannerRoutes = require('./src/routes/bannerRoutes'); // Thêm route cho banner 
-// Đăng ký route cho upload ảnh
-app.use('/api/upload', uploadRoutes);
+
 // Đăng ký các API vào hệ thống
 // API đăng nhập giờ đây sẽ hoạt động tại: POST http://localhost:5000/api/auth/login
 app.use('/api/auth', authRoutes); 
@@ -48,16 +47,17 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/employees', employeeRoutes); // Đăng ký route cho nhân viên
 app.use('/api/orders', orderRoutes); // Đăng ký route cho đơn hàng
 app.use('/api/products', productRoutes); // Đăng ký route cho sản phẩm
-app.use('/api/upload', uploadRoutes); // Gắn đường dẫn
+app.use('/api/upload', uploadRoutes); // Gắn đường dẫn cho upload ảnh
 app.use('/api/dashboard', dashboardRoutes); // Gắn đường dẫn cho dashboard
 app.use('/api/reports', reportRoutes); // Gắn đường dẫn cho báo cáo
 app.use('/api/reviews', reviewRoutes); // Gắn đường dẫn cho đánh giá
-
 app.use('/api/vouchers', voucherRoutes); // Gắn đường dẫn cho voucher
 app.use('/api/promotions', promotionRoutes); // Gắn đường dẫn cho khuyến mãi
 app.use('/api/orderpayment', orderpaymentRoutes);
+app.use('/api/shopping-cart', shoppingcartRoutes); // Gắn đường dẫn cho giỏ hàng
 app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/banners', bannerRoutes); // Gắn đường dẫn cho banner
+
 // Route mặc định (Root)
 app.get('/', (req, res) => {
     res.json({ 

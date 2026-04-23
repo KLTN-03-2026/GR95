@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, X } from 'lucide-react';
-import orderApi from '../../services/orderApi';
-import { PRODUCT_PLACEHOLDER_IMAGE } from '../../config/imageLinks';
+import orderApi from '../../../services/orderApi';
+import { PRODUCT_PLACEHOLDER_IMAGE } from '../../../config/imageLinks';
 import OrderNotification, { OnlinePaymentModal } from './ordernotification';
 import './orderpayment.css'; // Import file CSS riêng
 
 const OrderPayment = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [voucherCode, setVoucherCode] = useState('');
   const [checkoutData, setCheckoutData] = useState(null);
@@ -19,6 +20,8 @@ const OrderPayment = () => {
   const [showOnlinePaymentModal, setShowOnlinePaymentModal] = useState(false);
   const [onlinePaymentInfo, setOnlinePaymentInfo] = useState(null);
   const [onlinePaymentSuccess, setOnlinePaymentSuccess] = useState(null);
+  const [selectedVariantIds, setSelectedVariantIds] = useState([]);
+  const [continueShoppingProductId, setContinueShoppingProductId] = useState(null);
 
   const [formData, setFormData] = useState({
     recipientName: '',
@@ -89,26 +92,48 @@ const OrderPayment = () => {
     return `VNP${ts.slice(-10)}`;
   };
 
-  const loadCheckoutPreview = async (nextVoucherCode = '') => {
+  const loadCheckoutPreview = async (nextVoucherCode = '', nextSelectedVariantIds = selectedVariantIds) => {
     setLoadingCheckout(true);
     setError('');
     setNotice('');
 
     try {
+      const trimmedVoucherCode = nextVoucherCode?.trim() || '';
       const payload = {};
-      if (nextVoucherCode?.trim()) {
-        payload.voucherCode = nextVoucherCode.trim();
+      if (trimmedVoucherCode) {
+        payload.voucherCode = trimmedVoucherCode;
+      }
+      if (Array.isArray(nextSelectedVariantIds) && nextSelectedVariantIds.length > 0) {
+        payload.selectedVariantIds = nextSelectedVariantIds;
       }
 
       const response = await orderApi.getCheckoutPreview(payload);
       const data = response.data ?? response;
 
       setCheckoutData(data);
-      setVoucherCode(data?.maVoucher || nextVoucherCode.trim());
+      setVoucherCode(data?.maVoucher || trimmedVoucherCode);
     } catch (err) {
       const apiMessage = err?.response?.data?.message;
       setError(apiMessage || 'Không thể tải dữ liệu thanh toán');
-      setCheckoutData(null);
+
+      // Nếu mã giảm giá không hợp lệ, giữ nguyên giỏ hàng bằng cách tải lại preview không kèm voucher.
+      if (nextVoucherCode?.trim()) {
+        try {
+          const fallbackPayload = {};
+          if (Array.isArray(nextSelectedVariantIds) && nextSelectedVariantIds.length > 0) {
+            fallbackPayload.selectedVariantIds = nextSelectedVariantIds;
+          }
+
+          const fallbackResponse = await orderApi.getCheckoutPreview(fallbackPayload);
+          const fallbackData = fallbackResponse?.data ?? fallbackResponse;
+          setCheckoutData(fallbackData);
+          setVoucherCode('');
+        } catch {
+          setCheckoutData(null);
+        }
+      } else {
+        setCheckoutData(null);
+      }
     } finally {
       setLoadingCheckout(false);
     }
@@ -157,9 +182,28 @@ const OrderPayment = () => {
       }
     }
 
+    const fromState = Array.isArray(location.state?.selectedVariantIds) ? location.state.selectedVariantIds : [];
+    let fromSession = [];
+
+    try {
+      const raw = sessionStorage.getItem('checkoutSelectedVariantIds');
+      const parsed = raw ? JSON.parse(raw) : [];
+      fromSession = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      fromSession = [];
+    }
+
+    const normalizedSelected = [...new Set([...fromState, ...fromSession]
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0))];
+
+    const lastProductPageId = sessionStorage.getItem('lastProductPageId');
+
+    setSelectedVariantIds(normalizedSelected);
+    setContinueShoppingProductId(lastProductPageId || null);
     loadCheckoutProfile();
-    loadCheckoutPreview('');
-  }, [loadCheckoutProfile]);
+    loadCheckoutPreview('', normalizedSelected);
+  }, [loadCheckoutProfile, location.state]);
 
   const canPlaceOrder = useMemo(() => {
     const isValidPhone = /^\d{10}$/.test(formData.recipientPhone.trim());
@@ -195,6 +239,10 @@ const OrderPayment = () => {
   };
 
   const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setError('Vui lòng nhập mã giảm giá trước khi áp dụng.');
+      return;
+    }
     await loadCheckoutPreview(voucherCode);
   };
 
@@ -213,12 +261,15 @@ const OrderPayment = () => {
     setError('');
     setNotice('');
 
+    const nextProductId = checkoutData?.items?.[0]?.maSP || continueShoppingProductId || sessionStorage.getItem('lastProductPageId') || null;
+
     try {
       const payload = {
         ...formData,
         shippingAddress: `${formData.streetAddress.trim()}, ${formData.ward.trim()}, ${formData.district.trim()}, ${formData.city.trim()}`,
         paymentMethod,
-        voucherCode: checkoutData?.maVoucher || null
+        voucherCode: checkoutData?.maVoucher || null,
+        selectedVariantIds
       };
 
       const response = await orderApi.placeOrder(payload);
@@ -248,9 +299,11 @@ const OrderPayment = () => {
           thanhTien: 0,
           maVoucher: null
         });
+        setContinueShoppingProductId(nextProductId ? String(nextProductId) : null);
         return;
       }
 
+      setContinueShoppingProductId(nextProductId ? String(nextProductId) : null);
       setOnlinePaymentInfo({
         orderId,
         totalAmount,
@@ -303,6 +356,7 @@ const OrderPayment = () => {
         thanhTien: 0,
         maVoucher: null
       });
+      sessionStorage.removeItem('checkoutSelectedVariantIds');
     } catch (err) {
       const apiMessage = err?.response?.data?.message;
       setError(apiMessage || 'Không thể xác nhận thanh toán online. Vui lòng thử lại.');
@@ -331,7 +385,14 @@ const OrderPayment = () => {
         paymentMethodLabel={onlinePaymentSuccess.paymentMethodLabel}
         totalAmount={onlinePaymentSuccess.totalAmount}
         onViewOrder={() => navigate('/')}
-        onContinueShopping={() => navigate('/')}
+        onContinueShopping={() => {
+          if (continueShoppingProductId) {
+            navigate(`/product/${continueShoppingProductId}`);
+            return;
+          }
+
+          navigate('/cart');
+        }}
       />
     );
   }

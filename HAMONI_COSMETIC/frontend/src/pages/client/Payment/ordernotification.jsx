@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { buildVietQrImageUrl } from '../../config/paymentQr';
+import { buildVietQrImageUrl } from '../../../config/paymentQr';
 import './ordernotification.css';
 
 const paymentBankName = import.meta.env.VITE_PAYMENT_BANK_NAME || 'MoMo';

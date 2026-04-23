@@ -18,7 +18,9 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         URLDich: '',
         ViTriHienThi: 'TrangChu',
         ThuTuHienThi: 0,
-        TrangThai: 'Active'
+        TrangThai: 'Active',
+        NgayBatDau: '',
+        NgayHetHan: ''
     });
 
     // 2. Sync Data & Cleanup
@@ -36,12 +38,20 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                     URLDich: data.URLDich || '',
                     ViTriHienThi: data.ViTriHienThi || 'TrangChu',
                     ThuTuHienThi: data.ThuTuHienThi || 0,
-                    TrangThai: data.TrangThai || 'Active'
+                    TrangThai: data.TrangThai || 'Active',
+                    NgayBatDau: toDateInputValue(data.NgayBatDau),
+                    NgayHetHan: toDateInputValue(data.NgayHetHan)
                 });
             } else {
                 // Reset form nếu là thêm mới
                 setFormValues({
-                    TieuDe: '', URLDich: '', ViTriHienThi: 'TrangChu', ThuTuHienThi: 0, TrangThai: 'Active'
+                    TieuDe: '',
+                    URLDich: '',
+                    ViTriHienThi: 'TrangChu',
+                    ThuTuHienThi: 0,
+                    TrangThai: 'Active',
+                    NgayBatDau: '',
+                    NgayHetHan: ''
                 });
             }
 
@@ -72,6 +82,10 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         // Kiểm tra Ảnh (Bắt buộc nếu là thêm mới hoặc không có ảnh cũ)
         if (!editingId && !selectedFile && !preview) {
             newErrors.image = 'Vui lòng chọn hình ảnh cho banner';
+        }
+
+        if (formValues.NgayBatDau && formValues.NgayHetHan && formValues.NgayBatDau > formValues.NgayHetHan) {
+            newErrors.NgayBatDau = 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày hết hạn';
         }
 
         setErrors(newErrors);
@@ -107,8 +121,9 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
             let urlToSave = preview; 
 
             if (selectedFile) {
+                const fileToUpload = await prepareImageForUpload(selectedFile);
                 const formData = new FormData();
-                formData.append('image', selectedFile);
+                formData.append('image', fileToUpload);
 
                 const uploadRes = await axios.post('http://localhost:5000/api/upload', formData);
                 urlToSave = uploadRes.data.url; 
@@ -125,10 +140,11 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                 await bannerApi.create(dataToSend);
             }
 
-            onSuccess();
+            onSuccess(editingId ? 'Cập nhật banner thành công' : 'Thêm banner mới thành công');
             onClose();
         } catch (error) {
-            setAlert({ show: true, type: 'danger', message: "Lỗi khi lưu: " + error.message });
+            const apiMessage = error?.response?.data?.message || error?.response?.data?.error;
+            setAlert({ show: true, type: 'danger', message: "Lỗi khi lưu: " + (apiMessage || error.message) });
         }
     };
 
@@ -261,6 +277,44 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                             </div>
                         </div>
 
+                        <div className="row mb-4">
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>
+                                    Ngày bắt đầu
+                                </label>
+                                <input
+                                    type="date"
+                                    className={`form-control bg-light border-1 py-2 px-3 rounded-3 ${errors.NgayBatDau ? 'is-invalid border-danger' : ''}`}
+                                    value={formValues.NgayBatDau}
+                                    onChange={(e) => {
+                                        setFormValues({ ...formValues, NgayBatDau: e.target.value });
+                                        if (errors.NgayBatDau) setErrors({ ...errors, NgayBatDau: null });
+                                    }}
+                                />
+                                {errors.NgayBatDau && (
+                                    <div className="text-danger mt-1" style={{ fontSize: '13px' }}>
+                                        {errors.NgayBatDau}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>
+                                    Ngày hết hạn
+                                </label>
+                                <input
+                                    type="date"
+                                    className="form-control bg-light border-1 py-2 px-3 rounded-3"
+                                    value={formValues.NgayHetHan}
+                                    onChange={(e) => setFormValues({ ...formValues, NgayHetHan: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-text mb-2">
+                            {`Hiển thị: Bắt đầu: ${formatDateDisplay(formValues.NgayBatDau)} - Hết hạn: ${formatDateDisplay(formValues.NgayHetHan)}`}
+                        </div>
+                        <div className="form-text">Để trống nếu banner không giới hạn thời gian.</div>
+
                         {/* Action Buttons */}
                         <div className="d-flex gap-3">
                             <button type="button" className="btn btn-light flex-grow-1 border-0 fw-semibold" onClick={onClose}>
@@ -281,5 +335,91 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         document.body
     );
 };
+
+function toDateInputValue(dateValue) {
+    if (!dateValue) return '';
+
+    if (typeof dateValue === 'string') {
+        const rawDate = dateValue.trim().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+            return rawDate;
+        }
+    }
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDateDisplay(dateInputValue) {
+    if (!dateInputValue) return 'Chưa đặt';
+
+    const parts = String(dateInputValue).split('-');
+    if (parts.length === 3) {
+        const [year, month, day] = parts;
+        return `${day}/${month}/${year}`;
+    }
+
+    return dateInputValue;
+}
+
+async function prepareImageForUpload(file) {
+    const maxDirectUploadSize = 2 * 1024 * 1024; // 2MB
+
+    if (!file || file.size <= maxDirectUploadSize) {
+        return file;
+    }
+
+    try {
+        const image = await loadImage(file);
+        const maxDimension = 1200;
+        const ratio = Math.min(1, maxDimension / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * ratio));
+        const height = Math.max(1, Math.round(image.height * ratio));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext('2d');
+        if (!context) return file;
+
+        context.drawImage(image, 0, 0, width, height);
+
+        const compressedBlob = await canvasToBlob(canvas, 'image/jpeg', 0.82);
+        if (!compressedBlob) return file;
+
+        const compressedName = (file.name || 'banner').replace(/\.[^.]+$/, '.jpg');
+        return new File([compressedBlob], compressedName, { type: 'image/jpeg' });
+    } catch {
+        return file;
+    }
+}
+
+function loadImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = reader.result;
+        };
+
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function canvasToBlob(canvas, mimeType, quality) {
+    return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), mimeType, quality);
+    });
+}
     
 export default BannerForm;

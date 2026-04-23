@@ -15,8 +15,41 @@ const isCheckoutValidationError = (message) => {
     );
 };
 
-const getUserCartItems = async (conn, userId) => {
-    const [items] = await conn.execute(`
+const normalizeSelectedVariantIds = (selectedVariantIds) => {
+    if (!Array.isArray(selectedVariantIds)) {
+        return [];
+    }
+
+    const validIds = selectedVariantIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0);
+
+    return [...new Set(validIds)];
+};
+
+const removePurchasedCartItems = async (conn, userId, items) => {
+    const variantIds = [...new Set(
+        (items || [])
+            .map((item) => Number(item.maBienThe))
+            .filter((id) => Number.isInteger(id) && id > 0)
+    )];
+
+    if (!variantIds.length) {
+        return;
+    }
+
+    const placeholders = variantIds.map(() => '?').join(', ');
+    await conn.execute(
+        `DELETE FROM GioHang WHERE MaND = ? AND MaBienThe IN (${placeholders})`,
+        [userId, ...variantIds]
+    );
+};
+
+const getUserCartItems = async (conn, userId, selectedVariantIds = []) => {
+    const normalizedIds = normalizeSelectedVariantIds(selectedVariantIds);
+    const hasSelectedFilter = normalizedIds.length > 0;
+
+    const sql = `
         SELECT
             gh.MaBienThe AS maBienThe,
             gh.SoLuong AS soLuong,
@@ -41,8 +74,12 @@ const getUserCartItems = async (conn, userId) => {
         JOIN BienTheSanPham bt ON gh.MaBienThe = bt.MaBienThe
         JOIN SanPham sp ON bt.MaSP = sp.MaSP
         WHERE gh.MaND = ?
+        ${hasSelectedFilter ? `AND gh.MaBienThe IN (${normalizedIds.map(() => '?').join(', ')})` : ''}
         ORDER BY gh.NgayTao DESC, gh.MaBienThe DESC
-    `, [userId]);
+    `;
+
+    const params = hasSelectedFilter ? [userId, ...normalizedIds] : [userId];
+    const [items] = await conn.execute(sql, params);
 
     return items.map((item) => {
         const soLuong = Number(item.soLuong || 0);
@@ -135,11 +172,16 @@ const validateVoucher = async (conn, voucherCode, subtotal, lockRow = false) => 
     };
 };
 
-const buildCheckoutSummary = async (conn, userId, voucherCode, lockVoucher = false) => {
-    const cartItems = await getUserCartItems(conn, userId);
+const buildCheckoutSummary = async (conn, userId, voucherCode, lockVoucher = false, selectedVariantIds = []) => {
+    const normalizedIds = normalizeSelectedVariantIds(selectedVariantIds);
+    const cartItems = await getUserCartItems(conn, userId, normalizedIds);
 
     if (!cartItems.length) {
         throw new Error('Giỏ hàng của bạn đang trống');
+    }
+
+    if (normalizedIds.length > 0 && cartItems.length !== normalizedIds.length) {
+        throw new Error('Một số sản phẩm đã chọn không còn trong giỏ hàng');
     }
 
     const outOfStockItems = cartItems.filter((item) => item.tonKho < item.soLuong);
@@ -244,7 +286,8 @@ exports.getCheckoutPreview = async (req, res) => {
         }
 
         const voucherCode = req.body?.voucherCode;
-        const checkout = await buildCheckoutSummary(db, userId, voucherCode, false);
+        const selectedVariantIds = req.body?.selectedVariantIds;
+        const checkout = await buildCheckoutSummary(db, userId, voucherCode, false, selectedVariantIds);
 
         res.json(checkout);
     } catch (err) {
@@ -306,7 +349,8 @@ exports.placeOrderFromCheckout = async (req, res) => {
             shippingAddress,
             note,
             paymentMethod,
-            voucherCode
+            voucherCode,
+            selectedVariantIds
         } = req.body;
 
         if (!recipientName || !recipientPhone || !shippingAddress) {
@@ -315,7 +359,7 @@ exports.placeOrderFromCheckout = async (req, res) => {
 
         await conn.beginTransaction();
 
-        const checkout = await buildCheckoutSummary(conn, userId, voucherCode, true);
+        const checkout = await buildCheckoutSummary(conn, userId, voucherCode, true, selectedVariantIds);
         const paymentMethodCode = String(paymentMethod || 'cod').toLowerCase() === 'vnpay' ? 'VNPAY' : 'COD';
         const paymentStatus = paymentMethodCode === 'VNPAY' ? 'ChoThanhToan' : 'ChoThuTien';
 
@@ -383,7 +427,7 @@ exports.placeOrderFromCheckout = async (req, res) => {
         `, [orderId, CHECKOUT_STATUS, userId]);
 
         if (paymentMethodCode === 'COD') {
-            await conn.execute(`DELETE FROM GioHang WHERE MaND = ?`, [userId]);
+            await removePurchasedCartItems(conn, userId, checkout.items);
         }
 
         await conn.commit();
@@ -474,7 +518,8 @@ exports.confirmOnlinePayment = async (req, res) => {
             await deductOrderStock(conn, orderId, 'Trừ kho khi xác nhận thanh toán online');
         }
 
-        await conn.execute(`DELETE FROM GioHang WHERE MaND = ?`, [userId]);
+        const orderedItems = await loadOrderItems(conn, orderId);
+        await removePurchasedCartItems(conn, userId, orderedItems.map((item) => ({ maBienThe: item.MaBienThe })));
 
         if (payment.TrangThai === 'DaThanhToan') {
             await conn.commit();

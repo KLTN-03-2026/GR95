@@ -32,6 +32,7 @@ const canCancel = isAdmin || userPermissions.includes('CANCEL_ORDER'); // Giờ 
 const canPrint = isAdmin || userPermissions.includes('PRINT_ORDER');
 const canViewLog = isAdmin || userPermissions.includes('VIEW_ORDER_LOG'); // Giờ sẽ là True
 const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaHuy";
+const hasStatusChanged = Boolean(order?.trangThai) && status !== order?.trangThai;
     const fetchOrderDetail = useCallback(async () => {
         try {
             setLoading(true);
@@ -61,6 +62,11 @@ const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaH
 
     // --- 2. CẬP NHẬT HÀM UPDATE (Bỏ Alert) ---
     const handleUpdateStatus = async () => {
+    if (!hasStatusChanged) {
+        showSuccess("Vui lòng chọn trạng thái mới trước khi cập nhật.");
+        return;
+    }
+
     try {
         await axiosClient.put(`/orders/${id}/status`, {
             newStatus: status
@@ -293,7 +299,7 @@ const handleCancelOrder = async () => {
         <button 
             className="btn-black" 
             onClick={handleUpdateStatus}
-            disabled={isDisabled}
+            disabled={isDisabled || !hasStatusChanged}
         >
             CẬP NHẬT
         </button>

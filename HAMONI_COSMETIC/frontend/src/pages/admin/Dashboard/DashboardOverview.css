@@ -31,34 +31,34 @@
 }
 
 /* ===== STAT ===== */
-.dashboard-stat-row {
+.stat-row {
   display: flex;
   flex-wrap: wrap;
 }
 
-.dashboard-stat-col {
+.stat-col {
   width: 25%;
   padding: 20px;
   text-align: center;
   border-right: 1px solid #eee;
 }
 
-.dashboard-stat-col:last-child {
+.stat-col:last-child {
   border-right: none;
 }
 
-.dashboard-stat-title {
+.stat-title {
   font-size: 13px;
   color: #666;
 }
 
-.dashboard-stat-value {
+.stat-value {
   font-size: 20px;
   font-weight: bold;
   margin-top: 5px;
 }
 
-/* ===== HORIZONTAL FILTER (NEW) ===== */
+/* ===== HORIZONTAL FILTER (ÉP CỨNG CHỐNG LỆCH) ===== */
 .horizontal-filter {
   display: flex;
   flex-wrap: wrap;
@@ -66,7 +66,7 @@
   padding: 15px;
   background: #fdfdfd;
   border-bottom: 1px solid #eee;
-  align-items: flex-end;
+  align-items: flex-end  /* Ép tất cả các khối con nằm sát đáy */
 }
 
 .filter-item {
@@ -74,6 +74,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 140px;
+  margin-bottom: 0 !important; /* Xóa margin ẩn */
 }
 
 .filter-item label {
@@ -83,12 +84,17 @@
   color: #444;
 }
 
+/* Các ô nhập liệu */
 .filter-item input,
 .filter-item select {
-  padding: 8px 10px;
+  height: 34px !important; /* Ép cứng chiều cao */
+  padding: 0 10px !important;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 13px;
+  box-sizing: border-box !important;
+  margin: 0 !important; /* Xóa margin ẩn */
+  line-height: normal !important; /* Ngừa lỗi font chữ làm cao lên */
 }
 
 .filter-item input:focus,
@@ -97,28 +103,40 @@
   border-color: #bdca72;
 }
 
+/* ===== KHU VỰC CÁC NÚT BẤM (FIX TRIỆT ĐỂ SO LE) ===== */
 .filter-actions-row {
   display: flex;
+  flex-direction: row; 
   gap: 10px;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  align-items: flex-end !important;
+  flex-wrap: nowrap !important; 
+  margin: 0 !important; /* Xóa mọi khoảng cách thừa */
+  padding: 0 !important;
+  height: 35px !important; /* Cái bọc nút phải bằng y xì cái thẻ input */
 }
 
-/* ===== ĐÃ THÊM HIỆU ỨNG NHẢY CHO NÚT Ở ĐÂY ===== */
 .filter-actions-row button {
-  padding: 8px 15px;
+  height: 100% !important; /* Cùng thông số với thẻ input */
+  padding: 0 15px !important;
   border-radius: 6px;
   border: none;
   font-weight: 600;
   cursor: pointer;
-  height: 36px;
-  white-space: nowrap;
+  box-sizing: border-box !important;
   
-  /* Thêm transition để hiệu ứng lún mượt mà hơn */
+  /* Căn chữ bên trong nút */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  width: auto !important; 
+  flex: 0 0 auto !important; 
+  margin: 0 !important; /* Cực kỳ quan trọng để không lệch */
+  line-height: normal !important;
+  
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); 
 }
 
-/* Khi người dùng click chuột vào nút */
 .filter-actions-row button:active {
   transform: scale(0.92) translateY(2px);
 }
@@ -141,7 +159,7 @@
 
 /* ===== TABLE ===== */
 .table-container {
-  max-height: 280px; /* Giảm max-height để bảng nhỏ lại xíu */
+  max-height: 280px; 
   overflow: auto;
 }
 
@@ -178,6 +196,9 @@ th, td {
   border-radius: 6px;
   background: #fff;
   min-width: 300px;
+  min-height: 350px; 
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-header {
@@ -188,24 +209,32 @@ th, td {
   border-bottom: 1px solid #eee;
 }
 
-/* ===== RESPONSIVE ===== */
+.chart-body {
+  flex: 1;
+  width: 100%;
+  min-height: 300px;
+}
+
+/* ===== RESPONSIVE CHO ĐIỆN THOẠI ===== */
 @media (max-width: 768px) {
   .stat-col {
     width: 50%;
   }
   .horizontal-filter {
     flex-direction: column;
-    align-items: stretch;
+    align-items: stretch !important;
   }
   .filter-actions-row {
     width: 100%;
-    margin-top: 10px;
+    margin-top: 10px !important;
+    height: auto !important; /* Nhả height ra khi ở màn hình nhỏ */
+    flex-wrap: wrap !important; 
+    justify-content: flex-start;
   }
   .filter-actions-row button {
-    flex: 1;
+    flex: 1 1 auto !important;
   }
   .chart-container-row {
     flex-direction: column;
- 
   }
 }
