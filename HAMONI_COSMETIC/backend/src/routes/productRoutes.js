@@ -15,6 +15,9 @@ router.post('/', productCreateController.createProduct);
 // ===============================
 // ROUTE CHI TIẾT (Lấy / Sửa)
 // ===============================
+router.get('/:id/public', productDetailController.getPublicProductDetail);
+router.get('/:id/reviews', productDetailController.getProductReviews);
+router.get('/:id/suggestions', productDetailController.getSuggestedProducts);
 router.get('/:id', productDetailController.getProductById);
 router.put('/:id', productDetailController.updateProductInfo);
 router.delete('/:id', productDetailController.deleteProduct);

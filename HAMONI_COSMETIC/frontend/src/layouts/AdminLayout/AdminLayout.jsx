@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './AdminLayout.css';
 
 const AdminLayout = () => {

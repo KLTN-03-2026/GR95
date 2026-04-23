@@ -6,16 +6,44 @@ const bannerController = {
         try {
             console.log("🔥 API banner được gọi");
 
+            const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+            const limit = Math.max(parseInt(req.query.limit, 10) || 5, 1);
+            const offset = (page - 1) * limit;
+
+            const countSql = `SELECT COUNT(*) AS total FROM bannertoancuc`;
+            const [countRows] = await db.query(countSql);
+            const totalItems = countRows?.[0]?.total || 0;
+
+            const activeCountSql = `SELECT COUNT(*) AS totalActive FROM bannertoancuc WHERE TrangThai = 'Active'`;
+            const [activeCountRows] = await db.query(activeCountSql);
+            const totalActiveItems = activeCountRows?.[0]?.totalActive || 0;
+
+            const totalPages = Math.max(Math.ceil(totalItems / limit), 1);
+
+            // Nếu page vượt quá tổng trang thì trả về trang cuối cùng
+            const safePage = Math.min(page, totalPages);
+            const safeOffset = (safePage - 1) * limit;
+
             const sql = `
                 SELECT * FROM bannertoancuc
                 ORDER BY MaBanner DESC
+                LIMIT ? OFFSET ?
             `;
 
-            const [data] = await db.query(sql);
+            const [data] = await db.query(sql, [limit, safeOffset]);
 
             console.log("✅ Data:", data);
 
-            return res.status(200).json(data);
+            return res.status(200).json({
+                data,
+                pagination: {
+                    page: safePage,
+                    limit,
+                    totalItems,
+                    totalActiveItems,
+                    totalPages
+                }
+            });
 
         } catch (err) {
             console.error("❌ SQL ERROR:", err);
@@ -42,15 +70,24 @@ const bannerController = {
         }
     },
 
-   createBanner: async (req, res) => {
-    const { TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai } = req.body;
+    createBanner: async (req, res) => {
+     const { TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai, NgayBatDau, NgayHetHan } = req.body;
     
     try {
         const [result] = await db.execute(
             `INSERT INTO bannertoancuc 
-            (TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [TieuDe, DuongDanAnh, URLDich, ViTriHienThi || 'TrangChu', ThuTuHienThi || 0, TrangThai || 'Active']
+            (TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai, NgayBatDau, NgayHetHan) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                TieuDe,
+                DuongDanAnh,
+                URLDich,
+                ViTriHienThi || 'TrangChu',
+                ThuTuHienThi || 0,
+                TrangThai || 'Active',
+                NgayBatDau || null,
+                NgayHetHan || null
+            ]
         );
         
         res.status(201).json({ 
@@ -66,14 +103,24 @@ const bannerController = {
 
     updateBanner: async (req, res) => {
 const { id } = req.params;
-    const { TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai } = req.body;
+    const { TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai, NgayBatDau, NgayHetHan } = req.body;
     
     try {
         await db.execute(
             `UPDATE bannertoancuc 
-             SET TieuDe=?, DuongDanAnh=?, URLDich=?, ViTriHienThi=?, ThuTuHienThi=?, TrangThai=? 
+             SET TieuDe=?, DuongDanAnh=?, URLDich=?, ViTriHienThi=?, ThuTuHienThi=?, TrangThai=?, NgayBatDau=?, NgayHetHan=? 
              WHERE MaBanner=?`,
-            [TieuDe, DuongDanAnh, URLDich, ViTriHienThi, ThuTuHienThi, TrangThai, id]
+            [
+                TieuDe,
+                DuongDanAnh,
+                URLDich,
+                ViTriHienThi,
+                ThuTuHienThi,
+                TrangThai,
+                NgayBatDau || null,
+                NgayHetHan || null,
+                id
+            ]
         );
         res.status(200).json({ message: "Cập nhật banner thành công!" });
     } catch (error) {

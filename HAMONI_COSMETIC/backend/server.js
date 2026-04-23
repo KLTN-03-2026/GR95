@@ -1,70 +1,68 @@
 // Import các thư viện cần thiết
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config(); // Load biến môi trường từ file .env
-const db = require('./src/config/db'); // Khởi tạo kết nối Database ngay khi chạy server
+require('dotenv').config();
+require('./src/config/db');
 
 // Khởi tạo app Express
 const app = express();
 
 // --- CÀI ĐẶT MIDDLEWARE ---
-// 1. Cho phép Frontend (cổng 5173) gọi API đến Backend (cổng 5000) mà không bị lỗi CORS
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true
 }));
 
-// 2. Cho phép Express đọc được dữ liệu định dạng JSON từ Client gửi lên
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // --- ĐỊNH TUYẾN (ROUTES) CHÍNH THỨC ---
-// Import các file routes từ thư mục src/routes
 const authRoutes = require('./src/routes/authRoutes');
 const roleRoutes = require('./src/routes/roleRoutes');
 const categoryRoutes = require('./src/routes/categoryRoutes');
 const customerRoutes = require('./src/routes/customerRoutes');
-const employeeRoutes = require('./src/routes/employeeRoutes'); // Thêm route cho nhân viên
-const uploadRoutes = require('./src/routes/uploadRoutes'); // Thêm route cho upload ảnh
-const orderRoutes = require('./src/routes/orderRoutes'); // Thêm route cho đơn hàng
+const employeeRoutes = require('./src/routes/employeeRoutes');
+const uploadRoutes = require('./src/routes/uploadRoutes');
+const orderRoutes = require('./src/routes/orderRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
-const reviewRoutes = require('./src/routes/reviewRoutes'); // Thêm route cho đánh giá
-const voucherRoutes = require('./src/routes/voucherRoutes'); // Thêm route cho voucher
-const promotionRoutes = require('./src/routes/promotionRoutes'); // Thêm route cho khuyến mãi
+const reviewRoutes = require('./src/routes/reviewRoutes');
+const voucherRoutes = require('./src/routes/voucherRoutes');
+const promotionRoutes = require('./src/routes/promotionRoutes');
+const orderpaymentRoutes = require('./src/routes/orderpaymentRoutes');
+const shoppingcartRoutes = require('./src/routes/shoppingcartRoutes');
 const warehouseRoutes = require('./src/routes/warehouseRoutes');
-const bannerRoutes = require('./src/routes/bannerRoutes'); // Thêm route cho banner 
-const homeRoutes = require('./src/routes/homeRoutes'); // Thêm route cho trang chủ
-const clientProductRoutes = require('./src/routes/clientProductRoutes'); // Thêm route cho sản phẩm trang khách hàng
-// Đăng ký route cho upload ảnh
-app.use('/api/upload', uploadRoutes);
-// Đăng ký route cho trang chủ
-app.use('/api/home', homeRoutes);
+const bannerRoutes = require('./src/routes/bannerRoutes');
+const homeRoutes = require('./src/routes/homeRoutes');
+const clientProductRoutes = require('./src/routes/clientProductRoutes');
+
 // Đăng ký các API vào hệ thống
-// API đăng nhập giờ đây sẽ hoạt động tại: POST http://localhost:5000/api/auth/login
-app.use('/api/auth', authRoutes); 
+app.use('/api/auth', authRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/employees', employeeRoutes); // Đăng ký route cho nhân viên
-app.use('/api/orders', orderRoutes); // Đăng ký route cho đơn hàng
-app.use('/api/products', productRoutes); // Đăng ký route cho sản phẩm
-app.use('/api/upload', uploadRoutes); // Gắn đường dẫn
-app.use('/api/dashboard', dashboardRoutes); // Gắn đường dẫn cho dashboard
-app.use('/api/reports', reportRoutes); // Gắn đường dẫn cho báo cáo
-app.use('/api/reviews', reviewRoutes); // Gắn đường dẫn cho đánh giá
-
-app.use('/api/vouchers', voucherRoutes); // Gắn đường dẫn cho voucher
-app.use('/api/promotions', promotionRoutes); // Gắn đường dẫn cho khuyến mãi
+app.use('/api/employees', employeeRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/vouchers', voucherRoutes);
+app.use('/api/promotions', promotionRoutes);
+app.use('/api/orderpayment', orderpaymentRoutes);
+app.use('/api/shopping-cart', shoppingcartRoutes);
 app.use('/api/warehouse', warehouseRoutes);
-app.use('/api/banners', bannerRoutes); // Gắn đường dẫn cho banner
-app.use('/api/client/products', clientProductRoutes); // Gắn đường dẫn cho sản phẩm trang khách hàng
+app.use('/api/banners', bannerRoutes);
+app.use('/api/home', homeRoutes);
+app.use('/api/client/products', clientProductRoutes);
+
 // Route mặc định (Root)
 app.get('/', (req, res) => {
-    res.json({ 
-        message: "Chào mừng đến với API của hệ thống Hamoni Cosmetic!",
-        status: "Server is running smoothly 🚀"
+    res.json({
+        message: 'Chào mừng đến với API của hệ thống Hamoni Cosmetic!',
+        status: 'Server is running smoothly 🚀'
     });
 });
 
@@ -72,7 +70,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`=================================`);
+    console.log('=================================');
     console.log(`🚀 Server Backend Hamoni đang chạy tại: http://localhost:${PORT}`);
-    console.log(`=================================`);
+    console.log('=================================');
 });

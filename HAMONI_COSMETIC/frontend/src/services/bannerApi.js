@@ -3,7 +3,7 @@ import axios from 'axios';
 
 export const bannerApi = {
     // Lấy danh sách banner, có hỗ trợ tìm kiếm qua params
-    getAll: () => axiosClient.get('/banners'),
+    getAll: (params = {}) => axiosClient.get('/banners', { params }),
     
     // Thêm mới banner
     create: (data) => axiosClient.post('/banners', data),

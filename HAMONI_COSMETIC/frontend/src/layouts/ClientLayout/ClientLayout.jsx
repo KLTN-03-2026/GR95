@@ -54,15 +54,14 @@ const ClientLayout = () => {
     };
 
     return (
-        <div className="client-theme min-h-screen flex flex-col bg-gray-50 text-slate-800 font-sans">
+        <div className="client-theme min-h-screen flex flex-col bg-gray-50 text-slate-800">
             
-            {/* Tối ưu SEO */}
-            <header className="hidden"><h1>Hamoni Cosmetic - Mỹ phẩm thiên nhiên cao cấp</h1></header>
-
-            {/* NAVBAR */}
-            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-                isScrolled ? 'bg-white shadow-md py-2' : 'bg-white/95 backdrop-blur-sm border-b border-gray-100 py-4'
-            }`}>
+            {/* Tối ưu SEO + NAVBAR */}
+            <header>
+                <h1 className="hidden">Hamoni Cosmetic - Mỹ phẩm thiên nhiên cao cấp</h1>
+                <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+                    isScrolled ? 'bg-white shadow-md py-2' : 'bg-white/95 backdrop-blur-sm border-b border-gray-100 py-4'
+                }`}>
                 <div className="max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between gap-8">
                     
                     {/* Logo & Mobile Menu */}
@@ -204,11 +203,14 @@ const ClientLayout = () => {
                         </div>
                     </div>
                 </div>
-            </nav>
+                </nav>
+            </header>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 mt-[80px]">
-                <Outlet />
+            <main className="flex-1 pt-[var(--client-nav-offset)]">
+                <div className="w-full">
+                    <Outlet />
+                </div>
             </main>
 
             {/* FOOTER */}

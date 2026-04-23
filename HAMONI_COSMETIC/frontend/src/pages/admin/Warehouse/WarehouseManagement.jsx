@@ -1,12 +1,58 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import warehouseApi from "../../../services/warehouseApi";
 import "./WarehouseManagement.css";
+
+const normalizeText = (value) =>
+    String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+const normalizeChangeType = (log) => {
+    const type = String(log?.LoaiGiaoDich || '').toUpperCase();
+    const qty = Number(log?.SoLuongThayDoi || 0);
+
+    if (qty < 0) return 'out';
+    if (qty > 0) return 'in';
+
+    if (type.includes('XUAT') || type.includes('TRU')) return 'out';
+    if (type.includes('NHAP') || type.includes('CONG')) return 'in';
+
+    return 'in';
+};
+
+const getLogTypeLabel = (log) => {
+    return normalizeChangeType(log) === 'out' ? 'trừ' : 'cộng';
+};
+
+const getLogStatusLabel = (log) => {
+    return normalizeChangeType(log) === 'out' ? 'Đang xử lý' : 'Thành công';
+};
+
+const getLogQuantityText = (log) => {
+    return Math.abs(Number(log?.SoLuongThayDoi || 0));
+};
+
+const getProductStockStatus = (quantity) => {
+    const qty = Number(quantity || 0);
+
+    if (qty <= 0) {
+        return { label: 'HẾT HÀNG', className: 'CANH_BAO' };
+    }
+
+    if (qty <= 10) {
+        return { label: 'SẮP HẾT', className: 'THAP' };
+    }
+
+    return { label: 'SẴN SÀNG', className: 'SAN_SANG' };
+};
 
 const WarehouseDashboard = () => {
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [logSearchTerm, setLogSearchTerm] = useState('');
 
     // --- LOGIC PHÂN TRANG ---
     const [currentPage, setCurrentPage] = useState(1);
@@ -15,6 +61,28 @@ const userPermissions = ['ALL'];
 const isAdmin = userPermissions.includes('ALL');
 const canImport = isAdmin || userPermissions.includes('IMPORT_WAREHOUSE');
 const canExport = isAdmin || userPermissions.includes('EXPORT_WAREHOUSE');
+
+const filteredLogs = useMemo(() => {
+    const logs = data?.logs || [];
+    const keyword = normalizeText(logSearchTerm).trim();
+
+    if (!keyword) return logs;
+
+    return logs.filter((log) => {
+        const searchableText = [
+            log?.TenSP,
+            log?.LoaiGiaoDich,
+            log?.SoLuongThayDoi,
+            log?.thoiGian,
+            getLogStatusLabel(log),
+            getLogTypeLabel(log)
+        ]
+            .map(normalizeText)
+            .join(' ');
+
+        return searchableText.includes(keyword);
+    });
+}, [data?.logs, logSearchTerm]);
     const fetchData = async () => {
     try {
         setLoading(true);
@@ -33,14 +101,14 @@ const canExport = isAdmin || userPermissions.includes('EXPORT_WAREHOUSE');
     }
 };
 const exportLogs = () => {
-    if (!data?.logs || data.logs.length === 0) {
+    if (!filteredLogs || filteredLogs.length === 0) {
         alert("Không có dữ liệu để xuất");
         return;
     }
 
     const header = ["Thời gian", "Sản phẩm", "Số lượng", "Loại giao dịch"];
 
-    const rows = data.logs.map(l => [
+    const rows = filteredLogs.map(l => [
         l.thoiGian ? new Date(l.thoiGian).toLocaleString("vi-VN") : "",
         l.TenSP || "",
         l.SoLuongThayDoi || "",
@@ -82,15 +150,38 @@ const exportLogs = () => {
         fetchData();
     }, []);
 
+    const allProducts = useMemo(() => data?.products || [], [data?.products]);
+
+    const stockSummary = useMemo(() => {
+        return allProducts.reduce(
+            (acc, product) => {
+                const qty = Number(product?.soLuong || 0);
+
+                if (qty <= 0) {
+                    acc.outOfStock += 1;
+                } else if (qty <= 10) {
+                    acc.lowStock += 1;
+                } else {
+                    acc.ready += 1;
+                }
+
+                return acc;
+            },
+            { outOfStock: 0, lowStock: 0, ready: 0 }
+        );
+    }, [allProducts]);
+
+    const outOfStockProducts = useMemo(() => {
+        return allProducts.filter((product) => Number(product?.soLuong || 0) <= 0);
+    }, [allProducts]);
+
     if (loading) return <div className="loading">Đang tải dữ liệu...</div>;
 
     // Tính toán dữ liệu hiển thị cho trang hiện tại
-    const allProducts = data?.products || [];
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentProducts = allProducts.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(allProducts.length / itemsPerPage);
-const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ?? 0;
     return (
         <div className="warehouse-container">
             <main className="main-content">
@@ -119,27 +210,27 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                     </div>
 
                     <div className="stat-card">
-    <p>ĐANG XỬ LÝ</p>
+    <p>SẮP HẾT</p>
 
     <div className="value-row">
-        <h2>{processingCount.toLocaleString()}</h2>
-        <span className="spin-icon">🔄</span>
+        <h2>{String(stockSummary.lowStock).padStart(2, '0')}</h2>
+        <span className="import-label warning">Cần nhập sớm</span>
     </div>
 
     <span className="sub-text">
-        {processingCount > 0
-            ? "Đơn hàng đang chờ xử lý"
-            : "Không có đơn hàng"}
+        {stockSummary.lowStock > 0
+            ? `Có ${stockSummary.lowStock} sản phẩm sắp hết (1-10)`
+            : "Không có sản phẩm sắp hết"}
     </span>
 </div>
 
                     <div className="stat-card danger">
                         <p>HẾT HÀNG</p>
                         <div className="value-row">
-                            <h2>{String(data?.stats?.outOfStock || 0).padStart(2, '0')}</h2>
+                            <h2>{String(stockSummary.outOfStock).padStart(2, '0')}</h2>
                             <span className="import-label">Cần nhập</span>
                         </div>
-                        <div className="card-dots">...</div>
+                        <span className="sub-text">Sắp hết: {stockSummary.lowStock}</span>
                     </div>
 
                     <div className="stat-card">
@@ -167,7 +258,10 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentProducts.map((p) => (
+                                {currentProducts.map((p) => {
+                                    const stockStatus = getProductStockStatus(p.soLuong);
+
+                                    return (
                                     <tr key={p.id}>
                                         <td>
                                             <div className="product-cell">
@@ -180,18 +274,8 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                                         </td>
                                         <td className="bold-count">{p.soLuong}</td>
                                         <td>
-                                            <span className={`badge ${
-    p.trangThai === 'HET_HANG'
-        ? 'CANH_BAO'
-        : p.trangThai === 'SAP_HET'
-        ? 'THAP'
-        : 'SAN_SANG'
-}`}>
-                                                {p.trangThai === 'SAN_SANG'
-    ? 'SẴN SÀNG'
-    : p.trangThai === 'SAP_HET'
-    ? 'SẮP HẾT'
-    : 'HẾT HÀNG'}
+                                            <span className={`badge ${stockStatus.className}`}>
+                                                {stockStatus.label}
                                             </span>
                                         </td>
                                         <td>
@@ -212,7 +296,8 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
     </div>
 </td>
                                     </tr>
-                                ))}
+                                );
+                                })}
                             </tbody>
                         </table>
                         
@@ -248,21 +333,63 @@ const processingCount = data?.stats?.processing ?? data?.stats?.pendingOrders ??
                     {/* Sidebar Nhật ký với Thanh Cuộn */}
                     <aside className="log-container">
                         <h3>🕒 Nhật ký tự động</h3>
+                        <div className="log-search-box">
+                            <input
+                                type="text"
+                                value={logSearchTerm}
+                                onChange={(e) => setLogSearchTerm(e.target.value)}
+                                placeholder="Tìm theo từ khóa: tên SP, loại giao dịch, số lượng..."
+                                aria-label="Tìm kiếm nhật ký kho"
+                            />
+                            {logSearchTerm && (
+                                <button
+                                    type="button"
+                                    className="log-search-clear"
+                                    onClick={() => setLogSearchTerm('')}
+                                    aria-label="Xóa từ khóa tìm kiếm"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                        <div className="log-search-meta">
+                            Hiển thị {filteredLogs.length} / {data?.logs?.length || 0} nhật ký
+                        </div>
+
+                        {outOfStockProducts.length > 0 && (
+                            <div className="out-of-stock-alerts">
+                                <p className="out-of-stock-title">⚠ Thông báo hết hàng</p>
+                                {outOfStockProducts.slice(0, 3).map((product, idx) => (
+                                    <div key={`${product.id || product.MaBienThe || idx}-out`} className="out-of-stock-item">
+                                        SP {(product.ten || [product.tenSanPham, product.tenBienThe].filter(Boolean).join(" - ") || "Không tên")} đã hết hàng.
+                                    </div>
+                                ))}
+                                {outOfStockProducts.length > 3 && (
+                                    <div className="out-of-stock-more">+{outOfStockProducts.length - 3} sản phẩm khác đã hết hàng</div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="log-list scrollable">
-                            {data?.logs?.map((l, i) => (
+                            {filteredLogs.map((l, i) => (
                                 <div key={i} className="log-item">
-                                    <div className={`log-icon ${l.LoaiGiaoDich === 'Tru' ? 'minus' : 'plus'}`}>
-                                        {l.LoaiGiaoDich === 'Tru' ? '-' : '+'}
+                                    <div className={`log-icon ${normalizeChangeType(l) === 'out' ? 'minus' : 'plus'}`}>
+                                        {normalizeChangeType(l) === 'out' ? '-' : '+'}
                                     </div>
                                     <div className="log-content-wrapper">
                                         <div className="log-main-text">
-                                            <strong>Đã {l.LoaiGiaoDich === 'Tru' ? 'trừ' : 'cộng'} {l.SoLuongThayDoi} {l.TenSP}</strong>
+                                            <strong>Đã {getLogTypeLabel(l)} {getLogQuantityText(l)} {l.TenSP}</strong>
                                         </div>
-                                        <div className="log-sub-text">Mã: #ORD{123+i} - {l.LoaiGiaoDich === 'Tru' ? 'Đang xử lý' : 'Thành công'}</div>
-                                        <div className="log-time">10:45 AM</div>
+                                        <div className="log-sub-text">Mã: #ORD{123+i} - {getLogStatusLabel(l)}</div>
+                                        <div className="log-time">{l.thoiGian ? new Date(l.thoiGian).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "Chưa có"}</div>
                                     </div>
                                 </div>
                             ))}
+                            {!filteredLogs.length && (
+                                <div className="log-empty-state">
+                                    Không tìm thấy nhật ký phù hợp với từ khóa đã nhập.
+                                </div>
+                            )}
                         </div>
                        <button className="btn-export" onClick={exportLogs}>
     XUẤT BÁO CÁO NHẬT KÝ

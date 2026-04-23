@@ -3,12 +3,19 @@
    ========================================================= */
 
 .client-theme {
+    --client-nav-offset: 88px;
     --bs-primary: #e11d48;
     --bs-primary-rgb: 225, 29, 72;
     --bs-link-color: #e11d48;
     --bs-link-color-rgb: 225, 29, 72;
     --bs-link-hover-color: #be123c;
     --bs-link-hover-color-rgb: 190, 18, 60;
+}
+
+@media (max-width: 1024px) {
+    .client-theme {
+        --client-nav-offset: 84px;
+    }
 }
 
 .client-icon-tooltip {

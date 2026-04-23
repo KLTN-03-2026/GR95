@@ -410,6 +410,27 @@
 
 .card-sub-title { font-weight: 700; margin-bottom: 15px; font-size: 14px; }
 
+.print-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.print-status-badge.printed {
+    background: #e8f5e9;
+    color: #1e7e34;
+}
+
+.print-status-badge.not-printed {
+    background: #fff4e5;
+    color: #a15c00;
+}
+
 .status-dropdown {
     width: 100%; padding: 12px; border-radius: 8px;
     border: 1px solid #ddd; background: #f9f9f9; margin-bottom: 15px;

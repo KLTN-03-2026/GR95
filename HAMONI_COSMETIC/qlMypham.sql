@@ -208,6 +208,7 @@ CREATE TABLE BannerToanCuc (
     ViTriHienThi VARCHAR(50), 
     ThuTuHienThi INT DEFAULT 0,
     TrangThai VARCHAR(50) DEFAULT 'KichHoat',
+    NgayBatDau DATE NULL,
     NgayHetHan DATE NULL
 );
 

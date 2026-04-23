@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit3, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, Edit3, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { bannerApi } from '../../../services/bannerApi';
 import BannerForm from './BannerForm';
 
@@ -7,26 +7,54 @@ import './Banner.css';
 
 const BannerManagement = () => {
     const [banners, setBanners] = useState([]);
+    const [bannerStats, setBannerStats] = useState({ totalItems: 0, totalActiveItems: 0 });
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedBanner, setSelectedBanner] = useState(null);
+    const [bannerToDelete, setBannerToDelete] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    
-    
+
+    const [notification, setNotification] = useState({
+        show: false,
+        type: 'success',
+        message: ''
+    });
+    const notificationTimerRef = useRef(null);
+
     // 1. TẠO BIẾN TRIGGER ĐỂ BÁO HIỆU CẦN TẢI LẠI DỮ LIỆU
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    const showNotification = (message, type = 'success') => {
+        if (notificationTimerRef.current) {
+            clearTimeout(notificationTimerRef.current);
+        }
+
+        setNotification({ show: true, type, message });
+
+        notificationTimerRef.current = setTimeout(() => {
+            setNotification({ show: false, type: 'success', message: '' });
+        }, 2500);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (notificationTimerRef.current) {
+                clearTimeout(notificationTimerRef.current);
+            }
+        };
+    }, []);
 
     // 2. USEEFFECT GỌI API (Sẽ tự chạy lại khi chuyển trang HOẶC khi refreshTrigger thay đổi)
     useEffect(() => {
         const loadBanners = async () => {
             try {
                 const res = await Promise.race([
-                    bannerApi.getAll({ 
-                        page: currentPage, 
+                    bannerApi.getAll({
+                        page: currentPage,
                         limit: 5
                     }),
                     new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error("API timeout")), 5000)
+                        setTimeout(() => reject(new Error('API timeout')), 5000)
                     )
                 ]);
 
@@ -35,43 +63,55 @@ const BannerManagement = () => {
 
                 if (res?.pagination?.totalPages) {
                     setTotalPages(res.pagination.totalPages);
+                    setBannerStats({
+                        totalItems: res.pagination.totalItems ?? dataList.length,
+                        totalActiveItems:
+                            res.pagination.totalActiveItems ?? dataList.filter((b) => b.TrangThai === 'Active').length
+                    });
+                    if (res.pagination.page && res.pagination.page !== currentPage) {
+                        setCurrentPage(res.pagination.page);
+                    }
                 } else {
-                    setTotalPages(prev => prev); 
+                    setTotalPages(1);
+                    setBannerStats({
+                        totalItems: dataList.length,
+                        totalActiveItems: dataList.filter((b) => b.TrangThai === 'Active').length
+                    });
                 }
-
             } catch (err) {
-                console.error("Lỗi API:", err.message);
-                setBanners([]); 
+                console.error('Lỗi API:', err.message);
+                setBanners([]);
+                setBannerStats({ totalItems: 0, totalActiveItems: 0 });
             }
         };
 
         loadBanners();
-    }, [currentPage, refreshTrigger]); // Thêm refreshTrigger vào mảng phụ thuộc
+    }, [currentPage, refreshTrigger]);
 
     // 3. THỐNG KÊ
     const statsData = useMemo(() => {
-        const total = banners.length;
-        const active = banners.filter(b => b.TrangThai === 'Active').length;
-
         return [
-            { 
-                label: "TỔNG SỐ BANNER", 
-                value: total, 
-                sub: `${active} đang hoạt động` 
-            },
+            {
+                label: 'TỔNG SỐ BANNER',
+                value: bannerStats.totalItems,
+                sub: `${bannerStats.totalActiveItems} đang hoạt động`
+            }
         ];
-    }, [banners]);
+    }, [bannerStats]);
 
     // 4. HÀM XÓA (Cũng dùng Trigger để tải lại)
-    const handleDelete = async (id) => {
-        if (window.confirm("Bạn có chắc chắn muốn xóa banner này?")) {
-            try {
-                await bannerApi.delete(id);
-                // Xóa xong thì tăng refreshTrigger lên 1 để load lại danh sách
-                setRefreshTrigger(prev => prev + 1);
-            } catch (error) {
-                console.error("Lỗi khi xóa:", error);
-            }
+    const handleDelete = async () => {
+        if (!bannerToDelete) return;
+
+        try {
+            await bannerApi.delete(bannerToDelete.MaBanner);
+            // Xóa xong thì tăng refreshTrigger lên 1 để load lại danh sách
+            setRefreshTrigger((prev) => prev + 1);
+            showNotification('Xóa banner thành công', 'success');
+            setBannerToDelete(null);
+        } catch (error) {
+            console.error('Lỗi khi xóa:', error);
+            showNotification('Xóa banner thất bại', 'danger');
         }
     };
 
@@ -79,38 +119,60 @@ const BannerManagement = () => {
         <div className="banner-page-container">
             <h1 className="main-title">QUẢN LÝ BANNER</h1>
 
-{/* Khối danh sách chính */}
-        <div className="table-card mt-4 shadow-sm">
-            
-            {/* Header tích hợp: Tiêu đề + Thống kê + Nút thêm */}
-            <div className="d-flex justify-content-between align-items-center p-4 border-bottom bg-white rounded-top">
-                <div>
-                    <h3 className="table-title m-0" style={{ fontSize: '2.0rem', color: '#81802E', fontWeight: 'bold' }}>
-                        Danh sách Banner
-                    </h3>
-                    {/* Phần tổng số banner được kéo vào đây */}
-                    <div className="mt-1">
-                        <span className="badge bg-light text-dark border me-2">
-                           
-                            {statsData[0].label}: <strong>{statsData[0].value}</strong>
-                        </span>
-                        <span className="badge bg-success-subtle text-success border">
-
-                            {statsData[0].sub}
-                        </span>
+            {notification.show && (
+                <div
+                    className="position-fixed top-0 end-0 p-3"
+                    style={{ zIndex: 1080, minWidth: '340px', maxWidth: '420px' }}
+                >
+                    <div className={`alert alert-${notification.type} alert-dismissible fade show shadow-sm mb-0`} role="alert">
+                        <div className="d-flex align-items-center gap-2 pe-3">
+                            {notification.type === 'success' ? (
+                                <CheckCircle2 size={18} />
+                            ) : (
+                                <AlertTriangle size={18} />
+                            )}
+                            <span>{notification.message}</span>
+                        </div>
+                    
+                    <button
+                        type="button"
+                        className="btn-close"
+                        aria-label="Close"
+                        onClick={() => setNotification({ show: false, type: 'success', message: '' })}
+                    ></button>
                     </div>
                 </div>
-                
-                
-                    <button 
-                        className="btn-add-banner d-flex align-items-center gap-2" 
-                        onClick={() => { setSelectedBanner(null); setIsFormOpen(true); }}
+            )}
+
+            {/* Khối danh sách chính */}
+            <div className="table-card mt-4 shadow-sm">
+                {/* Header tích hợp: Tiêu đề + Thống kê + Nút thêm */}
+                <div className="d-flex justify-content-between align-items-center p-4 border-bottom bg-white rounded-top">
+                    <div>
+                        <h3 className="table-title m-0" style={{ fontSize: '2.0rem', color: '#81802E', fontWeight: 'bold' }}>
+                            Danh sách Banner
+                        </h3>
+                        {/* Phần tổng số banner được kéo vào đây */}
+                        <div className="mt-1">
+                            <span className="badge bg-light text-dark border me-2">
+                                {statsData[0].label}: <strong>{statsData[0].value}</strong>
+                            </span>
+                            <span className="badge bg-success-subtle text-success border">{statsData[0].sub}</span>
+                        </div>
+                    </div>
+
+                    <button
+                        className="btn-add-banner d-flex align-items-center gap-2"
+                        onClick={() => {
+                            setSelectedBanner(null);
+                            setIsFormOpen(true);
+                        }}
                         style={{ padding: '8px 16px', borderRadius: '6px', fontSize: '14px' }}
                     >
                         <Plus size={18} /> Thêm banner mới
                     </button>
-                
-            </div>
+                </div>
+
                 <table className="custom-table">
                     <thead>
                         <tr>
@@ -125,9 +187,7 @@ const BannerManagement = () => {
                         {banners.length > 0 ? (
                             banners.map((bn) => (
                                 <tr key={bn.MaBanner}>
-                                    <td className="banner-code">
-                                        #BN-{String(bn.MaBanner).padStart(3, '0')}
-                                    </td>
+                                    <td className="banner-code">#BN-{String(bn.MaBanner).padStart(3, '0')}</td>
                                     <td>
                                         <div className="banner-img-wrapper">
                                             <img src={bn.DuongDanAnh} alt={bn.TieuDe} />
@@ -136,7 +196,7 @@ const BannerManagement = () => {
                                     <td>
                                         <div className="campaign-info">
                                             <strong>{bn.TieuDe}</strong>
-                                            
+                                            <span>{formatCampaignPeriod(bn.NgayBatDau, bn.NgayHetHan)}</span>
                                         </div>
                                     </td>
                                     <td>
@@ -147,15 +207,18 @@ const BannerManagement = () => {
                                     </td>
                                     <td>
                                         <div className="action-buttons">
-                                            <Edit3 
-                                                size={18} 
-                                                className="icon-edit" 
-                                                onClick={() => { setSelectedBanner(bn); setIsFormOpen(true); }} 
+                                            <Edit3
+                                                size={18}
+                                                className="icon-edit"
+                                                onClick={() => {
+                                                    setSelectedBanner(bn);
+                                                    setIsFormOpen(true);
+                                                }}
                                             />
-                                            <Trash2 
-                                                size={18} 
-                                                className="icon-delete" 
-                                                onClick={() => handleDelete(bn.MaBanner)} 
+                                            <Trash2
+                                                size={18}
+                                                className="icon-delete"
+                                                onClick={() => setBannerToDelete(bn)}
                                             />
                                         </div>
                                     </td>
@@ -174,29 +237,104 @@ const BannerManagement = () => {
 
             {/* FORM BANNER NẰM Ở ĐÂY */}
             {isFormOpen && (
-                <BannerForm 
+                <BannerForm
                     isOpen={isFormOpen}
                     onClose={() => setIsFormOpen(false)}
                     data={selectedBanner}
-                    onSuccess={() => {
+                    onSuccess={(message) => {
                         setIsFormOpen(false);
                         // KÍCH HOẠT TẢI LẠI DỮ LIỆU
                         setRefreshTrigger(Date.now()); // Dùng timestamp để đảm bảo giá trị luôn thay đổi
+                        showNotification(message || 'Lưu banner thành công', 'success');
                     }}
                 />
             )}
 
+            {bannerToDelete && (
+                <>
+                    <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Xác nhận xóa banner</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        aria-label="Close"
+                                        onClick={() => setBannerToDelete(null)}
+                                    ></button>
+                                </div>
+                                <div className="modal-body">
+                                    <p className="mb-0">
+                                        Bạn có chắc chắn muốn xóa banner <strong>{bannerToDelete.TieuDe}</strong> không?
+                                    </p>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={() => setBannerToDelete(null)}>
+                                        Hủy
+                                    </button>
+                                    <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                                        Xóa banner
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop show"></div>
+                </>
+            )}
+
             <div className="pagination-wrapper">
-                <button className="pagi-arrow" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}>‹</button>
+                <button className="pagi-arrow" disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => prev - 1)}>
+                    ‹
+                </button>
                 <div className="pagi-numbers-group">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button key={pageNum} className={`pagi-item ${currentPage === pageNum ? 'active' : ''}`} onClick={() => setCurrentPage(pageNum)}>{pageNum}</button>
+                        <button
+                            key={pageNum}
+                            className={`pagi-item ${currentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => setCurrentPage(pageNum)}
+                        >
+                            {pageNum}
+                        </button>
                     ))}
                 </div>
-                <button className="pagi-arrow" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}>›</button>
+                <button
+                    className="pagi-arrow"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                >
+                    ›
+                </button>
             </div>
         </div>
     );
 };
+
+function formatCampaignPeriod(startDateValue, endDateValue) {
+    const startDateText = formatDateText(startDateValue);
+    const endDateText = formatDateText(endDateValue);
+
+    const startLabel = startDateText || 'Chưa đặt';
+    const endLabel = endDateText || 'Chưa đặt';
+    return `Bắt đầu: ${startLabel} - Hết hạn: ${endLabel}`;
+}
+
+function formatDateText(dateValue) {
+    if (!dateValue) return '';
+
+    if (typeof dateValue === 'string') {
+        const rawDate = dateValue.trim().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+            const [year, month, day] = rawDate.split('-');
+            return `${day}/${month}/${year}`;
+        }
+    }
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('vi-VN');
+}
 
 export default BannerManagement;

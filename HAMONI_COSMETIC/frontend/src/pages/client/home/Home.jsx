@@ -329,7 +329,7 @@ export default function Home() {
             </div>
 
             {/* THANH BỘ LỌC NGANG */}
-            <div className="bg-white p-4 md:px-6 md:py-5 rounded-2xl border border-slate-200 shadow-sm mb-12 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sticky top-[88px] z-30">
+            <div className="bg-white p-4 md:px-6 md:py-5 rounded-2xl border border-slate-200 shadow-sm mb-12 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sticky top-[var(--client-nav-offset)] z-30">
                 <div className="flex items-center gap-3 flex-wrap w-full">
                     <div className="flex items-center gap-2 text-rose-500 font-bold mr-2">
                         <Filter size={20} /> <span className="hidden md:inline text-slate-800 text-base">Bộ lọc:</span>

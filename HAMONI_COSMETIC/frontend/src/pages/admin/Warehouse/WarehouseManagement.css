@@ -112,6 +112,11 @@
     font-weight: 600;
 }
 
+.import-label.warning {
+    background: #fff4e5;
+    color: #b26a00;
+}
+
 .sub-text {
     font-size: 11px;
     color: #999;
@@ -292,6 +297,83 @@
     gap: 8px;
 }
 
+.log-search-box {
+    position: relative;
+    margin: 8px 0 10px;
+}
+
+.log-search-box input {
+    width: 100%;
+    border: 1px solid #e2ddcf;
+    border-radius: 12px;
+    padding: 12px 38px 12px 14px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+}
+
+.log-search-box input:focus {
+    border-color: #b8b09a;
+    box-shadow: 0 0 0 3px rgba(184, 176, 154, 0.18);
+}
+
+.log-search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: #eee7d8;
+    color: #6c6453;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.log-search-clear:hover {
+    background: #e2dac7;
+}
+
+.log-search-meta {
+    font-size: 12px;
+    color: #8a8475;
+    margin-bottom: 10px;
+}
+
+.out-of-stock-alerts {
+    margin-bottom: 12px;
+    border-radius: 14px;
+    background: #fff4f3;
+    border: 1px solid #f2d5d1;
+    padding: 12px;
+}
+
+.out-of-stock-title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #b42318;
+}
+
+.out-of-stock-item {
+    background: #fff;
+    border: 1px solid #f5ded9;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #8c2f24;
+    margin-bottom: 6px;
+}
+
+.out-of-stock-more {
+    font-size: 11px;
+    color: #8c2f24;
+    font-weight: 600;
+}
+
 .log-list {
     flex: 1;
     display: flex;
@@ -367,6 +449,16 @@
     font-size: 10px;
     color: #aaa;
     margin-top: 4px;
+}
+
+.log-empty-state {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px dashed #d9d1bf;
+    color: #7a745f;
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+    font-size: 13px;
 }
 
 .btn-export {

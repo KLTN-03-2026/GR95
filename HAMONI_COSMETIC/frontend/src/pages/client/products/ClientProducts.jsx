@@ -279,7 +279,7 @@ export default function Products() {
                 {loading ? <div className="w-full h-[250px] md:h-[400px] bg-slate-100 rounded-3xl animate-pulse"></div> : <HeroSlider slides={slides} />}
             </div>
             {/* THANH BỘ LỌC NGANG & SẮP XẾP */}
-            <div className="bg-white p-4 md:px-6 md:py-5 rounded-2xl border border-slate-200 shadow-sm mb-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 sticky top-[88px] z-30">
+            <div className="bg-white p-4 md:px-6 md:py-5 rounded-2xl border border-slate-200 shadow-sm mb-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 sticky top-[var(--client-nav-offset)] z-30">
                 <div className="flex flex-wrap items-center gap-3 w-full">
                     <div className="flex items-center gap-2 text-rose-500 font-bold mr-2">
                         <Filter size={20} /> <span className="hidden md:inline text-slate-800 text-base">Bộ lọc:</span>
