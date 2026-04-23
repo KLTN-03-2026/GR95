@@ -42,11 +42,16 @@ const ProductDetailView = () => {
 
     return product.variants.map((variant, index) => {
       const stock = Number(variant.SoLuongTon ?? product.stock ?? 0);
+      const price = Number(
+        variant.GiaBan ?? variant.giaBan ?? variant.Gia ?? variant.gia ?? (product.price || 0)
+      );
+      const oldPrice = variant.GiaGoc ?? variant.giaGoc ?? null;
 
       return {
         id: variant.MaBienThe,
         name: variant.TenBienThe || `Biến thể ${index + 1}`,
-        price: Number(variant.Gia || product.price || 0),
+        price,
+        oldPrice: oldPrice !== null && oldPrice !== undefined ? Number(oldPrice) : null,
         stock,
         imageIndex: index % images.length,
         displayName: getVariantDisplayName(variant.TenBienThe, variantType, index + 1)
@@ -64,6 +69,7 @@ const ProductDetailView = () => {
 
   const availableStock = selectedVariant ? selectedVariant.stock : product?.stock || 0;
   const displayPrice = selectedVariant ? selectedVariant.price : product?.price || 0;
+  const displayOldPrice = selectedVariant ? selectedVariant.oldPrice : product?.oldPrice || null;
 
   useEffect(() => {
     return () => {
@@ -98,6 +104,7 @@ const ProductDetailView = () => {
           id: info.MaSP,
           name: info.TenSP || 'Sản phẩm',
           price: Number(info.GiaBan || 0),
+          oldPrice: info.GiaGoc !== undefined && info.GiaGoc !== null ? Number(info.GiaGoc) : null,
           rating: Number(info.SoSaoTB || 0),
           reviewCount: Number(info.LuotDanhGia || 0),
           stock: Number(info.SoLuongTon || 0),
@@ -376,6 +383,14 @@ const ProductDetailView = () => {
               <div>
                 <div className="price-section">
                   <span className="current-price">{formatVnd(displayPrice)}đ</span>
+                  {displayOldPrice && displayOldPrice > displayPrice && (
+                    <>
+                      <span className="original-price">{formatVnd(displayOldPrice)}đ</span>
+                      <span className="discount-text">
+                        Tiết kiệm {formatVnd(displayOldPrice - displayPrice)}đ
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
