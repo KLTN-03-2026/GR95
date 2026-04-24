@@ -2,6 +2,11 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // ==========================================
+// 0. IMPORT COMPONENTS
+// ==========================================
+import ScrollRestoration from '../components/ScrollRestoration';
+
+// ==========================================
 // 1. IMPORT LAYOUTS
 // ==========================================
 import AdminLayout from '../layouts/AdminLayout/AdminLayout';
@@ -89,6 +94,7 @@ const AdminRoute = ({ children }) => {
 const AppRouter = () => {
     return (
         <BrowserRouter>
+            <ScrollRestoration />
             <Routes>
                 {/* ==========================================
                     KHU VỰC 1: XÁC THỰC (Không cần Layout)

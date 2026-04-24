@@ -6,18 +6,17 @@ import './ClientLayout.css';
 
 const ClientLayout = () => {
     // 1. GỌI USER VÀ HÀM LOGOUT TỪ GLOBAL STORE (ZUSTAND)
-    const { cartCount, user, logout } = useStore(); 
+    const { user, logout, cartVariantCount } = useStore(); 
     
     const [isScrolled, setIsScrolled] = useState(false);
     const [showSearchSuggest, setShowSearchSuggest] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    
     const userMenuRef = useRef(null);
-    
     const navigate = useNavigate(); 
-    
     const notificationCount = 2; // Số thông báo giả định (Lấy từ CSDL sau)
 
-    // Hiệu ứng Sticky Navbar
+    // --- CÁC HIỆU ỨNG UI ---
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 10);
         window.addEventListener('scroll', handleScroll);
@@ -30,11 +29,8 @@ const ClientLayout = () => {
                 setIsUserMenuOpen(false);
             }
         };
-
         const handleEsc = (event) => {
-            if (event.key === 'Escape') {
-                setIsUserMenuOpen(false);
-            }
+            if (event.key === 'Escape') setIsUserMenuOpen(false);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -56,8 +52,8 @@ const ClientLayout = () => {
     return (
         <div className="client-theme min-h-screen flex flex-col bg-gray-50 text-slate-800">
             
-            {/* Tối ưu SEO + NAVBAR */}
-            <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+            {/* NAVBAR */}
+            <header className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
                 isScrolled ? 'bg-white shadow-md' : 'bg-white/95 backdrop-blur-sm border-b border-gray-100'
             }`}>
                 <h1 className="hidden">Hamoni Cosmetic - Mỹ phẩm thiên nhiên cao cấp</h1>
@@ -125,13 +121,13 @@ const ClientLayout = () => {
                             </span>
                         </div>
 
-                        {/* 2. GIỎ HÀNG */}
+                        {/* 2. GIỎ HÀNG (HIỂN THỊ DỮ LIỆU THẬT) */}
                         <div className="relative group flex items-center">
                             <Link to="/cart" className="relative text-slate-600 hover:text-rose-500 transition-colors py-2">
                                 <ShoppingCart size={22} />
-                                {cartCount > 0 && (
+                                {cartVariantCount > 0 && (
                                     <span className="absolute top-1 -right-1.5 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                                        {cartCount}
+                                        {cartVariantCount > 99 ? '99+' : cartVariantCount}
                                     </span>
                                 )}
                             </Link>
@@ -140,10 +136,9 @@ const ClientLayout = () => {
                             </span>
                         </div>
 
-                        {/* 3. USER KHU VỰC ĐĂNG NHẬP / DROPDOWN */}
+                        {/* 3. USER */}
                         <div className="hidden sm:block relative py-2" ref={userMenuRef}>
                             {user ? (
-                                /* GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP */
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
@@ -160,7 +155,6 @@ const ClientLayout = () => {
                                         </span>
                                     </button>
 
-                                    {/* MENU XỔ XUỐNG */}
                                     <div className={`client-user-menu absolute top-full right-0 mt-2 w-56 bg-white shadow-xl rounded-xl border border-gray-100 z-50 transition-all ${isUserMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                                         <div className="px-4 py-3 border-b border-gray-50">
                                             <p className="text-xs text-slate-400 mb-0">Tài khoản của</p>
@@ -189,14 +183,12 @@ const ClientLayout = () => {
                                     </div>
                                 </div>
                             ) : (
-                                /* GIAO DIỆN KHI CHƯA ĐĂNG NHẬP */
                                 <div className="flex items-center">
                                     <Link to="/login" className="text-slate-600 hover:text-rose-500 transition-colors flex items-center">
                                         <User size={22} />
                                     </Link>
-                                    
                                     <span className="client-icon-tooltip absolute -bottom-8 right-0 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                        Đăng ký / Đăng nhập
+                                        Đăng nhập
                                     </span>
                                 </div>
                             )}
@@ -205,12 +197,12 @@ const ClientLayout = () => {
                 </div>
             </header>
 
-            {/* MAIN CONTENT (Đã xóa padding top thừa và thêm flex-1 w-full) */}
-            <main className="flex-1 w-full">
+            {/* MAIN CONTENT */}
+            <main className="flex-1 w-full pt-16 md:pt-20">
                 <Outlet />
             </main>
 
-            {/* FOOTER (Đã xóa mt-16 và sửa pt-16 thành pt-10) */}
+            {/* FOOTER */}
             <footer className="bg-white border-t border-gray-200 pt-10 pb-8">
                 <div className="max-w-7xl mx-auto px-4 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">

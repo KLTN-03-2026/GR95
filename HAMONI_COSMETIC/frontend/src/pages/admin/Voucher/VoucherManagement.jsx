@@ -93,6 +93,17 @@ const VoucherManagement = () => {
         return 'KichHoat';                     
     };
 
+    const getVoucherQuantity = (voucher) => {
+        const soLuongPhatHanh = Number(voucher.SoLuong ?? voucher.SoLuongToiDa ?? 0);
+        const soLuongDaDung = Number(voucher.SoLuongDaDung ?? 0);
+
+        const issued = Number.isFinite(soLuongPhatHanh) ? soLuongPhatHanh : 0;
+        const used = Number.isFinite(soLuongDaDung) ? soLuongDaDung : 0;
+        const remaining = Math.max(issued - used, 0);
+
+        return { issued, used, remaining };
+    };
+
     // 3. CÁC HÀM XỬ LÝ SỰ KIỆN
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -243,7 +254,7 @@ const VoucherManagement = () => {
                                 <th>MÃ VOUCHER</th>
                                 <th>ƯU ĐÃI</th>
                                 <th>THỜI HẠN</th>
-                                <th>SỐ LƯỢNG</th>
+                                <th>SỐ LƯỢNG CÒN</th>
                                 
                                 {/* --- CUSTOM DROPDOWN TRẠNG THÁI --- */}
                                 <th style={{ position: 'relative' }} ref={filterRef}>
@@ -281,6 +292,7 @@ const VoucherManagement = () => {
                         <tbody>
                             {filteredVouchers.map(v => {
                                 const status = getVoucherStatus(v);
+                                const quantity = getVoucherQuantity(v);
                                 return (
                                     <tr 
                                         key={v.MaVoucher} 
@@ -299,7 +311,13 @@ const VoucherManagement = () => {
                                                 {formatDate(v.NgayBatDau)} <br/> <span style={{ color: '#94a3b8' }}>đến</span> <br/> {formatDate(v.NgayKetThuc)}
                                             </span>
                                         </td>
-                                        <td>{Number(v.SoLuong).toLocaleString()}</td>
+                                        <td>
+                                            <strong>{quantity.remaining.toLocaleString()}</strong>
+                                            <br />
+                                            <span className="sub-text">
+                                                Đã dùng: {quantity.used.toLocaleString()} / Phát hành: {quantity.issued.toLocaleString()}
+                                            </span>
+                                        </td>
                                         <td>
                                             <span className={`status-badge ${status}`}>
                                                 {status === 'KichHoat'

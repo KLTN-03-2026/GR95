@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { CheckCircle2, ShoppingCart } from 'lucide-react';
 import productApi from '../../../services/productApi';
 import shoppingCartApi from '../../../services/shoppingCartApi';
+import { useStore } from '../../../store/useStore';
 import './ProductDetailView.css';
 
 const PRODUCT_FALLBACK_IMAGE =
@@ -13,6 +14,9 @@ const PRODUCT_FALLBACK_IMAGE =
 const ProductDetailView = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+  
+  // Lấy hàm cập nhật giỏ hàng từ store
+  const { syncCartFromBackend } = useStore();
 
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -40,7 +44,12 @@ const ProductDetailView = () => {
 
     const variantType = detectVariantType(product.variants);
 
-    return product.variants.map((variant, index) => {
+    // Remove duplicate variants by MaBienThe
+    const uniqueVariants = product.variants.filter((variant, index, array) => {
+      return index === array.findIndex(v => v.MaBienThe === variant.MaBienThe);
+    });
+
+    return uniqueVariants.map((variant, index) => {
       const stock = Number(variant.SoLuongTon ?? product.stock ?? 0);
       const price = Number(
         variant.GiaBan ?? variant.giaBan ?? variant.Gia ?? variant.gia ?? (product.price || 0)
@@ -296,6 +305,18 @@ const ProductDetailView = () => {
       
       console.log('✅ addToCart response:', response);
 
+      // Đồng bộ giỏ hàng với store để cập nhật badge icon
+      try {
+        const cartResponse = await shoppingCartApi.getCartItems(maKhachHang);
+        const cartItems = Array.isArray(cartResponse?.data) ? cartResponse.data : (Array.isArray(cartResponse) ? cartResponse : []);
+        
+        // Cập nhật store với dữ liệu giỏ hàng từ backend
+        syncCartFromBackend(cartItems);
+      } catch (syncError) {
+        console.error('⚠️ Lỗi khi đồng bộ giỏ hàng:', syncError);
+        // Không dừng quy trình nếu đồng bộ thất bại
+      }
+
       if (showPopup) {
         openCartAddedPopup();
       }
@@ -409,24 +430,24 @@ const ProductDetailView = () => {
                 </div>
 
                 <div className="variant-grid">
-                  {variantOptions.map((variant) => (
-                    <button
-                      key={variant.id}
-                      type="button"
-                      className={`variant-item ${selectedVariant?.id === variant.id ? 'active' : ''} ${variant.stock <= 0 ? 'disabled' : ''}`}
-                      onClick={() => handleSelectVariant(variant)}
-                      disabled={variant.stock <= 0}
-                    >
-                      <img
-                        src={images[variant.imageIndex] || images[0]}
-                        alt={variant.displayName}
-                        className="variant-item-image"
-                      />
-                      <span className="variant-item-name">{variant.displayName}</span>
-                      {variant.stock <= 0 && <span className="variant-item-stock">Hết hàng</span>}
-                    </button>
-                  ))}
-                </div>
+  {variantOptions.map((variant) => (
+    <button
+      key={variant.id}
+      type="button"
+      className={`variant-item ${selectedVariant?.id === variant.id ? 'active' : ''} ${variant.stock <= 0 ? 'disabled' : ''}`}
+      onClick={() => handleSelectVariant(variant)}
+      disabled={variant.stock <= 0}
+    >
+      <img
+        src={images[variant.imageIndex] || images[0]}
+        alt={variant.displayName}
+        className="variant-item-image"
+      />
+      <span className="variant-item-name">{variant.displayName}</span>
+      {variant.stock <= 0 && <span className="variant-item-stock">Hết hàng</span>}
+    </button>
+  ))}
+</div>
               </div>
             )}
 

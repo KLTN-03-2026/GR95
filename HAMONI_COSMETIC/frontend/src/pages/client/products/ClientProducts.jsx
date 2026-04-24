@@ -85,6 +85,15 @@ const ProductCard = ({ product }) => {
     const navigate = useNavigate();
 
     const defaultVariant = product.variants?.[0] || {};
+    const hasAnyVariantInStock = Array.isArray(product.variants) && product.variants.length > 0
+        ? product.variants.some((variant) => Number(variant?.stock ?? variant?.soLuongTon ?? 0) > 0
+            || variant?.inStock === true
+            || variant?.inStock === 1
+            || variant?.inStock === '1')
+        : (Number(product?.stock ?? product?.soLuongTon ?? 0) > 0
+            || product?.inStock === true
+            || product?.inStock === 1
+            || product?.inStock === '1');
     const displayPrice = Number(defaultVariant.price) || Number(product.price) || 0;
     const displayOldPrice = Number(defaultVariant.oldPrice) || Number(product.oldPrice) || null;
     const displayImage = defaultVariant.image || product.image;
@@ -150,8 +159,8 @@ const ProductCard = ({ product }) => {
                                 <span className="text-[10px] font-medium text-slate-400 line-through mt-1.5 leading-none">{formatPrice(displayOldPrice)}</span>
                             )}
                         </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${defaultVariant?.inStock !== false ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                            {defaultVariant?.inStock !== false ? 'Còn hàng' : 'Hết hàng'}
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${hasAnyVariantInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                            {hasAnyVariantInStock ? 'Còn hàng' : 'Hết hàng'}
                         </span>
                     </div>
                 </div>

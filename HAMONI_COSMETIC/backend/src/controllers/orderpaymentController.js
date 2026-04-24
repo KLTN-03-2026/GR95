@@ -357,17 +357,51 @@ exports.placeOrderFromCheckout = async (req, res) => {
             return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin nhận hàng' });
         }
 
+        const normalizedRecipientName = String(recipientName || '').trim();
+        const normalizedRecipientPhone = String(recipientPhone || '').replace(/\D/g, '').slice(0, 10);
+        const normalizedRecipientEmail = String(recipientEmail || '').trim();
+        const normalizedShippingAddress = String(shippingAddress || '').trim();
+
+        if (!normalizedRecipientName || !normalizedRecipientPhone || !normalizedShippingAddress) {
+            return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin nhận hàng' });
+        }
+
+        if (!/^\d{10}$/.test(normalizedRecipientPhone)) {
+            return res.status(400).json({ message: 'Số điện thoại phải gồm đúng 10 chữ số' });
+        }
+
         await conn.beginTransaction();
+
+        await conn.execute(`
+            UPDATE NguoiDung
+            SET
+                HoTen = ?,
+                SoDienThoai = ?,
+                DiaChi = ?,
+                Email = CASE
+                    WHEN ? IS NULL OR ? = '' THEN Email
+                    ELSE ?
+                END
+            WHERE MaND = ?
+        `, [
+            normalizedRecipientName,
+            normalizedRecipientPhone,
+            normalizedShippingAddress,
+            normalizedRecipientEmail,
+            normalizedRecipientEmail,
+            normalizedRecipientEmail,
+            userId
+        ]);
 
         const checkout = await buildCheckoutSummary(conn, userId, voucherCode, true, selectedVariantIds);
         const paymentMethodCode = String(paymentMethod || 'cod').toLowerCase() === 'vnpay' ? 'VNPAY' : 'COD';
         const paymentStatus = paymentMethodCode === 'VNPAY' ? 'ChoThanhToan' : 'ChoThuTien';
 
         const shippingInfo = [
-            `Tên: ${recipientName}`,
-            `SĐT: ${recipientPhone}`,
-            recipientEmail ? `Email: ${recipientEmail}` : null,
-            `Địa chỉ: ${shippingAddress}`
+            `Tên: ${normalizedRecipientName}`,
+            `SĐT: ${normalizedRecipientPhone}`,
+            normalizedRecipientEmail ? `Email: ${normalizedRecipientEmail}` : null,
+            `Địa chỉ: ${normalizedShippingAddress}`
         ].filter(Boolean).join(' | ');
 
         const [orderResult] = await conn.execute(`
