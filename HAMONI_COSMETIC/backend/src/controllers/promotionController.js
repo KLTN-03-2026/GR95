@@ -36,17 +36,62 @@ const promotionController = {
 
             const { TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner, danhSachBienThe } = req.body;
 
+            // === VALIDATE DỮ LIỆU BẮT BUỘC ===
+            if (!TenCTKM?.trim()) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Tên chương trình không được để trống!" });
+            }
+
+            if (!['PhanTram', 'SoTien'].includes(LoaiGiamGia)) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Loại giảm giá không hợp lệ!" });
+            }
+
+            if (!GiaTriGiam || Number(GiaTriGiam) <= 0) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Mức giảm phải lớn hơn 0!" });
+            }
+
+            const giaTriGiam = Number(GiaTriGiam);
+            if (LoaiGiamGia === 'PhanTram' && giaTriGiam > 100) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Giảm theo % không được vượt quá 100%!" });
+            }
+
+            // === VALIDATE NGÀY THÁNG ===
+            if (!NgayBatDau || !NgayKetThuc) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Vui lòng chọn ngày bắt đầu và kết thúc!" });
+            }
+
+            const startDate = new Date(NgayBatDau);
+            const endDate = new Date(NgayKetThuc);
+
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Định dạng ngày không hợp lệ!" });
+            }
+
+            if (endDate <= startDate) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Ngày kết thúc phải sau ngày bắt đầu!" });
+            }
+
+            // === VALIDATE SẢN PHẨM ===
+            if (!danhSachBienThe || danhSachBienThe.length === 0) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Vui lòng chọn ít nhất 1 sản phẩm!" });
+            }
+
             const [kmResult] = await conn.execute(`
                 INSERT INTO ChuongTrinhKhuyenMai (TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `, [TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner || null]);
+            `, [TenCTKM.trim(), LoaiGiamGia, giaTriGiam, NgayBatDau, NgayKetThuc, Banner || null]);
 
             const newMaCTKM = kmResult.insertId;
 
-            if (danhSachBienThe && danhSachBienThe.length > 0) {
-                for (let maBienThe of danhSachBienThe) {
-                    await conn.execute(`INSERT INTO SanPham_KhuyenMai (MaCTKM, MaBienThe) VALUES (?, ?)`, [newMaCTKM, maBienThe]);
-                }
+            for (let maBienThe of danhSachBienThe) {
+                await conn.execute(`INSERT INTO SanPham_KhuyenMai (MaCTKM, MaBienThe) VALUES (?, ?)`, [newMaCTKM, maBienThe]);
             }
 
             await conn.commit();
@@ -86,18 +131,63 @@ const promotionController = {
             const { id } = req.params;
             const { TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner, danhSachBienThe } = req.body;
 
+            // === VALIDATE DỮ LIỆU ===
+            if (!TenCTKM?.trim()) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Tên chương trình không được để trống!" });
+            }
+
+            if (!['PhanTram', 'SoTien'].includes(LoaiGiamGia)) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Loại giảm giá không hợp lệ!" });
+            }
+
+            if (!GiaTriGiam || Number(GiaTriGiam) <= 0) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Mức giảm phải lớn hơn 0!" });
+            }
+
+            const giaTriGiam = Number(GiaTriGiam);
+            if (LoaiGiamGia === 'PhanTram' && giaTriGiam > 100) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Giảm theo % không được vượt quá 100%!" });
+            }
+
+            // === VALIDATE NGÀY THÁNG ===
+            if (!NgayBatDau || !NgayKetThuc) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Vui lòng chọn ngày bắt đầu và kết thúc!" });
+            }
+
+            const startDate = new Date(NgayBatDau);
+            const endDate = new Date(NgayKetThuc);
+
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Định dạng ngày không hợp lệ!" });
+            }
+
+            if (endDate <= startDate) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Ngày kết thúc phải sau ngày bắt đầu!" });
+            }
+
+            // === VALIDATE SẢN PHẨM ===
+            if (!danhSachBienThe || danhSachBienThe.length === 0) {
+                await conn.rollback();
+                return res.status(400).json({ message: "Vui lòng chọn ít nhất 1 sản phẩm!" });
+            }
+
             await conn.execute(`
                 UPDATE ChuongTrinhKhuyenMai 
                 SET TenCTKM = ?, LoaiGiamGia = ?, GiaTriGiam = ?, NgayBatDau = ?, NgayKetThuc = ?, Banner = ?
                 WHERE MaCTKM = ?
-            `, [TenCTKM, LoaiGiamGia, GiaTriGiam, NgayBatDau, NgayKetThuc, Banner || null, id]);
+            `, [TenCTKM.trim(), LoaiGiamGia, giaTriGiam, NgayBatDau, NgayKetThuc, Banner || null, id]);
 
             await conn.execute(`DELETE FROM SanPham_KhuyenMai WHERE MaCTKM = ?`, [id]);
 
-            if (danhSachBienThe && danhSachBienThe.length > 0) {
-                for (let maBienThe of danhSachBienThe) {
-                    await conn.execute(`INSERT INTO SanPham_KhuyenMai (MaCTKM, MaBienThe) VALUES (?, ?)`, [id, maBienThe]);
-                }
+            for (let maBienThe of danhSachBienThe) {
+                await conn.execute(`INSERT INTO SanPham_KhuyenMai (MaCTKM, MaBienThe) VALUES (?, ?)`, [id, maBienThe]);
             }
 
             await conn.commit();

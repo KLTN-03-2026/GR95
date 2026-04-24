@@ -105,6 +105,10 @@ const normalizeProducts = (products = []) => {
     return products.map((product, index) => {
         const defaultPrice = Number(product.price) || 0;
         const defaultOldPrice = Number(product.oldPrice) || null;
+        const hasProductStock = Number(product?.stock ?? product?.soLuongTon ?? 0) > 0
+            || product?.inStock === true
+            || product?.inStock === 1
+            || product?.inStock === '1';
 
         const normalizedVariants = Array.isArray(product.variants) && product.variants.length > 0
             ? product.variants.map((variant, variantIndex) => ({
@@ -119,7 +123,10 @@ const normalizeProducts = (products = []) => {
                 oldPrice: (variant.oldPrice != null || variant.originalPrice != null || variant.effectivePrice != null)
                     ? (Number(variant.oldPrice ?? variant.originalPrice) || defaultOldPrice)
                     : defaultOldPrice,
-                inStock: variant.inStock !== false,
+                inStock: Number(variant?.stock ?? variant?.soLuongTon ?? 0) > 0
+                    || variant?.inStock === true
+                    || variant?.inStock === 1
+                    || variant?.inStock === '1',
                 image: variant.image || product.image
             }))
             : [{
@@ -128,7 +135,7 @@ const normalizeProducts = (products = []) => {
                 type: 'Tùy chọn',
                 price: defaultPrice,
                 oldPrice: defaultOldPrice,
-                inStock: product.inStock !== false,
+                inStock: hasProductStock,
                 image: product.image
             }];
 
@@ -164,6 +171,12 @@ const ProductCard = ({ product }) => {
     const navigate = useNavigate();
 
     const defaultVariant = product.variants?.[0] || {};
+    const hasAnyVariantInStock = Array.isArray(product.variants) && product.variants.length > 0
+        ? product.variants.some((variant) => Number(variant?.stock ?? variant?.soLuongTon ?? 0) > 0
+            || variant?.inStock === true
+            || variant?.inStock === 1
+            || variant?.inStock === '1')
+        : false;
     const displayPrice = Number(defaultVariant.price) || Number(product.price) || 0;
     const displayOldPrice = Number(defaultVariant.oldPrice) || Number(product.oldPrice) || null;
     const discountPercent = product.discountPercent;
@@ -231,8 +244,8 @@ const ProductCard = ({ product }) => {
                                 <span className="text-[10px] font-medium text-slate-400 line-through mt-1.5 leading-none">{formatPrice(displayOldPrice)}</span>
                             )}
                         </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${defaultVariant?.inStock !== false ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                            {defaultVariant?.inStock !== false ? 'Còn hàng' : 'Hết hàng'}
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${hasAnyVariantInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                            {hasAnyVariantInStock ? 'Còn hàng' : 'Hết hàng'}
                         </span>
                     </div>
                 </div>
@@ -321,15 +334,15 @@ export default function Home() {
                 <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium">
                     <AlertCircle size={20} /> <p>{error}</p>
                 </div>
-            )}
+            )}  
 
             {/* HERO SLIDER */}
-            <div className="mb-10 shadow-sm">
+            <div className="mb-6 shadow-sm">
                 {loading ? <div className="w-full h-[250px] md:h-[480px] bg-slate-100 rounded-3xl animate-pulse"></div> : <HeroSlider slides={data.slides} />}
             </div>
 
             {/* THANH BỘ LỌC NGANG */}
-            <div className="bg-white p-4 md:px-6 md:py-5 rounded-2xl border border-slate-200 shadow-sm mb-12 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sticky top-[var(--client-nav-offset)] z-30">
+            <div className="bg-white p-4 md:px-6 md:py-4 rounded-2xl border border-slate-200 shadow-sm mb-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sticky top-[var(--client-nav-offset)] z-30">
                 <div className="flex items-center gap-3 flex-wrap w-full">
                     <div className="flex items-center gap-2 text-rose-500 font-bold mr-2">
                         <Filter size={20} /> <span className="hidden md:inline text-slate-800 text-base">Bộ lọc:</span>
@@ -367,7 +380,7 @@ export default function Home() {
             </div>
 
             {/* VÙNG HIỂN THỊ CÁC SECTION SẢN PHẨM */}
-            <div className="w-full mb-16 space-y-16">
+            <div className="w-full mb-10 space-y-10">
                 
                 {loading ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -382,7 +395,7 @@ export default function Home() {
                                     <Sparkles size={28} className="text-amber-400" />
                                     <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Gợi Ý Hôm Nay</h2>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-4">
                                     {todaySuggestionProducts.map((product) => (
                                         <ProductCard key={product.id} product={product} />
                                     ))}

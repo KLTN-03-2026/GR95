@@ -2,17 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import './ShoppingCart.css';
 import shoppingCartApi from '../../../services/shoppingCartApi';
+import { useStore } from '../../../store/useStore';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const ShoppingCart = () => {
   const navigate = useNavigate(); 
+  const { syncCartFromBackend } = useStore(); 
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [quantityInputs, setQuantityInputs] = useState({});
 
   const getMaKhachHang = useCallback(() => {
@@ -28,12 +29,20 @@ const ShoppingCart = () => {
       const maKhachHang = getMaKhachHang();
       if (!maKhachHang) {
         setCartItems([]);
+        syncCartFromBackend([]);
         return;
       }
 
       const response = await shoppingCartApi.getCartItems(maKhachHang);
       const data = response?.data || response;
       setCartItems(Array.isArray(data) ? data : []);
+      
+      // Đồng bộ store với dữ liệu giỏ hàng (Cập nhật số lượng trên Header)
+      syncCartFromBackend(Array.isArray(data) ? data : []);
+      
+      // Dispatch event báo hiệu giỏ hàng đã thay đổi
+      window.dispatchEvent(new Event('cartUpdated'));
+      
       if (Array.isArray(data)) {
         const nextQuantityInputs = {};
         data.forEach((item) => {
@@ -44,12 +53,13 @@ const ShoppingCart = () => {
     } catch (error) {
       console.error("❌ Lỗi khi lấy giỏ hàng:", error);
       setCartItems([]);
+      syncCartFromBackend([]);
     } finally {
       if (showLoading) {
         setLoading(false);
       }
     }
-  }, [getMaKhachHang]);
+  }, [getMaKhachHang, syncCartFromBackend]);
 
   useEffect(() => {
     fetchCartData();
@@ -142,7 +152,7 @@ const ShoppingCart = () => {
         soLuong: item.SoLuong,
         isSelected: Number(currentStatus) === 1 ? 0 : 1
       });
-      fetchCartData();
+      fetchCartData(false);
     } catch (error) {
       console.error("Lỗi chọn sản phẩm:", error);
       toast.error("Lỗi chọn sản phẩm!");
@@ -167,7 +177,7 @@ const ShoppingCart = () => {
           isSelected: newStatus
         })
       ));
-      fetchCartData();
+      fetchCartData(false);
     } catch (error) {
       console.error("Lỗi chọn tất cả:", error);
       toast.error("Lỗi chọn tất cả!");
@@ -238,84 +248,23 @@ const ShoppingCart = () => {
     }
   };
 
-  const handleMoveToWishlist = async () => {
-    const maKhachHang = getMaKhachHang();
-    if (!maKhachHang) {
-        toast.warning("Vui lòng đăng nhập để thực hiện thao tác này.");
-        navigate('/login');
-        return;
-    }
-
-    const selectedItems = cartItems
-        .filter(item => Number(item.IsSelected) === 1)
-        .map(item => item.MaBienThe);
-
-    if (selectedItems.length === 0) {
-        toast.warning("Vui lòng chọn sản phẩm để lưu vào yêu thích!");
-        return;
-    }
-
-    try {
-        const response = await shoppingCartApi.moveToWishlist({
-          maKhachHang,
-            items: selectedItems
-        });
-
-        const isSuccess = response?.success || response?.data?.success;
-
-        if (isSuccess) {
-            toast.success(
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span>Đã lưu vào mục Yêu thích!</span>
-                    <button 
-                        onClick={() => navigate('/wishlist')} 
-                        style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: '#b22222', 
-                            fontWeight: 'bold', 
-                            cursor: 'pointer',
-                            textDecoration: 'underline',
-                            padding: '0 0 0 15px'
-                        }}
-                    >
-                        Xem ngay
-                    </button>
-                </div>, 
-                { autoClose: 4000 } 
-            );
-            
-            fetchCartData();
-        } else {
-            toast.error(response?.message || response?.data?.message || "Lỗi hệ thống, vui lòng thử lại.");
-        }
-    } catch (error) {
-        console.error("Lỗi khi chuyển mục yêu thích:", error);
-        toast.error("Có lỗi xảy ra khi lưu vào mục yêu thích.");
-    }
-  };
-
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
 
       {loading ? (
         <div className="cart-wrapper-pc">
-            <div className="mt-5 text-center">Đang tải giỏ hàng...</div>
+            <div className="mt-5 text-center text-slate-500 font-medium">Đang tải giỏ hàng...</div>
         </div>
       ) : (
         <div className="cart-wrapper-pc">
           <div className="cart-container-pc">
             
+            {/* Header: Chỉ có nút Quay lại */}
             <div className="cart-pc-header-nav">
                <div className="nav-left">
-                  <span onClick={() => navigate(-1)} className="back-icon">←</span>
+                  <span onClick={() => navigate(-1)} className="back-icon" style={{cursor: 'pointer'}}>←</span>
                   <span className="logo-text">Giỏ Hàng</span>
-               </div>
-               <div className="nav-right">
-                  <span onClick={() => setIsEditMode(!isEditMode)} className="edit-btn">
-                    {isEditMode ? 'Hoàn tất' : 'Sửa'}
-                  </span>
                </div>
             </div>
 
@@ -332,7 +281,7 @@ const ShoppingCart = () => {
 
             <div className="cart-pc-list">
               {cartItems.length === 0 ? (
-                <div className="empty-cart-pc">Giỏ hàng của bạn đang trống</div>
+                <div className="empty-cart-pc text-center py-10 text-slate-500">Giỏ hàng của bạn đang trống</div>
               ) : (
                 cartItems.map(item => (
                   <div key={item.MaBienThe} className="cart-pc-item">
@@ -341,10 +290,10 @@ const ShoppingCart = () => {
                     </div>
                     <div className="col-product">
                        <div className="product-info-box">
-                          <div className="product-img-placeholder" style={{backgroundImage: `url(${item.DuongDanAnh})`, backgroundSize: 'cover'}}></div>
+                          <div className="product-img-placeholder" style={{backgroundImage: `url(${item.DuongDanAnh})`, backgroundSize: 'cover', backgroundPosition: 'center'}}></div>
                           <div className="product-text">
-                             <div className="product-name">{item.TenSP}</div>
-                             <div className="product-variant">Phân loại: {item.TenBienThe}</div>
+                             <div className="product-name font-semibold text-slate-800">{item.TenSP}</div>
+                             <div className="product-variant text-sm text-slate-500">Phân loại: {item.TenBienThe}</div>
                           </div>
                        </div>
                     </div>
@@ -379,51 +328,66 @@ const ShoppingCart = () => {
                           <button onClick={() => updateQuantity(item.MaBienThe, Number(item.SoLuong) + 1)}>+</button>
                         </div>
                     </div>
-                    <div className="col-total-red">{formatVND(item.Gia * item.SoLuong)}</div>
+                    <div className="col-total-red font-bold text-rose-600">{formatVND(item.Gia * item.SoLuong)}</div>
                     <div className="col-action">
-                       <span className="delete-text" onClick={() => { setItemToDelete(item.MaBienThe); setShowModal(true); }}>Xóa</span>
+                       <span className="delete-text cursor-pointer text-slate-500 hover:text-red-500 transition-colors" onClick={() => { setItemToDelete(item.MaBienThe); setShowModal(true); }}>Xóa</span>
                     </div>
                   </div>
                 ))
               )}
             </div>
 
+            {/* Footer Giỏ Hàng */}
             <div className="cart-pc-footer">
                <div className="footer-top">
-                  <div className="voucher-link" onClick={() => navigate('/vouchers')}>
-                     🎟️ HAMONI Voucher | <span>Chọn hoặc nhập mã</span>
+                  <div className="voucher-link cursor-pointer text-rose-600" onClick={() => navigate('/vouchers')}>
+                     🎟️ HAMONI Voucher | <span className="text-slate-600 underline ml-1">Chọn hoặc nhập mã</span>
                   </div>
                </div>
-               <div className="footer-bottom">
-                  <div className="footer-left">
-                     <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="hamoni-checkbox" />
-                     <span>Chọn Tất Cả ({cartItems.length})</span>
-                     {isEditMode && <span className="delete-all-btn" onClick={() => { setItemToDelete('multiple'); setShowModal(true); }}>Xóa các mục đã chọn</span>}
-                  </div>
-                  <div className="footer-right">
-                     {!isEditMode ? (
-                       <>
-                         <div className="total-label">Tổng thanh toán ({selectedCount} sản phẩm):</div>
-                         <div className="total-amount-large">{formatVND(totalAmount)}</div>
-                         <button className="btn-buy" disabled={selectedCount === 0} onClick={handleBuyNow}>Thanh Toán</button>
-                       </>
-                     ) : (
-                       <div className="edit-actions-pc">
-                          <button className="btn-wishlist" onClick={handleMoveToWishlist}>Lưu vào mục đã thích</button>
-                          <button className="btn-delete-multi" onClick={() => { setItemToDelete('multiple'); setShowModal(true); }}>Xóa</button>
-                       </div>
+               <div className="footer-bottom flex justify-between items-center mt-4">
+                  <div className="footer-left flex items-center gap-4">
+                     <div className="flex items-center gap-2 cursor-pointer" onClick={toggleSelectAll}>
+                         <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="hamoni-checkbox" />
+                         <span className="text-sm font-medium text-slate-700">Chọn Tất Cả ({cartItems.length})</span>
+                     </div>
+                     {/* Nút Xóa Nhiều được tích hợp thẳng vào góc trái, hiện ra khi có item được chọn */}
+                     {selectedCount > 0 && (
+                         <span 
+                            className="delete-all-btn text-sm font-medium text-rose-500 hover:text-rose-700 cursor-pointer" 
+                            onClick={() => { setItemToDelete('multiple'); setShowModal(true); }}
+                         >
+                            Xóa ({selectedCount}) mục đã chọn
+                         </span>
                      )}
+                  </div>
+                  
+                  <div className="footer-right flex items-center gap-6">
+                     <div className="flex flex-col items-end">
+                         <div className="total-label text-sm text-slate-600">Tổng thanh toán ({selectedCount} sản phẩm):</div>
+                         <div className="total-amount-large text-2xl font-black text-rose-600">{formatVND(totalAmount)}</div>
+                     </div>
+                     <button 
+                        className={`btn-buy px-8 py-3 rounded-xl font-bold text-white transition-colors ${selectedCount === 0 ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30'}`} 
+                        disabled={selectedCount === 0} 
+                        onClick={handleBuyNow}
+                     >
+                        Thanh Toán
+                     </button>
                   </div>
                </div>
             </div>
 
+            {/* Modal Xác Nhận Xóa */}
             {showModal && (
-              <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                <div className="custom-modal" onClick={e => e.stopPropagation()}>
-                  <div className="modal-content">Bạn chắc chắn muốn bỏ {itemToDelete === 'multiple' ? selectedCount : 1} sản phẩm này?</div>
-                  <div className="modal-actions">
-                    <button className="modal-btn modal-btn-cancel" onClick={() => setShowModal(false)}>Không</button>
-                    <button className="modal-btn modal-btn-confirm" onClick={handleConfirmDelete}>Đồng ý</button>
+              <div className="modal-overlay fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+                <div className="custom-modal bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                  <div className="modal-content text-center mb-6">
+                     <h3 className="text-lg font-bold text-slate-900 mb-2">Xác nhận xóa</h3>
+                     <p className="text-slate-600">Bạn chắc chắn muốn loại bỏ {itemToDelete === 'multiple' ? selectedCount : 1} sản phẩm này khỏi giỏ hàng?</p>
+                  </div>
+                  <div className="modal-actions flex gap-3">
+                    <button className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors" onClick={() => setShowModal(false)}>Không</button>
+                    <button className="flex-1 px-4 py-2.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 shadow-md shadow-rose-500/30 transition-colors" onClick={handleConfirmDelete}>Đồng ý xóa</button>
                   </div>
                 </div>
               </div>

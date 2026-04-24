@@ -92,7 +92,7 @@ const OrderPayment = () => {
     return `VNP${ts.slice(-10)}`;
   };
 
-  const loadCheckoutPreview = async (nextVoucherCode = '', nextSelectedVariantIds = selectedVariantIds) => {
+  const loadCheckoutPreview = useCallback(async (nextVoucherCode = '', nextSelectedVariantIds = []) => {
     setLoadingCheckout(true);
     setError('');
     setNotice('');
@@ -137,12 +137,12 @@ const OrderPayment = () => {
     } finally {
       setLoadingCheckout(false);
     }
-  };
+  }, []);
 
   const loadCheckoutProfile = useCallback(async () => {
     try {
       const response = await orderApi.getCheckoutProfile();
-      const profile = response?.data ?? response;
+      const profile = response?.data?.data ?? response?.data ?? response;
       const addressParts = splitAddress(profile?.address);
 
       setFormData((prev) => ({
@@ -203,7 +203,7 @@ const OrderPayment = () => {
     setContinueShoppingProductId(lastProductPageId || null);
     loadCheckoutProfile();
     loadCheckoutPreview('', normalizedSelected);
-  }, [loadCheckoutProfile, location.state]);
+  }, [loadCheckoutProfile, loadCheckoutPreview, location.state]);
 
   const canPlaceOrder = useMemo(() => {
     const isValidPhone = /^\d{10}$/.test(formData.recipientPhone.trim());
@@ -243,12 +243,12 @@ const OrderPayment = () => {
       setError('Vui lòng nhập mã giảm giá trước khi áp dụng.');
       return;
     }
-    await loadCheckoutPreview(voucherCode);
+    await loadCheckoutPreview(voucherCode, selectedVariantIds);
   };
 
   const handleClearVoucher = async () => {
     setVoucherCode('');
-    await loadCheckoutPreview('');
+    await loadCheckoutPreview('', selectedVariantIds);
   };
 
   const handlePlaceOrder = async () => {

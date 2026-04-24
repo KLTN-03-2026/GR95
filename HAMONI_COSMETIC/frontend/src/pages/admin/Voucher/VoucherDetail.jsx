@@ -89,8 +89,27 @@ const VoucherDetail = () => {
     const handleUpdate = async (e) => {
         e.preventDefault();
         
-        // Kiểm tra logic ngày
-        if (new Date(voucher.NgayBatDau) > new Date(voucher.NgayKetThuc)) {
+        // === VALIDATE DỮ LIỆU ===
+        if (Number(voucher.SoLuongToiDa) <= 0) {
+            toast.warning("Số lượng tối đa phải lớn hơn 0!");
+            return;
+        }
+
+        if (Number(voucher.DonHangToiThieu) < 0) {
+            toast.warning("Đơn hàng tối thiểu không được âm!");
+            return;
+        }
+
+        // === VALIDATE LOGIC NGÀY ===
+        const startDate = new Date(voucher.NgayBatDau);
+        const endDate = new Date(voucher.NgayKetThuc);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            toast.error("Định dạng ngày không hợp lệ!");
+            return;
+        }
+
+        if (endDate <= startDate) {
             toast.error("Ngày bắt đầu không thể sau ngày kết thúc!");
             return;
         }
@@ -103,8 +122,9 @@ const VoucherDetail = () => {
                 NgayKetThuc: voucher.NgayKetThuc
             });
             toast.success("Cập nhật thông tin thành công!");
-        } catch  {
-            toast.error("Lỗi khi lưu thông tin. Vui lòng kiểm tra lại.");
+        } catch (error) {
+            const errorMsg = error?.response?.data?.message || "Lỗi khi lưu thông tin. Vui lòng kiểm tra lại.";
+            toast.error(errorMsg);
         }
     };
 
@@ -112,8 +132,9 @@ const VoucherDetail = () => {
     const handleToggleStatus = async () => {
         const currentStatus = getVoucherStatus(voucher);
 
+        // === KIỂM TRA CÁC TRẠNG THÁI KHÔNG THỂ THAY ĐỔI ===
         if (currentStatus === 'HetMa') {
-            toast.warning("Voucher đã hết mã, không thể kích hoạt lại.");
+            toast.warning("Voucher đã hết số lượng, không thể thay đổi trạng thái.");
             return;
         }
 
@@ -126,10 +147,11 @@ const VoucherDetail = () => {
         try {
             await axiosClient.patch(`vouchers/${encodeURIComponent(voucherId)}/status`, { TrangThai: nextStatus });
             setVoucher(prev => ({ ...prev, TrangThai: nextStatus }));
-            toast.info(`Mã đã chuyển sang trạng thái: ${nextStatus === 'KichHoat' ? 'Hoạt động' : 'Tạm dừng'}`);
+            const statusText = nextStatus === 'KichHoat' ? 'Hoạt động' : 'Tạm dừng';
+            toast.success(`Cập nhật trạng thái thành công: ${statusText}`);
         } catch (error) {
             const errorMessage = error?.response?.data?.message;
-            toast.error(errorMessage || "Không thể cập nhật trạng thái!");
+            toast.error(errorMessage || "Không thể cập nhật trạng thái! Vui lòng kiểm tra điều kiện voucher.");
         }
     };
 

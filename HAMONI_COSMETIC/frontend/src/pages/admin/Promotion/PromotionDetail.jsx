@@ -80,9 +80,57 @@ const PromotionDetail = () => {
     // --- HÀM LƯU DỮ LIỆU ---
     const handleSave = async (e) => {
         e.preventDefault();
+        
+        // === VALIDATE DỮ LIỆU ===
+        if (!promoData.TenCTKM?.trim()) {
+            toast.warning("Vui lòng nhập tên chương trình!");
+            return;
+        }
+
+        if (!['PhanTram', 'SoTien'].includes(promoData.LoaiGiamGia)) {
+            toast.warning("Loại giảm giá không hợp lệ!");
+            return;
+        }
+
+        if (!promoData.GiaTriGiam || Number(promoData.GiaTriGiam) <= 0) {
+            toast.warning("Mức giảm phải lớn hơn 0!");
+            return;
+        }
+
+        if (promoData.LoaiGiamGia === 'PhanTram' && Number(promoData.GiaTriGiam) > 100) {
+            toast.warning("Giảm theo % không được vượt quá 100%!");
+            return;
+        }
+
+        if (!promoData.NgayBatDau || !promoData.NgayKetThuc) {
+            toast.warning("Vui lòng chọn ngày bắt đầu và kết thúc!");
+            return;
+        }
+
+        // === VALIDATE LOGIC NGÀY ===
+        const startDate = new Date(promoData.NgayBatDau);
+        const endDate = new Date(promoData.NgayKetThuc);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            toast.error("Định dạng ngày không hợp lệ!");
+            return;
+        }
+
+        if (endDate <= startDate) {
+            toast.error("Ngày kết thúc phải sau ngày bắt đầu!");
+            return;
+        }
+
+        // === VALIDATE SẢN PHẨM ===
+        if (selectedVariants.length === 0) {
+            toast.warning("Vui lòng chọn ít nhất 1 sản phẩm!");
+            return;
+        }
+
         try {
             const payload = {
                 ...promoData,
+                TenCTKM: promoData.TenCTKM.trim(),
                 GiaTriGiam: Number(promoData.GiaTriGiam),
                 danhSachBienThe: selectedVariants
             };
@@ -90,7 +138,8 @@ const PromotionDetail = () => {
             toast.success("Cập nhật thay đổi thành công!");
         } catch (error) {
             console.error("Lỗi Save:", error);
-            toast.error("Lỗi khi cập nhật dữ liệu!");
+            const errorMsg = error?.response?.data?.message || "Lỗi khi cập nhật dữ liệu!";
+            toast.error(errorMsg);
         }
     };
 

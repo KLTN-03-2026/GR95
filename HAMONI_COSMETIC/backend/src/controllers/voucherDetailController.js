@@ -50,9 +50,33 @@ const voucherDetailController = {
             const { id } = req.params;
             const { DonHangToiThieu, SoLuongToiDa, NgayBatDau, NgayKetThuc } = req.body;
 
-            // Kiểm tra logic ngày tháng
-            if (new Date(NgayKetThuc) < new Date(NgayBatDau)) {
-                return res.status(400).json({ message: "Ngày kết thúc không được nhỏ hơn ngày bắt đầu!" });
+            // === VALIDATE DỮ LIỆU ===
+            if (!DonHangToiThieu === undefined || !SoLuongToiDa === undefined || !NgayBatDau || !NgayKetThuc) {
+                return res.status(400).json({ message: "Thiếu thông tin bắt buộc!" });
+            }
+
+            const donHangToiThieu = Number(DonHangToiThieu);
+            const soLuongToiDa = Number(SoLuongToiDa);
+
+            // === VALIDATE NGÀY THÁNG ===
+            const startDate = new Date(NgayBatDau);
+            const endDate = new Date(NgayKetThuc);
+
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                return res.status(400).json({ message: "Định dạng ngày không hợp lệ!" });
+            }
+
+            if (endDate <= startDate) {
+                return res.status(400).json({ message: "Ngày kết thúc phải sau ngày bắt đầu!" });
+            }
+
+            // === VALIDATE GIÁ TRỊ ===
+            if (!Number.isFinite(donHangToiThieu) || donHangToiThieu < 0) {
+                return res.status(400).json({ message: "Đơn hàng tối thiểu không hợp lệ!" });
+            }
+
+            if (!Number.isFinite(soLuongToiDa) || soLuongToiDa <= 0) {
+                return res.status(400).json({ message: "Số lượng tối đa phải lớn hơn 0!" });
             }
 
             const sql = `
@@ -60,13 +84,14 @@ const voucherDetailController = {
                 SET DonTaiThieu = ?, SoLuong = ?, NgayBatDau = ?, NgayKetThuc = ?
                 WHERE MaVoucher = ?
             `;
-            const values = [DonHangToiThieu, SoLuongToiDa, NgayBatDau, NgayKetThuc, id];
+            const values = [donHangToiThieu, soLuongToiDa, NgayBatDau, NgayKetThuc, id];
             
             const [result] = await db.execute(sql, values);
             if (result.affectedRows === 0) {
                 return res.status(404).json({ message: "Không tìm thấy mã giảm giá để cập nhật" });
             }
 
+            // Auto-sync trạng thái nếu hết số lượng
             await db.execute(`
                 UPDATE Voucher
                 SET TrangThai = 'TamDung'
@@ -88,22 +113,42 @@ const voucherDetailController = {
             const { id } = req.params; 
             const { TrangThai } = req.body; 
 
+            // === VALIDATE TRẠNG THÁI ===
+            if (!['KichHoat', 'TamDung'].includes(TrangThai)) {
+                return res.status(400).json({ message: "Trạng thái không hợp lệ!" });
+            }
+
+            const [rows] = await db.execute(
+                `SELECT SoLuong, IFNULL(SoLuongDaDung, 0) AS SoLuongDaDung, NgayBatDau, NgayKetThuc FROM Voucher WHERE MaVoucher = ?`,
+                [id]
+            );
+
+            if (rows.length === 0) {
+                return res.status(404).json({ message: "Không tìm thấy mã giảm giá" });
+            }
+
+            const voucher = rows[0];
+
+            // === KIỂM TRA KHI KÍCH HOẠT ===
             if (TrangThai === 'KichHoat') {
-                const [rows] = await db.execute(
-                    `SELECT SoLuong, IFNULL(SoLuongDaDung, 0) AS SoLuongDaDung FROM Voucher WHERE MaVoucher = ?`,
-                    [id]
-                );
-
-                if (rows.length === 0) {
-                    return res.status(404).json({ message: "Không tìm thấy mã giảm giá" });
-                }
-
-                const voucher = rows[0];
                 const soLuongConLai = Number(voucher.SoLuong) - Number(voucher.SoLuongDaDung);
 
+                // 1. Kiểm tra số lượng còn lại
                 if (soLuongConLai <= 0) {
-                    await db.execute(`UPDATE Voucher SET TrangThai = 'TamDung' WHERE MaVoucher = ?`, [id]);
                     return res.status(400).json({ message: "Voucher đã hết lượt sử dụng, không thể kích hoạt." });
+                }
+
+                // 2. Kiểm tra ngày hiện tại có nằm trong khoảng thời gian hoạt động
+                const now = new Date();
+                const startDate = new Date(voucher.NgayBatDau);
+                const endDate = new Date(voucher.NgayKetThuc);
+
+                if (now < startDate) {
+                    return res.status(400).json({ message: "Voucher chưa đến ngày bắt đầu, không thể kích hoạt." });
+                }
+
+                if (now > endDate) {
+                    return res.status(400).json({ message: "Voucher đã hết hạn, không thể kích hoạt." });
                 }
             }
 

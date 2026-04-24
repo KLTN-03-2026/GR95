@@ -30,7 +30,8 @@ export const useStore = create(
             // 3. CART STATE (Quản lý Giỏ hàng Local)
             // ==========================================
             cartItems: [], // Mảng chứa chi tiết các sản phẩm đã thêm
-            cartCount: 0,  // Tổng số lượng sản phẩm
+            cartCount: 0,  // Tổng số lượng sản phẩm (tính cộng tất cả)
+            cartVariantCount: 0, // Số loại/biến thể sản phẩm khác nhau
             
             // Hàm thêm vào giỏ (Nâng cấp)
             addToCart: (product = {}, quantity = 1) => set((state) => {
@@ -52,12 +53,28 @@ export const useStore = create(
 
                 // Tính lại tổng số lượng hiển thị trên Icon Navbar
                 const newCount = newCartItems.reduce((total, item) => total + item.quantity, 0);
+                // Tính số loại sản phẩm (số phần tử trong mảng)
+                const newVariantCount = newCartItems.length;
 
-                return { cartItems: newCartItems, cartCount: newCount };
+                return { cartItems: newCartItems, cartCount: newCount, cartVariantCount: newVariantCount };
             }),
 
             // Hàm Dọn dẹp: Dùng ngay sau khi đồng bộ (Merge Cart) lên DB thành công
-            clearLocalCart: () => set({ cartItems: [], cartCount: 0 }),
+            clearLocalCart: () => set({ cartItems: [], cartCount: 0, cartVariantCount: 0 }),
+
+            // Hàm đồng bộ giỏ hàng từ backend (dùng khi lấy data từ API)
+            syncCartFromBackend: (backendCartItems = []) => set(() => {
+                const processedItems = (Array.isArray(backendCartItems) ? backendCartItems : []).map(item => ({
+                    id: item.MaBienThe || item.id,
+                    MaSP: item.MaSP,
+                    quantity: item.SoLuong || 1,
+                }));
+                
+                const totalCount = processedItems.reduce((total, item) => total + (item.quantity || 1), 0);
+                const variantCount = processedItems.length;
+                
+                return { cartItems: processedItems, cartCount: totalCount, cartVariantCount: variantCount };
+            }),
         }),
         {
             name: 'hamoni-storage', // Tên key sẽ xuất hiện trong Application > Local Storage của trình duyệt
@@ -66,6 +83,7 @@ export const useStore = create(
             partialize: (state) => ({ 
                 cartItems: state.cartItems, 
                 cartCount: state.cartCount, 
+                cartVariantCount: state.cartVariantCount,
                 isDarkMode: state.isDarkMode,
                 user: state.user
             }),
