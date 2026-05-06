@@ -167,7 +167,7 @@ const ClientLayout = () => {
                                                 </Link>
                                             </li>
                                             <li>
-                                                <Link to="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-rose-50 hover:text-rose-600 no-underline transition-colors">
+                                                <Link to="/orderhistory" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-rose-50 hover:text-rose-600 no-underline transition-colors">
                                                     <FileText size={16}/> Lịch sử đơn hàng
                                                 </Link>
                                             </li>

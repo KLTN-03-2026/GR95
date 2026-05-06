@@ -20,6 +20,8 @@ import ClientProducts from '../pages/client/products/ClientProducts';
 import ProductDetailView from '../pages/client/ProductView/ProductDetailView';
 import ShoppingCart from '../pages/client/Cart/ShoppingCart';
 import OrderPayment from '../pages/client/Payment/orderpayment';
+import OrderHistory from '../pages/client/Orderhistory/Orderhistory';
+import ClientOrderDetail from '../pages/client/Orderhistory/OrderDetails';
 
 // ==========================================
 // 3. IMPORT AUTH PAGES (Xác thực)
@@ -114,6 +116,8 @@ const AppRouter = () => {
                     <Route path="cart" element={<ShoppingCart />} />
                     <Route path="product/:productId" element={<ProductDetailView />} />
                     <Route path="orderpayment" element={<OrderPayment />} />
+                    <Route path="orderhistory" element={<OrderHistory />} />
+                    <Route path="order/:id" element={<ClientOrderDetail />} />
                 </Route>
 
                 {/* ==========================================

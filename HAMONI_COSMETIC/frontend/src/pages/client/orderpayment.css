@@ -11,7 +11,7 @@
   background-color: var(--bg-color);
   min-height: 100vh;
   padding: 40px 20px;
-  font-family: inherit;
+  font-family: 'Inter', sans-serif;
 }
 
 .checkout-wrapper {
@@ -212,70 +212,23 @@
   margin-bottom: 30px;
 }
 
-.payment-toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 380px;
-}
-
-.payment-toast {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
+.checkout-message {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3f5f6;
+  color: #1a1a1a;
   font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
-  animation: paymentToastIn 0.22s ease-out;
 }
 
-.payment-toast-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 800;
-  flex: 0 0 auto;
-}
-
-.payment-toast-success {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-
-.payment-toast-success .payment-toast-icon {
-  background: #1b5e20;
-  color: #fff;
-}
-
-.payment-toast-error {
+.checkout-message.error {
   background: #ffebee;
   color: #b71c1c;
 }
 
-.payment-toast-error .payment-toast-icon {
-  background: #b71c1c;
-  color: #fff;
-}
-
-@keyframes paymentToastIn {
-  from {
-    transform: translateX(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.checkout-message.success {
+  background: #e8f5e9;
+  color: #1b5e20;
 }
 
 .product-item {
@@ -283,31 +236,6 @@
   gap: 15px;
   align-items: center;
   margin-bottom: 20px;
-}
-
-.product-list {
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 6px;
-  margin-right: -6px;
-}
-
-.product-list::-webkit-scrollbar {
-  width: 8px;
-}
-
-.product-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 999px;
-}
-
-.product-list::-webkit-scrollbar-thumb {
-  background: #c9c9c9;
-  border-radius: 999px;
-}
-
-.product-list::-webkit-scrollbar-thumb:hover {
-  background: #b5b5b5;
 }
 
 .product-img-wrapper {
@@ -456,16 +384,4 @@
   opacity: 0.65;
   cursor: not-allowed;
   transform: none;
-}
-
-@media (max-width: 768px) {
-  .payment-toast-container {
-    right: 12px;
-    left: 12px;
-    max-width: none;
-  }
-
-  .product-list {
-    max-height: 260px;
-  }
 }

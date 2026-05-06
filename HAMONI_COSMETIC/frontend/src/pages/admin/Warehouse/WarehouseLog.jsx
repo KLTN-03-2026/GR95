@@ -3,6 +3,20 @@ import { useNavigate, useLocation } from "react-router-dom";
 import warehouseApi from "../../../services/warehouseApi";
 import "./WarehouseLog.css";
 
+// Toast Component
+const Toast = ({ toasts, removeToast }) => {
+    return (
+        <div className="toast-container">
+            {toasts.map((toast, index) => (
+                <div key={index} className={`toast toast-${toast.type}`}>
+                    <span>{toast.type === "success" ? "✔️" : "⚠️"}</span>
+                    {toast.message}
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const normalizeText = (value) =>
     String(value || '')
         .toLowerCase()
@@ -64,19 +78,20 @@ const WarehouseLog = () => {
     const [loai, setLoai] = useState("");
     const [ghiChu, setGhiChu] = useState("");
     const [loading, setLoading] = useState(false);
-    const [notification, setNotification] = useState(null);
+    const [toasts, setToasts] = useState([]);
     const [activePickerIndex, setActivePickerIndex] = useState(null);
 
-    // ===== NOTIFICATION =====
-    const showSuccess = (msg) => {
-        setNotification({ type: "success", message: msg });
-        setTimeout(() => setNotification(null), 3000);
+    // ===== TOAST NOTIFICATION =====
+    const showToast = (message, type = "success") => {
+        const id = Date.now();
+        setToasts((prev) => [...prev, { id, message, type }]);
+        setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => t.id !== id));
+        }, 3000);
     };
 
-    const showError = (msg) => {
-        setNotification({ type: "error", message: msg });
-        setTimeout(() => setNotification(null), 3000);
-    };
+    const showSuccess = (msg) => showToast(msg, "success");
+    const showError = (msg) => showToast(msg, "error");
 
     // ===== LOAD DATA =====
     useEffect(() => {
@@ -211,14 +226,8 @@ const WarehouseLog = () => {
 
     return (
         <div className="log-page-container">
-
-            {/* ===== NOTIFICATION ===== */}
-            {notification && (
-                <div className={`alert-banner ${notification.type}`}>
-                    <span>{notification.type === "success" ? "✔️" : "⚠️"}</span>
-                    {notification.message}
-                </div>
-            )}
+            {/* ===== TOAST NOTIFICATIONS ===== */}
+            <Toast toasts={toasts} />
 
             <h1>{type === "inbound" ? "NHẬP KHO" : "XUẤT KHO"}</h1>
 

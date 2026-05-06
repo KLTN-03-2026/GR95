@@ -36,6 +36,9 @@ const warehouseRoutes = require('./src/routes/warehouseRoutes');
 const bannerRoutes = require('./src/routes/bannerRoutes');
 const homeRoutes = require('./src/routes/homeRoutes');
 const clientProductRoutes = require('./src/routes/clientProductRoutes');
+const orderhistoryRoutes = require('./src/routes/OrderhistoryRoutes');
+const orderDetailsRoutes = require('./src/routes/OrderDetailsRoutes');
+const { startCassoCron } = require('./src/config/cassoService');
 
 // Đăng ký các API vào hệ thống
 app.use('/api/auth', authRoutes);
@@ -57,6 +60,8 @@ app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/client/products', clientProductRoutes);
+app.use('/api/orderhistory', orderhistoryRoutes);
+app.use('/api/orderdetails', orderDetailsRoutes);
 
 // Route mặc định (Root)
 app.get('/', (req, res) => {
@@ -73,4 +78,7 @@ app.listen(PORT, () => {
     console.log('=================================');
     console.log(`🚀 Server Backend Hamoni đang chạy tại: http://localhost:${PORT}`);
     console.log('=================================');
+
+    // Start polling Casso transactions for online payment confirmations.
+    startCassoCron();
 });

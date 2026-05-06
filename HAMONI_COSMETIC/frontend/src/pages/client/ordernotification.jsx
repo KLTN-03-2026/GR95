@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { buildVietQrImageUrl } from '../../../config/paymentQr';
+import { buildVietQrImageUrl } from '../../config/paymentQr';
 import './ordernotification.css';
 
 const paymentBankName = import.meta.env.VITE_PAYMENT_BANK_NAME || 'MoMo';
@@ -34,13 +34,11 @@ const OrderNotification = ({
           </div>
           <h2>{isCod ? 'Đặt hàng thành công!' : 'Thanh toán thành công!'}</h2>
         </div>
-
         <p className="payment-success-subtitle">
           {isCod
             ? 'Bạn sẽ thanh toán khi nhận hàng. Đơn hàng của bạn đã được ghi nhận thành công.'
             : 'Cảm ơn bạn đã tin tưởng. Đơn hàng của bạn đã được ghi nhận thành công.'}
         </p>
-
         <div className="payment-success-meta-grid">
           <div className="meta-box">
             <span>{isCod ? 'Mã giao dịch' : 'Mã giao dịch (VNPAY)'}</span>
@@ -76,6 +74,7 @@ export const OnlinePaymentModal = ({
   orderId,
   totalAmount,
   onCancel,
+  onConfirm,
   confirming = false,
   formatCurrency,
 }) => {
@@ -141,9 +140,9 @@ export const OnlinePaymentModal = ({
 
         <div className="payment-modal-actions">
           <button className="btn-cancel" onClick={onCancel} disabled={confirming}>Hủy</button>
-          <p className="payment-waiting-text" style={{ marginTop: '12px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-            {confirming ? 'Đang kiểm tra thanh toán...' : 'Đang chờ xác nhận thanh toán...'}
-          </p>
+          <button className="btn-confirm" onClick={onConfirm} disabled={confirming}>
+            {confirming ? 'ĐANG XÁC NHẬN...' : 'Tôi đã thanh toán'}
+          </button>
         </div>
       </div>
     </div>

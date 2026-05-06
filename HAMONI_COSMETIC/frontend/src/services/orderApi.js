@@ -6,7 +6,10 @@ const orderApi = {
     getCheckoutProfile: () => axiosClient.get('/orderpayment/profile'),
     placeOrder: (payload = {}) => axiosClient.post('/orderpayment/place', payload),
     confirmOnlinePayment: (payload) => axiosClient.post('/orderpayment/confirm-online', payload),
-    getOnlinePaymentStatus: (orderId) => axiosClient.get(`/orderpayment/status/${orderId}`)
+    getOnlinePaymentStatus: (orderId) => axiosClient.get(`/orderpayment/status/${orderId}`),
+    getMyOrderHistory: (params = {}) => axiosClient.get('/orderhistory/my-orders', { params }),
+    getOrderDetails: (orderId) => axiosClient.get(`/orderdetails/${orderId}`),
+    getOrderLogs: (orderId) => axiosClient.get(`/orderdetails/${orderId}/logs`)
 };
 
 export default orderApi;
