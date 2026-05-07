@@ -11,12 +11,17 @@ exports.getMyOrderHistory = async (req, res) => {
     const page = Math.max(1, Number(req.query?.page) || 1);
     const limit = Math.max(1, Number(req.query?.limit) || 5);
     const offset = (page - 1) * limit;
+    const year = Number(req.query?.year);
+    const hasYearFilter = Number.isInteger(year) && year > 0;
+    const yearClause = hasYearFilter ? 'AND YEAR(dh.NgayDat) = ?' : '';
+    const queryParams = hasYearFilter ? [userId, year] : [userId];
 
     const [[countRow]] = await db.execute(`
       SELECT COUNT(*) AS totalItems
       FROM DonHang dh
       WHERE dh.MaND = ?
-    `, [userId]);
+      ${yearClause}
+    `, queryParams);
 
     const totalItems = Number(countRow?.totalItems || 0);
     const totalPages = Math.max(1, Math.ceil(totalItems / limit));
@@ -34,9 +39,10 @@ exports.getMyOrderHistory = async (req, res) => {
         ) AS tongSanPham
       FROM DonHang dh
       WHERE dh.MaND = ?
+      ${yearClause}
       ORDER BY dh.NgayDat DESC, dh.MaDH DESC
       LIMIT ? OFFSET ?
-    `, [userId, limit, offset]);
+    `, [...queryParams, limit, offset]);
 
     return res.json({
       data: rows.map((row) => ({

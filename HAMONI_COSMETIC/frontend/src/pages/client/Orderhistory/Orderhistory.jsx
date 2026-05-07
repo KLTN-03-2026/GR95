@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link } from 'react-router-dom'
 import orderApi from "../../../services/orderApi";
 import "./Orderhistory.css";
@@ -6,7 +6,9 @@ import "./Orderhistory.css";
 const ITEMS_PER_PAGE = 5;
 
 const Orderhistory = () => {
-  const [activeFilter, setActiveFilter] = useState("Tất cả");
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, index) => currentYear - index);
+  const [activeYear, setActiveYear] = useState(currentYear);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,59 +20,98 @@ const Orderhistory = () => {
     totalPages: 1,
   });
 
-  useEffect(() => {
-    let isMounted = true;
+  const isMountedRef = useRef(true);
 
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const response = await orderApi.getMyOrderHistory({
-          page: currentPage,
-          limit: ITEMS_PER_PAGE,
+  const visibleOrders = useMemo(() => {
+    return orders.filter((item) => {
+      const orderDate = new Date(item?.ngayDat);
+      return !Number.isNaN(orderDate.getTime()) && orderDate.getFullYear() === activeYear;
+    });
+  }, [orders, activeYear]);
+
+  const fetchOrders = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    setLoading(true);
+    setError("");
+    setOrders([]);
+    try {
+      const response = await orderApi.getMyOrderHistory({
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        year: activeYear,
+      });
+      const data = Array.isArray(response?.data) ? response.data : [];
+      const serverPagination = response?.pagination || {};
+
+      if (isMountedRef.current) {
+        setOrders(data);
+        setPagination({
+          currentPage: Number(serverPagination.currentPage || currentPage),
+          limit: Number(serverPagination.limit || ITEMS_PER_PAGE),
+          totalItems: Number(serverPagination.totalItems || 0),
+          totalPages: Number(serverPagination.totalPages || 1),
         });
-        const data = Array.isArray(response?.data) ? response.data : [];
-        const serverPagination = response?.pagination || {};
-
-        if (isMounted) {
-          setOrders(data);
-          setPagination({
-            currentPage: Number(serverPagination.currentPage || currentPage),
-            limit: Number(serverPagination.limit || ITEMS_PER_PAGE),
-            totalItems: Number(serverPagination.totalItems || 0),
-            totalPages: Number(serverPagination.totalPages || 1),
-          });
-        }
-      } catch (err) {
-        if (isMounted) {
-          const message = err?.response?.data?.message || "Không tải được lịch sử đơn hàng";
-          setError(message);
-          setOrders([]);
-          setPagination({
-            currentPage: 1,
-            limit: ITEMS_PER_PAGE,
-            totalItems: 0,
-            totalPages: 1,
-          });
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
       }
-    };
+    } catch (err) {
+      if (isMountedRef.current) {
+        const message = err?.response?.data?.message || "Không tải được lịch sử đơn hàng";
+        setError(message);
+        setOrders([]);
+        setPagination({
+          currentPage: 1,
+          limit: ITEMS_PER_PAGE,
+          totalItems: 0,
+          totalPages: 1,
+        });
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [activeYear, currentPage]);
 
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    // Initial fetch
     fetchOrders();
 
+    // Auto-refresh every 30s
+    const intervalId = setInterval(() => {
+      fetchOrders();
+    }, 30000);
+
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
+      clearInterval(intervalId);
     };
-  }, [currentPage]);
+    // Re-run when fetchOrders changes (it updates when currentPage changes)
+  }, [fetchOrders]);
 
   const handleChangePage = (page) => {
     if (page < 1 || page > pagination.totalPages || page === currentPage) return;
     setCurrentPage(page);
   };
+
+  const visiblePages = useMemo(() => {
+    const totalPages = pagination.totalPages;
+    const windowSize = 3;
+
+    if (totalPages <= windowSize) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = startPage + windowSize - 1;
+
+    if (endPage > totalPages) {
+      endPage = totalPages;
+      startPage = Math.max(1, endPage - windowSize + 1);
+    }
+
+    return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index);
+  }, [currentPage, pagination.totalPages]);
 
   const formatMoney = (amount) => `${new Intl.NumberFormat("vi-VN").format(Number(amount || 0))}đ`;
 
@@ -128,16 +169,22 @@ const Orderhistory = () => {
 
         {/* FILTER */}
         <div className="filter-bar">
-          <div className="tabs">
-            {["Tất cả", "Năm 2024"].map((item) => (
-              <button
-                key={item}
-                className={activeFilter === item ? "active" : ""}
-                onClick={() => setActiveFilter(item)}
-              >
-                {item}
-              </button>
-            ))}
+          <div className="year-picker-wrap">
+            <select
+              className="year-picker"
+              value={activeYear}
+              onChange={(e) => {
+                setActiveYear(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              aria-label="Chọn năm xem lịch sử đơn hàng"
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  Năm {year}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -145,11 +192,11 @@ const Orderhistory = () => {
         <div className="order-list">
           {loading && <p className="order-message">Đang tải lịch sử đơn hàng...</p>}
           {!loading && error && <p className="order-message error">{error}</p>}
-          {!loading && !error && orders.length === 0 && (
-            <p className="order-message">Bạn chưa có đơn hàng nào.</p>
+          {!loading && !error && visibleOrders.length === 0 && (
+            <p className="order-message">Không có đơn hàng</p>
           )}
 
-          {!loading && !error && orders.map((item) => (
+          {!loading && !error && visibleOrders.map((item) => (
             <Link to={`/order/${item.id}`} key={item.id} className="no-underline">
               <div className="order-card">
               <div className="col">
@@ -181,7 +228,7 @@ const Orderhistory = () => {
           ))}
         </div>
 
-        {!loading && !error && pagination.totalPages > 1 && (
+        {!loading && !error && visibleOrders.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination-wrap">
             <button
               className="page-btn"
@@ -192,7 +239,7 @@ const Orderhistory = () => {
             </button>
 
             <div className="page-list">
-              {Array.from({ length: pagination.totalPages }, (_, index) => index + 1).map((page) => (
+              {visiblePages.map((page) => (
                 <button
                   key={page}
                   className={`page-btn ${page === currentPage ? "active" : ""}`}

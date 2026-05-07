@@ -241,6 +241,7 @@ exports.getOrderDetail = async (req, res) => {
                 email: order.Email
             },
             diaChiGiaoHang: order.ThongTinGiaoHang,
+            ghiChu: order.GhiChu,
             tamTinh: Number(order.TongTien),
             giamGia: Number(order.TienGiamGia || 0),
             phiShip: Number(order.PhiShip || 0),

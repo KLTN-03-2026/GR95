@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './OrderLogsPage.css';
@@ -7,21 +7,45 @@ const OrderLogsPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [orderData, setOrderData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await axios.get(`http://localhost:5000/api/orders/${id}`);
-                setOrderData(res.data);
-            } catch (err) {
-                console.error("🔥 Lỗi API:", err);
-                setOrderData({ id: "Lỗi", khachHang: {}, chiTiet: [], lichSu: [] });
-            }
-        };
-        if (id) fetchData();
+    const fetchData = useCallback(async () => {
+        if (!id) return;
+
+        setLoading(true);
+
+        try {
+            const res = await axios.get(`http://localhost:5000/api/orders/${id}`);
+            setOrderData(res.data);
+        } catch (err) {
+            console.error("🔥 Lỗi API:", err);
+            setOrderData({ id: "Lỗi", khachHang: {}, chiTiet: [], lichSu: [] });
+        } finally {
+            setLoading(false);
+        }
     }, [id]);
 
-    if (!orderData) return <div className="loading">Đang tải...</div>;
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadData = async () => {
+            if (!isMounted) return;
+            await fetchData();
+        };
+
+        loadData();
+
+        const intervalId = setInterval(() => {
+            loadData();
+        }, 10000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
+    }, [fetchData]);
+
+    if (loading && !orderData) return <div className="loading">Đang tải...</div>;
 
     return (
         <div className="order-container">

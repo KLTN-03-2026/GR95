@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, X } from 'lucide-react';
+import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, ChevronDown, X } from 'lucide-react';
 import orderApi from '../../../services/orderApi';
+import axiosClient from '../../../services/axiosClient';
 import { PRODUCT_PLACEHOLDER_IMAGE } from '../../../config/imageLinks';
 import OrderNotification, { OnlinePaymentModal } from './ordernotification';
 import './orderpayment.css'; // Import file CSS riêng
@@ -16,6 +17,8 @@ const OrderPayment = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [errorToastTick, setErrorToastTick] = useState(0);
+  const [noticeToastTick, setNoticeToastTick] = useState(0);
   const [confirmingOnlinePayment] = useState(false);
   const [showOnlinePaymentModal, setShowOnlinePaymentModal] = useState(false);
   const [onlinePaymentInfo, setOnlinePaymentInfo] = useState(null);
@@ -23,6 +26,10 @@ const OrderPayment = () => {
   const [selectedVariantIds, setSelectedVariantIds] = useState([]);
   const [continueShoppingProductId, setContinueShoppingProductId] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const [voucherOptions, setVoucherOptions] = useState([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [showVoucherList, setShowVoucherList] = useState(false);
+  const voucherPickerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     recipientName: '',
@@ -36,6 +43,11 @@ const OrderPayment = () => {
   });
 
   const formatCurrency = (amount) => `${new Intl.NumberFormat('vi-VN').format(Number(amount) || 0)}đ`;
+  
+  const isValidGmailAddress = (value) => {
+    const email = String(value || '').trim();
+    return /^[^\s@]+@gmail\.com$/i.test(email);
+  };
 
   const showToast = useCallback((message, type = 'success') => {
     if (!message) return;
@@ -47,6 +59,55 @@ const OrderPayment = () => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, 3000);
   }, []);
+
+  const pushError = useCallback((message) => {
+    const normalized = String(message || '').trim();
+    setError(normalized);
+    if (normalized) {
+      setErrorToastTick((prev) => prev + 1);
+    }
+  }, []);
+
+  const pushNotice = useCallback((message) => {
+    const normalized = String(message || '').trim();
+    setNotice(normalized);
+    if (normalized) {
+      setNoticeToastTick((prev) => prev + 1);
+    }
+  }, []);
+
+  const getVoucherBenefitText = (voucher) => {
+    const percentDiscount = Number(voucher?.PhanTramGiam);
+    const fixedDiscount = Number(voucher?.SoTienGiam);
+    const maxDiscount = Number(voucher?.GiamToiDa);
+
+    if (Number.isFinite(percentDiscount) && percentDiscount > 0) {
+      return maxDiscount > 0
+        ? `Giảm ${percentDiscount}% (tối đa ${formatCurrency(maxDiscount)})`
+        : `Giảm ${percentDiscount}%`;
+    }
+
+    if (Number.isFinite(fixedDiscount) && fixedDiscount > 0) {
+      return `Giảm ${formatCurrency(fixedDiscount)}`;
+    }
+
+    return 'Ưu đãi đặc biệt';
+  };
+
+  const fetchVoucherOptions = useCallback(async () => {
+    if (loadingVouchers) return;
+
+    setLoadingVouchers(true);
+    try {
+      const response = await axiosClient.get('vouchers');
+      const rawVouchers = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
+      setVoucherOptions(rawVouchers);
+    } catch {
+      pushError('Không thể tải danh sách voucher lúc này.');
+    } finally {
+      setLoadingVouchers(false);
+    }
+  }, [loadingVouchers, pushError]);
 
   const splitAddress = (fullAddress) => {
     const raw = String(fullAddress || '').trim();
@@ -126,7 +187,7 @@ const OrderPayment = () => {
       setVoucherCode(data?.maVoucher || trimmedVoucherCode);
     } catch (err) {
       const apiMessage = err?.response?.data?.message;
-      setError(apiMessage || 'Không thể tải dữ liệu thanh toán');
+      pushError(apiMessage || 'Không thể tải dữ liệu thanh toán');
 
       // Nếu mã giảm giá không hợp lệ, giữ nguyên giỏ hàng bằng cách tải lại preview không kèm voucher.
       if (nextVoucherCode?.trim()) {
@@ -149,7 +210,7 @@ const OrderPayment = () => {
     } finally {
       setLoadingCheckout(false);
     }
-  }, []);
+  }, [pushError]);
 
   const loadCheckoutProfile = useCallback(async () => {
     try {
@@ -177,7 +238,7 @@ const OrderPayment = () => {
     const userRaw = localStorage.getItem('user');
 
     if (!token) {
-      setError('Vui lòng đăng nhập để tiếp tục thanh toán.');
+      pushError('Vui lòng đăng nhập để tiếp tục thanh toán.');
       return;
     }
 
@@ -215,19 +276,38 @@ const OrderPayment = () => {
     setContinueShoppingProductId(lastProductPageId || null);
     loadCheckoutProfile();
     loadCheckoutPreview('', normalizedSelected);
-  }, [loadCheckoutProfile, loadCheckoutPreview, location.state]);
+  }, [loadCheckoutProfile, loadCheckoutPreview, location.state, pushError]);
 
   useEffect(() => {
     if (error) {
       showToast(error, 'error');
     }
-  }, [error, showToast]);
+  }, [error, errorToastTick, showToast]);
 
   useEffect(() => {
     if (notice) {
       showToast(notice, 'success');
     }
-  }, [notice, showToast]);
+  }, [notice, noticeToastTick, showToast]);
+
+  useEffect(() => {
+    if (showVoucherList && voucherOptions.length === 0) {
+      fetchVoucherOptions();
+    }
+  }, [fetchVoucherOptions, showVoucherList, voucherOptions.length]);
+
+  useEffect(() => {
+    if (!showVoucherList) return;
+
+    const handleClickOutside = (event) => {
+      if (voucherPickerRef.current && !voucherPickerRef.current.contains(event.target)) {
+        setShowVoucherList(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showVoucherList]);
 
   // Auto-polling để kiểm tra thanh toán từ Casso mỗi 3 giây
   useEffect(() => {
@@ -275,11 +355,13 @@ const OrderPayment = () => {
 
   const canPlaceOrder = useMemo(() => {
     const isValidPhone = /^\d{10}$/.test(formData.recipientPhone.trim());
+    const isValidEmail = isValidGmailAddress(formData.recipientEmail);
 
     return Boolean(
       checkoutData?.items?.length &&
       formData.recipientName.trim() &&
       isValidPhone &&
+      isValidEmail &&
       formData.city.trim() &&
       formData.district.trim() &&
       formData.ward.trim() &&
@@ -289,12 +371,34 @@ const OrderPayment = () => {
     );
   }, [checkoutData?.items?.length, formData, loadingCheckout, placingOrder]);
 
+  const availableVouchers = useMemo(() => {
+    const now = new Date();
+    const subtotal = Number(checkoutData?.tongTien || 0);
+
+    return voucherOptions
+      .filter((voucher) => {
+        const status = String(voucher?.TrangThai || '').toLowerCase();
+        const remaining = Number(voucher?.SoLuong || 0) - Number(voucher?.SoLuongDaDung || 0);
+        const minimumOrder = Number(voucher?.DonTaiThieu || 0);
+        const startAt = voucher?.NgayBatDau ? new Date(voucher.NgayBatDau) : null;
+        const endAt = voucher?.NgayKetThuc ? new Date(voucher.NgayKetThuc) : null;
+
+        const isActive = status === 'kichhoat';
+        const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt);
+
+        return isActive && remaining > 0 && isInDateRange && subtotal >= minimumOrder;
+      })
+      .sort((a, b) => Number(b?.PhanTramGiam || b?.SoTienGiam || 0) - Number(a?.PhanTramGiam || a?.SoTienGiam || 0));
+  }, [checkoutData?.tongTien, voucherOptions]);
+
   const getValidationMessage = () => {
     if (loadingCheckout) return 'Đang tải giỏ hàng, vui lòng đợi trong giây lát.';
     if (!checkoutData?.items?.length) return 'Giỏ hàng trống, chưa thể đặt hàng.';
     if (!formData.recipientName.trim()) return 'Vui lòng nhập họ và tên người nhận.';
     if (!formData.recipientPhone.trim()) return 'Vui lòng nhập số điện thoại người nhận.';
     if (!/^\d{10}$/.test(formData.recipientPhone.trim())) return 'Số điện thoại phải gồm đúng 10 chữ số.';
+    if (!formData.recipientEmail.trim()) return 'Vui lòng nhập email người nhận.';
+    if (!isValidGmailAddress(formData.recipientEmail)) return 'Email phải có đuôi @gmail.com.';
     if (!formData.city.trim()) return 'Vui lòng chọn hoặc nhập Tỉnh / Thành phố.';
     if (!formData.district.trim()) return 'Vui lòng chọn hoặc nhập Quận / Huyện.';
     if (!formData.ward.trim()) return 'Vui lòng chọn hoặc nhập Phường / Xã.';
@@ -306,22 +410,24 @@ const OrderPayment = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleApplyVoucher = async () => {
-    if (!voucherCode.trim()) {
-      setError('Vui lòng nhập mã giảm giá trước khi áp dụng.');
-      return;
-    }
-    await loadCheckoutPreview(voucherCode, selectedVariantIds);
+  const handleSelectVoucher = async (code) => {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    if (!normalizedCode) return;
+
+    setVoucherCode(normalizedCode);
+    setShowVoucherList(false);
+    await loadCheckoutPreview(normalizedCode, selectedVariantIds);
   };
 
   const handleClearVoucher = async () => {
     setVoucherCode('');
+    setShowVoucherList(false);
     await loadCheckoutPreview('', selectedVariantIds);
   };
 
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder) {
-      setError(getValidationMessage() || 'Vui lòng nhập đủ thông tin nhận hàng trước khi xác nhận thanh toán.');
+      pushError(getValidationMessage() || 'Vui lòng nhập đủ thông tin nhận hàng trước khi xác nhận thanh toán.');
       return;
     }
 
@@ -380,7 +486,7 @@ const OrderPayment = () => {
       setShowOnlinePaymentModal(true);
     } catch (err) {
       const apiMessage = err?.response?.data?.message;
-      setError(apiMessage || err.message || 'Đặt hàng thất bại, vui lòng thử lại.');
+      pushError(apiMessage || err.message || 'Đặt hàng thất bại, vui lòng thử lại.');
     } finally {
       setPlacingOrder(false);
     }
@@ -391,7 +497,7 @@ const OrderPayment = () => {
 
     setShowOnlinePaymentModal(false);
     setOnlinePaymentInfo(null);
-    setNotice('Bạn đã hủy quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
+    pushNotice('Bạn đã hủy quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
   };
 
   const items = checkoutData?.items || [];
@@ -473,6 +579,8 @@ const OrderPayment = () => {
                     type="email"
                     placeholder="example@gmail.com"
                     value={formData.recipientEmail}
+                    pattern="^[^\s@]+@gmail\.com$"
+                    title="Email phải có đuôi @gmail.com"
                     onChange={(e) => handleInputChange('recipientEmail', e.target.value)}
                   />
                 </div>
@@ -584,26 +692,52 @@ const OrderPayment = () => {
 
               <div className="coupon-section">
                 <p className="coupon-label"><Ticket size={14} /> Mã giảm giá</p>
-                <div className="coupon-input-wrapper">
-                  <div className="coupon-input-shell">
-                    <input
-                      type="text"
-                      placeholder="Nhập mã ưu đãi..."
-                      value={voucherCode}
-                      onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                    />
-                    {voucherCode.trim() && (
-                      <button
-                        type="button"
-                        className="coupon-clear-button"
-                        onClick={handleClearVoucher}
-                        aria-label="Xóa mã giảm giá"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                  <button onClick={handleApplyVoucher} disabled={loadingCheckout || placingOrder}>ÁP DỤNG</button>
+                <div className="voucher-picker" ref={voucherPickerRef}>
+                  <button
+                    type="button"
+                    className="voucher-picker-toggle"
+                    onClick={() => setShowVoucherList((prev) => !prev)}
+                    disabled={loadingCheckout || placingOrder}
+                  >
+                    <span>{voucherCode ? `Đã chọn: ${voucherCode}` : 'Nhấn để chọn voucher'}</span>
+                    <ChevronDown size={16} className={showVoucherList ? 'voucher-chevron open' : 'voucher-chevron'} />
+                  </button>
+
+                  {voucherCode.trim() && (
+                    <button
+                      type="button"
+                      className="coupon-clear-button"
+                      onClick={handleClearVoucher}
+                      aria-label="Xóa mã giảm giá"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+
+                  {showVoucherList && (
+                    <div className="voucher-picker-list">
+                      {loadingVouchers && <div className="voucher-picker-empty">Đang tải voucher...</div>}
+                      {!loadingVouchers && availableVouchers.length === 0 && (
+                        <div className="voucher-picker-empty">Không có voucher phù hợp với đơn hàng hiện tại.</div>
+                      )}
+                      {!loadingVouchers && availableVouchers.map((voucher) => (
+                        <button
+                          key={voucher.MaVoucher}
+                          type="button"
+                          className={`voucher-option ${voucherCode === voucher.MaVoucher ? 'active' : ''}`}
+                          onClick={() => handleSelectVoucher(voucher.MaVoucher)}
+                        >
+                          <div className="voucher-option-top">
+                            <span className="voucher-code">{voucher.MaVoucher}</span>
+                            <span className="voucher-benefit">{getVoucherBenefitText(voucher)}</span>
+                          </div>
+                          <div className="voucher-option-bottom">
+                            Đơn tối thiểu {formatCurrency(voucher.DonTaiThieu || 0)}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

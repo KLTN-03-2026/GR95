@@ -106,13 +106,13 @@
     padding-top: 20px;
     border-top: 2px dashed #eee;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: baseline;
-    gap: 10px;
+    gap: 16px;
 }
 
-.total-label { color: #888; font-size: 14px; }
-.total-price { font-size: 24px; font-weight: 900; color: #222; }
+.total-label { color: #888; font-size: 14px; flex: 1; }
+.total-price { font-size: 24px; font-weight: 900; color: #222; margin-left: auto; text-align: right; }
 
 /* Side Cards */
 .side-card {

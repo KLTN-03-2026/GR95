@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axiosClient from '../../../services/axiosClient'
 import './OrderDetails.css'
@@ -9,24 +9,47 @@ export default function OrderDetails() {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const mountedRef = useRef(true)
 
-  useEffect(() => {
-    let mounted = true
-    const fetchOrder = async () => {
-      setLoading(true)
-      try {
-        const data = await axiosClient.get(`/orderdetails/${id}`)
-        if (mounted) setOrder(data)
-      } catch (err) {
-        console.error(err)
-        if (mounted) setError(err?.response?.data?.message || 'Lỗi tải đơn hàng')
-      } finally {
-        if (mounted) setLoading(false)
+  const fetchOrder = useCallback(async (options = {}) => {
+    const { silent = false } = options
+
+    if (!id) return
+
+    if (!silent) setLoading(true)
+
+    try {
+      const data = await axiosClient.get(`/orderdetails/${id}`)
+      if (mountedRef.current) {
+        setOrder(data)
+        if (!silent) setError(null)
+      }
+    } catch (err) {
+      console.error(err)
+      if (mountedRef.current && !silent) {
+        setError(err?.response?.data?.message || 'Lỗi tải đơn hàng')
+      }
+    } finally {
+      if (mountedRef.current && !silent) {
+        setLoading(false)
       }
     }
-    fetchOrder()
-    return () => { mounted = false }
   }, [id])
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    fetchOrder()
+
+    const intervalId = setInterval(() => {
+      fetchOrder({ silent: true })
+    }, 10000)
+
+    return () => {
+      mountedRef.current = false
+      clearInterval(intervalId)
+    }
+  }, [fetchOrder])
 
   if (loading) return <div className="order-page">Đang tải...</div>
   if (error) return <div className="order-page">{error}</div>
@@ -59,9 +82,10 @@ export default function OrderDetails() {
   }
   if (!parsedAddress) parsedAddress = shippingAddress || ''
 
-  const statusOrder = { ChoXacNhan: 0, DaXacNhan: 1, DangGiao: 2, HoanThanh: 3 }
+  const statusOrder = { ChoXacNhan: 0, DaXacNhan: 1, DangGiao: 2, HoanThanh: 3, DaHuy: 3 }
   const currentIndex = statusOrder[order.trangThai] ?? (statusHistory?.length ? Math.max(0, statusHistory.length - 1) : 0)
   const isCompleted = currentIndex >= 3 || order.trangThai === 'HoanThanh'
+  const finalStepLabel = order.trangThai === 'DaHuy' ? 'TRẢ HÀNG' : 'THÀNH CÔNG'
 
   return (
     <div className="order-page">
@@ -72,7 +96,7 @@ export default function OrderDetails() {
             { key: 'ChoXacNhan', label: 'CHỜ XÁC NHẬN' },
             { key: 'DaXacNhan', label: 'ĐÃ XÁC NHẬN' },
             { key: 'DangGiao', label: 'ĐANG GIAO' },
-            { key: 'HoanThanh', label: 'THÀNH CÔNG' }
+            { key: 'HoanThanh', label: finalStepLabel }
           ].map((step, idx, arr) => {
             const isDone = idx <= currentIndex
             return (

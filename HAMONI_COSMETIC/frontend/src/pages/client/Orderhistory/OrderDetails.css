@@ -101,7 +101,21 @@
 .section-gap{ margin-top:1.5rem }
 
 .totals-row{ display:flex; justify-content:space-between; margin-bottom:0.5rem; color:#374151 }
-.totals-total{ border-top:1px solid var(--border); padding-top:0.75rem; font-weight:700 }
+.totals-total{
+  border-top:1px solid var(--border);
+  padding-top:0.75rem;
+  font-weight:700;
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:12px;
+}
+
+.totals-total span:last-child{
+  margin-left:auto;
+  text-align:right;
+  white-space:nowrap;
+}
 
 .btn-plain{ background:transparent; border:none; cursor:pointer; color:#555 }
 .btn-plain{ font-size:0.98rem; padding:0.4rem 0.2rem }

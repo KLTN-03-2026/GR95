@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosClient from '../../../services/axiosClient'; 
 import InvoiceModal from "./InvoiceModal";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './OrderManagement.css'; 
 
 const OrderDetailModal = () => {
@@ -12,14 +14,9 @@ const OrderDetailModal = () => {
     const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
     const [status, setStatus] = useState(""); 
 const [isPrinted, setIsPrinted] = useState(false);
-    // --- 1. THÊM STATE THÔNG BÁO ---
-    const [notification, setNotification] = useState(null);
-
-    // Hàm hiện thông báo
-    const showSuccess = (msg) => {
-        setNotification(msg);
-        setTimeout(() => setNotification(null), 3000);
-    };
+    const showSuccess = (msg) => toast.success(msg, { position: 'top-right' });
+    const showWarning = (msg) => toast.warning(msg, { position: 'top-right' });
+    const showError = (msg) => toast.error(msg, { position: 'top-right' });
 // Nếu muốn có TẤT CẢ các quyền (quyền cao nhất)
 const userPermissions = ['ALL']; 
 
@@ -32,6 +29,7 @@ const canCancel = isAdmin || userPermissions.includes('CANCEL_ORDER'); // Giờ 
 const canPrint = isAdmin || userPermissions.includes('PRINT_ORDER');
 const canViewLog = isAdmin || userPermissions.includes('VIEW_ORDER_LOG'); // Giờ sẽ là True
 const isDisabled = order?.trangThai === "HoanThanh" || order?.trangThai === "DaHuy";
+const canPrintInvoice = order?.trangThai === 'DaXacNhan' || order?.daInHoaDon;
 const hasStatusChanged = Boolean(order?.trangThai) && status !== order?.trangThai;
     const fetchOrderDetail = useCallback(async () => {
         try {
@@ -63,7 +61,12 @@ const hasStatusChanged = Boolean(order?.trangThai) && status !== order?.trangTha
     // --- 2. CẬP NHẬT HÀM UPDATE (Bỏ Alert) ---
     const handleUpdateStatus = async () => {
     if (!hasStatusChanged) {
-        showSuccess("Vui lòng chọn trạng thái mới trước khi cập nhật.");
+        showWarning("Vui lòng chọn trạng thái mới trước khi cập nhật.");
+        return;
+    }
+
+    if (status === 'DangGiao' && !(isPrinted || order?.daInHoaDon)) {
+        showWarning("Vui lòng in hóa đơn trước khi chuyển sang trạng thái đang giao.");
         return;
     }
 
@@ -76,13 +79,13 @@ const hasStatusChanged = Boolean(order?.trangThai) && status !== order?.trangTha
         fetchOrderDetail(); 
     } catch (err) {
         console.error(err);
-        showSuccess("❌ Lỗi cập nhật trạng thái!");
+        showError("Lỗi cập nhật trạng thái!");
     }
 };
 
     const handleOpenInvoice = () => {
-        if (isPrinted || order?.daInHoaDon) {
-            showSuccess("⚠️ Đơn hàng này đã in hóa đơn, không thể in lại.");
+        if (order?.trangThai !== 'DaXacNhan' && !order?.daInHoaDon) {
+            showWarning('Vui lòng xác nhận đơn hàng trước khi in hóa đơn.');
             return;
         }
 
@@ -90,28 +93,22 @@ const hasStatusChanged = Boolean(order?.trangThai) && status !== order?.trangTha
     };
 
     const handleConfirmPrintInvoice = async () => {
-        if (isPrinted || order?.daInHoaDon) {
-            showSuccess("⚠️ Đơn hàng này đã in hóa đơn, không thể in lại.");
-            return;
-        }
-
         try {
+            // Trigger browser print while invoice modal is still open so content is present in DOM
+            window.print();
+
             await axiosClient.put(`/orders/${id}/print`);
+
             setIsPrinted(true);
             setOrder((prev) => (prev ? { ...prev, daInHoaDon: true } : prev));
-            setIsInvoiceOpen(false);
-            showSuccess("🖨️ Đã xác nhận in hóa đơn!");
             await fetchOrderDetail();
-            window.print();
+
+            // Keep modal open briefly so user can see confirmation, then close
+            showSuccess("🖨️ Đã in hóa đơn!");
+            setIsInvoiceOpen(false);
         } catch (err) {
-            if (err?.response?.status === 409) {
-                setIsPrinted(true);
-                showSuccess("⚠️ Đơn hàng này đã in hóa đơn, không thể in lại.");
-                await fetchOrderDetail();
-                return;
-            }
-            console.error("Lỗi xác nhận in hóa đơn:", err);
-            showSuccess("❌ Lỗi khi xác nhận in hóa đơn!");
+            console.error("Lỗi khi in hóa đơn:", err);
+            showError("Lỗi khi in hóa đơn!");
         }
     };
     // --- 3. CẬP NHẬT HÀM HỦY (Bỏ Alert) ---
@@ -124,7 +121,7 @@ const handleCancelOrder = async () => {
 
     } catch (err) {
         console.error("🔥 ERROR:", err.response?.data || err.message);
-        showSuccess("❌ Lỗi hủy đơn hàng!");
+        showError("Lỗi hủy đơn hàng!");
     }
 };
     const buildTimeline = () => {
@@ -161,17 +158,17 @@ const handleCancelOrder = async () => {
 
     return (
         <div className="order-detail-container">
-            {/* --- 4. HIỂN THỊ BANNER THÔNG BÁO --- */}
-            {notification && (
-                <div className="alert-banner-success">
-                    <span className="alert-icon">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="#1e4620" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </span>
-                    {notification}
-                </div>
-            )}
+            <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+            />
 
             <button className="back-btn-text" onClick={() => navigate('/admin/orders')}>
                 ← Quay lại danh sách
@@ -233,8 +230,8 @@ const handleCancelOrder = async () => {
                                     className="full-print-btn"
                                     style={{ flex: 1 }}
                                     onClick={handleOpenInvoice}
-                                    disabled={isPrinted || order?.daInHoaDon}
-                                    title={isPrinted || order?.daInHoaDon ? 'Đơn hàng đã in hóa đơn' : ''}
+                                    disabled={!canPrintInvoice}
+                                    title={!canPrintInvoice ? 'Phải xác nhận đơn hàng trước khi in hóa đơn' : ''}
                                 >
                                     🖨️ IN HÓA ĐƠN
                                 </button>
