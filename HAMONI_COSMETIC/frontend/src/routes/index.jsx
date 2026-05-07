@@ -17,9 +17,14 @@ import ClientLayout from '../layouts/ClientLayout/ClientLayout';
 // ==========================================
 import Home from '../pages/client/home/Home';
 import ClientProducts from '../pages/client/products/ClientProducts';
-import ProductDetailView from '../pages/client/ProductView/ProductDetailView';
+import ProductDetailView from '../pages/client/ProductDetailView/ProductDetailView';
 import ShoppingCart from '../pages/client/Cart/ShoppingCart';
 import OrderPayment from '../pages/client/Payment/orderpayment';
+import CustomerProfile from '../pages/client/Profile/CustomerProfile';
+import PromotionClient from '../pages/client/PromotionClient/PromotionClient';
+// Thêm 1 dòng import này để gọi cái trang chi tiết ra
+import PromotionDetailClient from '../pages/client/PromotionClient/PromotionDetailClient';
+
 
 // ==========================================
 // 3. IMPORT AUTH PAGES (Xác thực)
@@ -58,6 +63,7 @@ import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
 import WarehouseManagement from '../pages/admin/Warehouse/WarehouseManagement';
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
+import ProductReview from '../pages/client/ProductReview/ProductReview';
 
 const NotFound = () => (
     <div className="flex justify-center items-center h-screen text-2xl font-bold text-gray-500">
@@ -92,6 +98,14 @@ const AdminRoute = ({ children }) => {
 };
 
 const AppRouter = () => {
+    // Try to read logged-in user to provide MaND for test route
+    let _storedUser = null;
+    try {
+        _storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+        _storedUser = null;
+    }
+    const testMaND = _storedUser?.MaND || _storedUser?.id || _storedUser?.MaKhachHang || null;
     return (
         <BrowserRouter>
             <ScrollRestoration />
@@ -110,11 +124,30 @@ const AppRouter = () => {
                 <Route path="/" element={<ClientLayout />}>
                     <Route index element={<Home />} />
                     <Route path="products" element={<ClientProducts />} />
+                     <Route path="promotions" element={<PromotionClient />} />
+                     {/* Thêm đúng 1 dòng Route này để web hiểu link /khuyen-mai/2 */}
+                    <Route path="khuyen-mai/:id" element={<PromotionDetailClient />} />
                     <Route path="gio-hang" element={<ShoppingCart />} />
                     <Route path="cart" element={<ShoppingCart />} />
                     <Route path="product/:productId" element={<ProductDetailView />} />
                     <Route path="orderpayment" element={<OrderPayment />} />
-                </Route>
+                    <Route path="profile" element={<CustomerProfile />} />
+            
+
+                {/* CHÈN NGAY TẠI ĐÂY LÀ CHUẨN NHẤT NÈ */}
+    <Route
+        path="test-review"
+        element={
+            <ProductReview
+                MaSP={1}
+                MaDH={22}
+                MaND={testMaND}
+                productName="Huile Botanique Éclat"
+                trangThaiDonHang="HoanThanh"
+            />
+        }
+    />
+</Route>
 
                 {/* ==========================================
                     KHU VỰC 3: QUẢN TRỊ VIÊN (Sử dụng AdminLayout + Bọc AdminRoute)

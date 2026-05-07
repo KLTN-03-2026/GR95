@@ -12,7 +12,34 @@ const shoppingcartController = {
             const query = `
                 SELECT 
                     gh.MaND, gh.MaBienThe, gh.SoLuong, gh.IsSelected,
-                    bt.TenBienThe, bt.Gia, 
+                    bt.TenBienThe,
+                    COALESCE(
+                        (
+                            SELECT MIN(
+                                CASE
+                                    WHEN km2.LoaiGiamGia = 'PhanTram' THEN GREATEST(0, bt.Gia - (bt.Gia * km2.GiaTriGiam / 100))
+                                    WHEN km2.LoaiGiamGia = 'SoTien' THEN GREATEST(0, bt.Gia - km2.GiaTriGiam)
+                                    ELSE bt.Gia
+                                END
+                            )
+                            FROM SanPham_KhuyenMai spkm2
+                            JOIN ChuongTrinhKhuyenMai km2 ON km2.MaCTKM = spkm2.MaCTKM
+                            WHERE spkm2.MaBienThe = bt.MaBienThe
+                              AND NOW() BETWEEN km2.NgayBatDau AND km2.NgayKetThuc
+                        ),
+                        bt.Gia
+                    ) AS Gia,
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM SanPham_KhuyenMai spkm3
+                            JOIN ChuongTrinhKhuyenMai km3 ON km3.MaCTKM = spkm3.MaCTKM
+                            WHERE spkm3.MaBienThe = bt.MaBienThe
+                              AND NOW() BETWEEN km3.NgayBatDau AND km3.NgayKetThuc
+                        )
+                        THEN bt.Gia
+                        ELSE NULL
+                    END AS GiaGoc,
                     tk.SoLuongTon,
                     sp.TenSP, 
                     h.DuongDanAnh
@@ -162,15 +189,22 @@ const shoppingcartController = {
     },
 
     // 5. GIỮ HÀNG (CHỈ KIỂM TRA TẠM, KHÔNG TRỪ KHO)
+    // 5. GIỮ HÀNG (TẠM GIỮ CÓ THỜI HẠN)
     holdStockFromCart: async (req, res) => {
         const conn = await db.getConnection(); 
         try {
             await conn.beginTransaction();
             const maKhachHang = req.body.maKhachHang || req.user?.maND;
+            
             if (!maKhachHang) {
                 await conn.rollback();
                 return res.status(401).json({ success: false, message: "Vui lòng đăng nhập" });
             }
+
+            // 1. Dọn dẹp hàng kẹt: Xóa các lượt giữ hàng đã quá hạn của TOÀN HỆ THỐNG
+            await conn.query(`DELETE FROM GiuHangTam WHERE ThoiGianHetHan < NOW()`);
+
+            // 2. Lấy thông tin các sản phẩm trong giỏ đang được chọn
             const [items] = await conn.query(`
                 SELECT gh.MaBienThe, gh.SoLuong, tk.SoLuongTon, sp.TenSP
                 FROM GioHang gh
@@ -186,22 +220,63 @@ const shoppingcartController = {
                 return res.status(400).json({ success: false, message: "Chưa chọn sản phẩm" });
             }
 
+            // 3. Kiểm tra xem kho còn đủ không (tính cả lượng người KHÁC đang tạm giữ)
             for (let item of items) {
-                if (item.SoLuong > item.SoLuongTon) {
+                const [holdData] = await conn.query(`
+                    SELECT COALESCE(SUM(SoLuong), 0) AS DangGiu 
+                    FROM GiuHangTam 
+                    WHERE MaBienThe = ? AND MaND != ?
+                `, [item.MaBienThe, maKhachHang]);
+                
+                const soLuongNguoiKhacGiu = holdData[0].DangGiu;
+                const tonKhoKhaDung = item.SoLuongTon - soLuongNguoiKhacGiu;
+
+                if (item.SoLuong > tonKhoKhaDung) {
                     await conn.rollback();
-                    return res.status(400).json({ success: false, message: `"${item.TenSP}" không đủ hàng` });
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `Sản phẩm "${item.TenSP}" hiện đang có người khác thao tác thanh toán. Chỉ còn ${Math.max(0, tonKhoKhaDung)} sản phẩm khả dụng.` 
+                    });
                 }
             }
 
+            // 4. Nếu kho đủ -> Ghi nhận phiên giữ hàng cho User này (Thời hạn giữ: 15 phút)
+            for (let item of items) {
+                await conn.query(`
+                    INSERT INTO GiuHangTam (MaND, MaBienThe, SoLuong, ThoiGianHetHan) 
+                    VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))
+                    ON DUPLICATE KEY UPDATE 
+                        SoLuong = VALUES(SoLuong), 
+                        ThoiGianHetHan = VALUES(ThoiGianHetHan)
+                `, [maKhachHang, item.MaBienThe, item.SoLuong]);
+            }
+
             await conn.commit();
-            res.json({ success: true, message: "Đã giữ tạm sản phẩm để thanh toán" });
+            res.json({ success: true, message: "Đã giữ tạm sản phẩm, vui lòng thanh toán trong 15 phút" });
+            
         } catch (error) {
             if (conn) await conn.rollback();
-            res.status(500).json({ success: false });
+            console.error("Lỗi holdStockFromCart:", error);
+            res.status(500).json({ success: false, message: "Lỗi hệ thống khi tạm giữ hàng" });
         } finally {
             if (conn) conn.release();
         }
     },
+// THÊM VÀO shoppingcartController
+    // 7. NHẢ HÀNG TẠM GIỮ (Khi rời khỏi trang checkout)
+    releaseHold: async (req, res) => {
+        try {
+            const maKhachHang = req.body.maKhachHang || req.user?.maND;
+            if (!maKhachHang) return res.status(401).json({ success: false });
+
+            // Xóa phiên giữ hàng của User này
+            await db.query(`DELETE FROM GiuHangTam WHERE MaND = ?`, [maKhachHang]);
+            res.json({ success: true, message: "Đã nhả hàng thành công" });
+        } catch (error) {
+            res.status(500).json({ success: false });
+        }
+    },
+    
 
     // 6. CHUYỂN SANG MỤC YÊU THÍCH
     moveToWishlist: async (req, res) => {
@@ -234,6 +309,8 @@ return res.status(400).json({ success: false });
             if (conn) conn.release();
         }
     }
+    
 };
+
 
 module.exports = shoppingcartController;

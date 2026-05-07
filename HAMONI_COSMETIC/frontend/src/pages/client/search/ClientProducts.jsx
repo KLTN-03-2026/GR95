@@ -180,6 +180,7 @@ const ProductCard = ({ product, compact = false }) => {
             {/* Thông tin sản phẩm */}
             <div className="mt-auto flex flex-col flex-1 px-1">
                 <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-rose-500 truncate pr-2">{product.brand}</span>
                     <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">{product.category}</span>
                 </div>
 
@@ -325,7 +326,7 @@ export default function Products() {
         const dateA = new Date(a.createdAt).getTime() || a.id;
         const dateB = new Date(b.createdAt).getTime() || b.id;
         return dateB - dateA; 
-    });
+    })
 
     // 3. Xử lý Phân trang (20 sản phẩm / trang)
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);

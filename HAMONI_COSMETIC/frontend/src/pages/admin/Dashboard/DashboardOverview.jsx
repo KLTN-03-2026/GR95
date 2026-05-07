@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Select from 'react-select';
 import dashboardApi from '../../../services/dashboardApi';
 import './DashboardOverview.css';
 
@@ -25,6 +26,17 @@ const DashboardOverview = () => {
   const [cTuNgay, setCTuNgay] = useState("");
   const [cDenNgay, setCDenNgay] = useState("");
   const [cSanPham, setCSanPham] = useState("all");
+
+  // ===== CHUẨN BỊ DATA CHO THẺ SELECT =====
+  const productOptions = [
+    { value: 'all', label: '-- Tất cả --' },
+    ...filters.sanPhams.map(sp => ({ value: sp.MaSP, label: sp.TenSP }))
+  ];
+
+  const customerOptions = [
+    { value: 'all', label: '-- Tất cả --' },
+    ...filters.khachHangs.map(kh => ({ value: kh.MaND, label: kh.HoTen }))
+  ];
 
   // ===== LOAD FILTER OPTIONS =====
   const loadFilters = async () => {
@@ -103,21 +115,23 @@ const DashboardOverview = () => {
 
   // ===== ACTIONS: BIỂU ĐỒ =====
   const handleFilterChart = () => {
-    loadChart();
+    loadChart(); 
   };
 
   const handleResetChart = () => {
     setCTuNgay(""); setCDenNgay(""); setCSanPham("all");
-    setChartData([]);
-    setTimeout(() => loadChart(), 0);
+    // Sau khi reset, load lại dữ liệu mặc định ban đầu luôn
+    const resetParams = { sanPham: "all", tuNgay: "", denNgay: "" };
+    dashboardApi.getCharts(resetParams).then(res => setChartData(res.chartData || []));
   };
 
   // ===== INIT =====
   useEffect(() => {
     loadFilters();
     loadOverview("reset");
-    loadChart();
-  }, [loadOverview, loadChart]);
+    loadChart(); // QUAN TRỌNG: Gọi lần đầu để có dữ liệu ban đầu cho biểu đồ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Chỉ chạy 1 lần duy nhất khi mở trang
 
   if (loading && orders.length === 0) {
     return <div style={{ textAlign: "center", padding: 40 }}>Đang tải dữ liệu...</div>;
@@ -153,7 +167,6 @@ const DashboardOverview = () => {
       <div className="custom-card">
         <div className="section-header-blue">📈 Biểu đồ thống kê</div>
         
-        {/* Bộ lọc biểu đồ ngang */}
         <div className="horizontal-filter">
           <div className="filter-item">
             <label>Từ ngày</label>
@@ -163,72 +176,56 @@ const DashboardOverview = () => {
             <label>Đến ngày</label>
             <input type="date" value={cDenNgay} onChange={e => setCDenNgay(e.target.value)} />
           </div>
+          
           <div className="filter-item">
             <label>Sản phẩm</label>
-            <select value={cSanPham} onChange={e => setCSanPham(e.target.value)}>
-              <option value="all">-- Tất cả --</option>
-              {filters.sanPhams.map(sp => (
-                <option key={sp.MaSP} value={sp.MaSP}>{sp.TenSP}</option>
-              ))}
-            </select>
+            <Select
+              className="react-select-container"
+              classNamePrefix="react-select"
+              options={productOptions}
+              value={productOptions.find(opt => opt.value === cSanPham) || productOptions[0]}
+              onChange={(selectedOption) => setCSanPham(selectedOption ? selectedOption.value : "all")}
+              placeholder="-- Tất cả --"
+              isSearchable={true}
+            />
           </div>
           
           <div className="filter-actions-row">
-
             <button className="btn-green" onClick={handleFilterChart}>📌 Xem biểu đồ</button>
             <button className="btn-gray" onClick={handleResetChart}>🔄 Làm mới</button>
           </div>
         </div>
 
-        {/* Khung Biểu đồ */}
         <div className="chart-container-row">
-          
-          {/* Chart Doanh Thu */}
           <div className="chart-box">
-            <div className="chart-header">Doanh thu hàng tháng</div>
-            <div style={{ padding: "10px" }}> {/* Đã bỏ height: 260px ở div này */}
-              {chartData && chartData.length > 0 && chartData.some(d => d.revenue > 0) ? (
-                /* Đã thay height="100%" thành height={260} để fix lỗi Recharts */
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => new Intl.NumberFormat('vi-VN', { notation: "compact" }).format(val)} />
-                    <Tooltip formatter={(value) => [value.toLocaleString() + " đ", "Doanh thu"]} />
-                    <Bar dataKey="revenue" fill="#4682B4" barSize={35} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px", color: "#999" }}>
-                  ⚠️ Chưa có dữ liệu doanh thu
-                </div>
-              )}
+            <div className="chart-header">Doanh thu</div>
+            <div style={{ height: "260px", padding: "10px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => new Intl.NumberFormat('vi-VN', { notation: "compact" }).format(val)} />
+                  <Tooltip formatter={(value) => [value.toLocaleString() + " đ", "Doanh thu"]} />
+                  <Bar dataKey="revenue" fill="#4682B4" barSize={35} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Chart Số Đơn */}
           <div className="chart-box">
-            <div className="chart-header">Số đơn hàng theo tháng</div>
-            <div style={{ padding: "10px" }}> {/* Đã bỏ height: 260px ở div này */}
-              {chartData && chartData.length > 0 && chartData.some(d => d.orders > 0) ? (
-                /* Đã thay height="100%" thành height={260} để fix lỗi Recharts */
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(value) => [value, "Số đơn"]} />
-                    <Line type="monotone" dataKey="orders" stroke="#0d6efd" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "260px", color: "#999" }}>
-                  ⚠️ Chưa có dữ liệu đơn hàng
-                </div>
-              )}
+            <div className="chart-header">Số đơn hàng</div>
+            <div style={{ height: "260px", padding: "10px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value) => [value, "Số đơn"]} />
+                  <Line type="monotone" dataKey="orders" stroke="#0d6efd" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -236,7 +233,6 @@ const DashboardOverview = () => {
       <div className="custom-card">
         <div className="section-header" style={{ backgroundColor: "#bdca72" }}>📋 Danh sách đơn hàng</div>
         
-        {/* Bộ lọc bảng ngang */}
         <div className="horizontal-filter">
           <div className="filter-item">
             <label>Tìm kiếm</label>
@@ -254,25 +250,33 @@ const DashboardOverview = () => {
           </div>
           <div className="filter-item">
             <label>Đến ngày</label>
-            <input type="date" value={denNgay} onChange={e => setCDenNgay(e.target.value)} />
+            <input type="date" value={denNgay} onChange={e => setDenNgay(e.target.value)} />
           </div>
+          
           <div className="filter-item">
             <label>Sản phẩm</label>
-            <select value={sanPham} onChange={e => setSanPham(e.target.value)}>
-              <option value="all">-- Tất cả --</option>
-              {filters.sanPhams.map(sp => (
-                <option key={sp.MaSP} value={sp.MaSP}>{sp.TenSP}</option>
-              ))}
-            </select>
+            <Select
+              className="react-select-container"
+              classNamePrefix="react-select"
+              options={productOptions}
+              value={productOptions.find(opt => opt.value === sanPham) || productOptions[0]}
+              onChange={(selectedOption) => setSanPham(selectedOption ? selectedOption.value : "all")}
+              placeholder="-- Tất cả --"
+              isSearchable={true}
+            />
           </div>
+          
           <div className="filter-item">
             <label>Khách hàng</label>
-            <select value={khachHang} onChange={e => setKhachHang(e.target.value)}>
-              <option value="all">-- Tất cả --</option>
-              {filters.khachHangs.map(kh => (
-                <option key={kh.MaND} value={kh.MaND}>{kh.HoTen}</option>
-              ))}
-            </select>
+            <Select
+              className="react-select-container"
+              classNamePrefix="react-select"
+              options={customerOptions}
+              value={customerOptions.find(opt => opt.value === khachHang) || customerOptions[0]}
+              onChange={(selectedOption) => setKhachHang(selectedOption ? selectedOption.value : "all")}
+              placeholder="-- Tất cả --"
+              isSearchable={true}
+            />
           </div>
           
           <div className="filter-actions-row">
@@ -284,7 +288,6 @@ const DashboardOverview = () => {
           </div>
         </div>
 
-        {/* Bảng đơn hàng */}
         <div className="table-container">
           <table>
             <thead>
@@ -320,7 +323,6 @@ const DashboardOverview = () => {
           </table>
         </div>
       </div>
-
     </div>
   );
 };

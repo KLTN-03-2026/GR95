@@ -8,6 +8,10 @@ const authApi = {
     
     getCurrentUser: () => {
         return axiosClient.get('/auth/me');
+    },
+
+    changePassword: ({ oldPassword, newPassword }) => {
+        return axiosClient.put('/auth/change-password', { oldPassword, newPassword });
     }
 };
 

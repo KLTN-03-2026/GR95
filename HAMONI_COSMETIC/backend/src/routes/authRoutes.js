@@ -10,6 +10,7 @@ router.post("/login", authController.login);
 router.get("/me", verifyToken, authController.getCurrentUser); 
 
 router.put("/profile", verifyToken, authController.updateProfile);
+router.put("/change-password", verifyToken, authController.changePassword);
 router.post("/register", authController.register);
 router.post("/verify-otp", authController.verifyOTP); 
 router.post("/resend-otp", authController.resendOTP); 

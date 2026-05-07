@@ -8,10 +8,15 @@ import './Login.css';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  // 1. Thêm state để lưu trữ thông báo lỗi
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
   const loginSuccess = useStore((state) => state.loginSuccess);
-
+// 1. Tạo biến kiểm tra xem form đã hợp lệ chưa (cả 2 đều không trống)
+  const isFormValid = formData.email.trim() !== "" && formData.password.trim() !== "";
   const handleLogin = async () => {
+    // Reset lỗi mỗi lần bấm nút đăng nhập
+    setErrorMessage("");
     const payload = {
       email: formData.email.trim(),
       password: formData.password.trim(),
@@ -25,19 +30,39 @@ export default function Login() {
 
     try {
       const response = await authApi.login(payload);
+      localStorage.setItem("token", response.token);
       const normalizedUser = {
         ...response.user,
         name: response.user?.name || response.user?.hoTen || response.user?.HoTen || '',
       };
 
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(normalizedUser));
-      loginSuccess(normalizedUser);
+      let enrichedUser = normalizedUser;
+      try {
+        const meRes = await authApi.getCurrentUser();
+        enrichedUser = {
+          ...normalizedUser,
+          ...(meRes?.user || {}),
+          name: normalizedUser.name || meRes?.user?.hoTen || meRes?.user?.name || '',
+          avatarUrl: meRes?.user?.avatarUrl || normalizedUser.avatarUrl || ''
+        };
+      } catch {
+        enrichedUser = normalizedUser;
+      }
 
-      toast.success(`Chào mừng ${normalizedUser.name} quay trở lại!`);
+      localStorage.setItem("user", JSON.stringify(enrichedUser));
+      const cachedUserInfo = JSON.parse(localStorage.getItem('user_info')) || {};
+      const cachedAvatarUrl = cachedUserInfo.avatarUrl || '';
+      localStorage.setItem("user_info", JSON.stringify({
+        ...cachedUserInfo,
+        ...enrichedUser,
+        avatarUrl: enrichedUser.avatarUrl || cachedAvatarUrl || ''
+      }));
+      loginSuccess(enrichedUser);
+
+      toast.success(`Chào mừng ${enrichedUser.name} quay trở lại!`);
 
       // Điều hướng thông minh dựa trên mã quyền thực tế từ DB
-      const roleCode = normalizedUser.maQuyen;
+      const roleCode = enrichedUser.maQuyen;
 
       if (roleCode === 'ADMIN') {
         localStorage.setItem('userPermissions', JSON.stringify(['ALL']));
@@ -56,9 +81,9 @@ export default function Login() {
         navigate("/"); 
       }
     } catch (err) {
-      // Xử lý thông báo lỗi từ Backend trả về
-      const errorMsg = err.response?.data?.message || err.response?.data || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!";
-      toast.error(errorMsg);
+      // 2. Cập nhật lỗi từ Backend vào state thay vì dùng toast
+      const errorMsg = err.response?.data?.message || err.response?.data || "Email hoặc mật khẩu không chính xác!";
+      setErrorMessage(errorMsg);
       console.error("Lỗi đăng nhập:", err);
     }
   };
@@ -77,7 +102,24 @@ export default function Login() {
         <div className="auth-right">
           <h2 className="brand-title">HAMONI COSMETIC</h2>
           <p className="subtitle">Chào mừng trở lại. Đăng nhập để tiếp tục.</p>
-          
+          {/* 3. Khối hiển thị thông báo lỗi giao diện Bootstrap (Alert Danger) */}
+          {errorMessage && (
+            <div 
+              className="alert alert-danger" 
+              role="alert" 
+              style={{ 
+                padding: '10px 15px', 
+                marginBottom: '15px', 
+                borderRadius: '4px', 
+                backgroundColor: '#f8d7da', 
+                color: '#721c24', 
+                border: '1px solid #f5c6cb', 
+                fontSize: '14px' 
+              }}
+            >
+              {errorMessage}
+            </div>
+          )}
           <div className="input-group">
             <label>EMAIL</label>
             <input 
@@ -106,7 +148,19 @@ export default function Login() {
             <span style={{ fontSize: '11px', color: '#1a1a1a', cursor: 'pointer', fontWeight: '600' }}>Quên mật khẩu?</span>
           </div>
 
-          <button className="auth-btn" onClick={handleLogin}>
+{/* 2. Sử dụng thuộc tính disabled và thêm style mờ khi chưa đủ dữ liệu */}
+          <button 
+            className="auth-btn" 
+            onClick={handleLogin}
+            disabled={!isFormValid} 
+            style={{ 
+              opacity: isFormValid ? 1 : 0.5, 
+              cursor: isFormValid ? 'pointer' : 'not-allowed',
+              transition: 'all 0.3s ease'
+            }}
+          >
+
+          
             ĐĂNG NHẬP →
           </button>
           

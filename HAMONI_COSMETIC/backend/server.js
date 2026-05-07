@@ -36,6 +36,7 @@ const warehouseRoutes = require('./src/routes/warehouseRoutes');
 const bannerRoutes = require('./src/routes/bannerRoutes');
 const homeRoutes = require('./src/routes/homeRoutes');
 const clientProductRoutes = require('./src/routes/clientProductRoutes');
+const productreviewRoutes = require('./src/routes/productreviewRoutes');
 
 // Đăng ký các API vào hệ thống
 app.use('/api/auth', authRoutes);
@@ -57,6 +58,7 @@ app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/client/products', clientProductRoutes);
+app.use('/api/product-reviews', productreviewRoutes);
 
 // Route mặc định (Root)
 app.get('/', (req, res) => {

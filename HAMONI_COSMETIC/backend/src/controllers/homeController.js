@@ -171,6 +171,7 @@ const getHomeData = async (req, res) => {
                 id: b.MaBanner,
                 image: b.image,
                 title: b.TieuDe,
+                URLDich: b.link,
                 cta: 'Xem chi tiết'
             })),
             products: products.map(p => ({
