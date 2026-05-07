@@ -39,6 +39,7 @@ const clientProductRoutes = require('./src/routes/clientProductRoutes');
 const orderhistoryRoutes = require('./src/routes/OrderhistoryRoutes');
 const orderDetailsRoutes = require('./src/routes/OrderDetailsRoutes');
 const { startCassoCron } = require('./src/config/cassoService');
+const productreviewRoutes = require('./src/routes/productreviewRoutes');
 
 // Đăng ký các API vào hệ thống
 app.use('/api/auth', authRoutes);
@@ -62,6 +63,7 @@ app.use('/api/home', homeRoutes);
 app.use('/api/client/products', clientProductRoutes);
 app.use('/api/orderhistory', orderhistoryRoutes);
 app.use('/api/orderdetails', orderDetailsRoutes);
+app.use('/api/product-reviews', productreviewRoutes);
 
 // Route mặc định (Root)
 app.get('/', (req, res) => {

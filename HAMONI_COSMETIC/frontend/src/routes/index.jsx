@@ -17,11 +17,14 @@ import ClientLayout from '../layouts/ClientLayout/ClientLayout';
 // ==========================================
 import Home from '../pages/client/home/Home';
 import ClientProducts from '../pages/client/products/ClientProducts';
-import ProductDetailView from '../pages/client/ProductView/ProductDetailView';
+import ProductDetailView from '../pages/client/ProductDetailView/ProductDetailView';
 import ShoppingCart from '../pages/client/Cart/ShoppingCart';
 import OrderPayment from '../pages/client/Payment/orderpayment';
 import OrderHistory from '../pages/client/Orderhistory/Orderhistory';
 import ClientOrderDetail from '../pages/client/Orderhistory/OrderDetails';
+import CustomerProfile from '../pages/client/Profile/CustomerProfile';
+import PromotionClient from '../pages/client/PromotionClient/PromotionClient';
+import PromotionDetailClient from '../pages/client/PromotionClient/PromotionDetailClient';
 
 // ==========================================
 // 3. IMPORT AUTH PAGES (Xác thực)
@@ -112,12 +115,15 @@ const AppRouter = () => {
                 <Route path="/" element={<ClientLayout />}>
                     <Route index element={<Home />} />
                     <Route path="products" element={<ClientProducts />} />
+                    <Route path="promotions" element={<PromotionClient />} />
+                    <Route path="khuyen-mai/:id" element={<PromotionDetailClient />} />
                     <Route path="gio-hang" element={<ShoppingCart />} />
                     <Route path="cart" element={<ShoppingCart />} />
                     <Route path="product/:productId" element={<ProductDetailView />} />
                     <Route path="orderpayment" element={<OrderPayment />} />
                     <Route path="orderhistory" element={<OrderHistory />} />
                     <Route path="order/:id" element={<ClientOrderDetail />} />
+                    <Route path="profile" element={<CustomerProfile />} />
                 </Route>
 
                 {/* ==========================================

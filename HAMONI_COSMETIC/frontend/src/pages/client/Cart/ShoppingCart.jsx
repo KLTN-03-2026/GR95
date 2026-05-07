@@ -111,28 +111,40 @@ const ShoppingCart = () => {
     }
 
     const maxStock = Math.max(1, Number(item?.SoLuongTon || 0));
-    const nextQty = Math.max(1, Math.min(maxStock, normalizedQty));
+    
+    if (normalizedQty > maxStock) {
+      toast.warning(`Sản phẩm này chỉ còn tối đa ${maxStock} trong kho.`);
+      setQuantityInputs((prev) => ({
+        ...prev,
+        [maBienThe]: String(maxStock)
+      }));
+      return; 
+    }
 
     setQuantityInputs((prev) => ({
       ...prev,
-      [maBienThe]: String(nextQty)
+      [maBienThe]: String(normalizedQty)
     }));
+
+    setCartItems((prevItems) => 
+      prevItems.map((cartItem) => 
+        cartItem.MaBienThe === maBienThe 
+          ? { ...cartItem, SoLuong: normalizedQty } 
+          : cartItem
+      )
+    );
 
     try {
       await shoppingCartApi.updateCartItem({
         maKhachHang,
         maBienThe,
-        soLuong: nextQty,
+        soLuong: normalizedQty,
         isSelected: item.IsSelected
       });
       fetchCartData(false);
     } catch (error) {
-      if (error.response && error.response.status === 400) {
-        toast.warning(error.response.data.message);
-        fetchCartData(false);
-      } else {
-        console.error("Lỗi cập nhật số lượng:", error);
-      }
+      toast.warning(error.response?.data?.message || "Lỗi cập nhật số lượng.");
+      fetchCartData(false);
     }
   };
 
@@ -260,15 +272,29 @@ const ShoppingCart = () => {
         <div className="cart-wrapper-pc">
           <div className="cart-container-pc">
             
-            {/* Header: Chỉ có nút Quay lại */}
-            <div className="cart-pc-header-nav">
-               <div className="nav-left">
-                  <span onClick={() => navigate(-1)} className="back-icon" style={{cursor: 'pointer'}}>←</span>
-                  <span className="logo-text">Giỏ Hàng</span>
+            <div className="cart-pc-header-nav flex justify-between items-center w-full">
+               <div className="nav-left flex items-center gap-2">
+                  <span onClick={() => navigate(-1)} className="back-icon text-xl font-bold" style={{cursor: 'pointer'}}>←</span>
+                  <span className="logo-text text-xl font-bold text-rose-500">Giỏ Hàng</span>
+               </div>
+               
+               <div className="nav-right flex items-center gap-6">
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={toggleSelectAll}>
+                      <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="hamoni-checkbox w-4 h-4 cursor-pointer accent-rose-500" />
+                      <span className="text-sm font-medium text-slate-700">Chọn Tất Cả ({cartItems.length})</span>
+                  </div>
+                  {selectedCount > 0 && (
+                      <span 
+                         className="delete-all-btn text-sm font-medium text-rose-500 hover:text-rose-700 cursor-pointer" 
+                         onClick={() => { setItemToDelete('multiple'); setShowModal(true); }}
+                      >
+                         Xóa ({selectedCount}) mục đã chọn
+                      </span>
+                  )}
                </div>
             </div>
 
-            <div className="cart-pc-table-header">
+            <div className="cart-pc-table-header mt-4">
                <div className="col-check">
                   <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="hamoni-checkbox" />
                </div>
@@ -279,7 +305,8 @@ const ShoppingCart = () => {
                <div className="col-action">Thao Tác</div>
             </div>
 
-            <div className="cart-pc-list">
+            {/* ĐÃ THÊM: overflow-y-auto, max-h-[500px] và pr-2 (padding-right) để tạo thanh cuộn dọc không bị đè vào nội dung */}
+            <div className="cart-pc-list overflow-y-auto max-h-[500px] pr-2">
               {cartItems.length === 0 ? (
                 <div className="empty-cart-pc text-center py-10 text-slate-500">Giỏ hàng của bạn đang trống</div>
               ) : (
@@ -301,6 +328,7 @@ const ShoppingCart = () => {
                     <div className="col-quantity">
                         <div className="qty-control-pc">
                           <button onClick={() => updateQuantity(item.MaBienThe, Number(item.SoLuong) - 1)}>−</button>
+                          
                           <input 
                             type="number" 
                             value={quantityInputs[item.MaBienThe] ?? String(item.SoLuong)}
@@ -314,18 +342,39 @@ const ShoppingCart = () => {
                                 return;
                               }
 
+                              let parsedValue = Number.parseInt(numericText, 10);
                               const maxStock = Math.max(1, Number(item.SoLuongTon || 0));
-                              const parsedValue = Number.parseInt(numericText, 10);
-                              const nextValue = Math.max(1, Math.min(maxStock, parsedValue));
+                              
+                              if (parsedValue > maxStock) {
+                                toast.warning(`Sản phẩm này chỉ còn tối đa ${maxStock} trong kho.`);
+                                parsedValue = maxStock;
+                              }
 
                               setQuantityInputs((prev) => ({
                                 ...prev,
-                                [item.MaBienThe]: String(nextValue)
+                                [item.MaBienThe]: String(parsedValue)
                               }));
+
+                              setCartItems((prevItems) => 
+                                prevItems.map((cartItem) => 
+                                  cartItem.MaBienThe === item.MaBienThe 
+                                    ? { ...cartItem, SoLuong: parsedValue } 
+                                    : cartItem
+                                )
+                              );
                             }}
                             onBlur={(e) => commitQuantity(item.MaBienThe, e.target.value)}
                           />
-                          <button onClick={() => updateQuantity(item.MaBienThe, Number(item.SoLuong) + 1)}>+</button>
+
+                          <button onClick={() => {
+                              const maxStock = Math.max(1, Number(item.SoLuongTon || 0));
+                              if (Number(item.SoLuong) >= maxStock) {
+                                toast.warning(`Sản phẩm này chỉ còn tối đa ${maxStock} trong kho.`);
+                                return;
+                              }
+                              updateQuantity(item.MaBienThe, Number(item.SoLuong) + 1);
+                          }}>+</button>
+
                         </div>
                     </div>
                     <div className="col-total-red font-bold text-rose-600">{formatVND(item.Gia * item.SoLuong)}</div>
@@ -337,29 +386,9 @@ const ShoppingCart = () => {
               )}
             </div>
 
-            {/* Footer Giỏ Hàng */}
             <div className="cart-pc-footer">
-               <div className="footer-top">
-                  <div className="voucher-link cursor-pointer text-rose-600" onClick={() => navigate('/vouchers')}>
-                     🎟️ HAMONI Voucher | <span className="text-slate-600 underline ml-1">Chọn hoặc nhập mã</span>
-                  </div>
-               </div>
-               <div className="footer-bottom flex justify-between items-center mt-4">
-                  <div className="footer-left flex items-center gap-4">
-                     <div className="flex items-center gap-2 cursor-pointer" onClick={toggleSelectAll}>
-                         <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="hamoni-checkbox" />
-                         <span className="text-sm font-medium text-slate-700">Chọn Tất Cả ({cartItems.length})</span>
-                     </div>
-                     {/* Nút Xóa Nhiều được tích hợp thẳng vào góc trái, hiện ra khi có item được chọn */}
-                     {selectedCount > 0 && (
-                         <span 
-                            className="delete-all-btn text-sm font-medium text-rose-500 hover:text-rose-700 cursor-pointer" 
-                            onClick={() => { setItemToDelete('multiple'); setShowModal(true); }}
-                         >
-                            Xóa ({selectedCount}) mục đã chọn
-                         </span>
-                     )}
-                  </div>
+               <div className="footer-bottom flex justify-between items-center mt-4 w-full">
+                  <div></div> 
                   
                   <div className="footer-right flex items-center gap-6">
                      <div className="flex flex-col items-end">
@@ -377,7 +406,6 @@ const ShoppingCart = () => {
                </div>
             </div>
 
-            {/* Modal Xác Nhận Xóa */}
             {showModal && (
               <div className="modal-overlay fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
                 <div className="custom-modal bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>

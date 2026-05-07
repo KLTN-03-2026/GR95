@@ -1,20 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, User, Menu, Bell, FileText, Settings, LogOut } from 'lucide-react';
 import { useStore } from '../../store/useStore'; 
 import './ClientLayout.css';
 
+const getStoredUserInfo = () => {
+    try {
+        return JSON.parse(localStorage.getItem('user_info')) || {};
+    } catch {
+        return {};
+    }
+};
+
 const ClientLayout = () => {
+    const SEARCH_HISTORY_KEY = 'hamoni_search_history';
+    const MAX_HISTORY_ITEMS = 8;
+
     // 1. GỌI USER VÀ HÀM LOGOUT TỪ GLOBAL STORE (ZUSTAND)
     const { user, logout, cartVariantCount } = useStore(); 
+    const location = useLocation();
     
     const [isScrolled, setIsScrolled] = useState(false);
     const [showSearchSuggest, setShowSearchSuggest] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [searchKeyword, setSearchKeyword] = useState(() => new URLSearchParams(location.search).get('search') || '');
+    const [searchHistory, setSearchHistory] = useState(() => {
+        try {
+            const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, MAX_HISTORY_ITEMS) : [];
+        } catch {
+            return [];
+        }
+    });
     
     const userMenuRef = useRef(null);
     const navigate = useNavigate(); 
     const notificationCount = 2; // Số thông báo giả định (Lấy từ CSDL sau)
+    const storedUserInfo = getStoredUserInfo();
+    const displayUser = user || storedUserInfo;
+    const displayUserName = displayUser?.name || displayUser?.hoTen || storedUserInfo?.hoTen || storedUserInfo?.name || '';
+    const displayAvatar = displayUser?.avatarUrl || storedUserInfo?.avatarUrl || '';
 
     // --- CÁC HIỆU ỨNG UI ---
     useEffect(() => {
@@ -47,6 +73,30 @@ const ClientLayout = () => {
         logout(); 
         localStorage.removeItem('token'); 
         navigate('/login'); 
+    };
+
+    const handleSearchSubmit = () => {
+        const keyword = searchKeyword.trim();
+        if (!keyword) {
+            navigate('/products');
+            return;
+        }
+
+        setSearchHistory((prev) => {
+            const normalizedKeyword = keyword.toLowerCase();
+            const next = [keyword, ...prev.filter((item) => item.toLowerCase() !== normalizedKeyword)].slice(0, MAX_HISTORY_ITEMS);
+            localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+            return next;
+        });
+
+        navigate(`/products?search=${encodeURIComponent(keyword)}`);
+        setShowSearchSuggest(false);
+    };
+
+    const handleHistoryClick = (keyword) => {
+        setSearchKeyword(keyword);
+        navigate(`/products?search=${encodeURIComponent(keyword)}`);
+        setShowSearchSuggest(false);
     };
 
     return (
@@ -83,10 +133,20 @@ const ClientLayout = () => {
                                 type="text" 
                                 placeholder="Tìm kiếm kem dưỡng, serum..." 
                                 className="w-full bg-slate-100 text-sm rounded-full py-2.5 pl-5 pr-12 border border-transparent focus:bg-white focus:border-rose-300 focus:ring-4 focus:ring-rose-100 outline-none transition-all"
+                                value={searchKeyword}
+                                onChange={(e) => setSearchKeyword(e.target.value)}
                                 onFocus={() => setShowSearchSuggest(true)}
                                 onBlur={() => setTimeout(() => setShowSearchSuggest(false), 200)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSearchSubmit();
+                                }}
                             />
-                            <button className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-colors">
+                            <button
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-colors"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={handleSearchSubmit}
+                                aria-label="Tìm kiếm sản phẩm"
+                            >
                                 <Search size={14} />
                             </button>
                         </div>
@@ -96,8 +156,18 @@ const ClientLayout = () => {
                             <div className="absolute top-full mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-100 p-4 z-50">
                                 <p className="text-xs font-semibold text-slate-400 mb-2 uppercase">Lịch sử tìm kiếm</p>
                                 <div className="flex flex-wrap gap-2">
-                                    <span className="text-xs bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-slate-200">Serum Vitamin C</span>
-                                    <span className="text-xs bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-slate-200">Kem chống nắng</span>
+                                    {searchHistory.length > 0 ? searchHistory.map((item) => (
+                                        <button
+                                            key={item}
+                                            className="text-xs bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-slate-200 border-0"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => handleHistoryClick(item)}
+                                        >
+                                            {item}
+                                        </button>
+                                    )) : (
+                                        <span className="text-xs text-slate-400">Chưa có lịch sử tìm kiếm</span>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -147,18 +217,22 @@ const ClientLayout = () => {
                                         aria-expanded={isUserMenuOpen}
                                         aria-haspopup="menu"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold border border-rose-200 uppercase">
-                                            {user.name ? user.name.charAt(0) : 'U'}
+                                        <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold border border-rose-200 uppercase overflow-hidden">
+                                            {displayAvatar ? (
+                                                <img src={displayAvatar} alt={displayUserName || 'Avatar'} className="w-full h-full object-cover" />
+                                            ) : (
+                                                (displayUserName ? displayUserName.charAt(0) : 'U')
+                                            )}
                                         </div>
                                         <span className="text-sm font-semibold text-slate-700 max-w-[100px] truncate">
-                                            {user.name}
+                                            {displayUserName}
                                         </span>
                                     </button>
 
                                     <div className={`client-user-menu absolute top-full right-0 mt-2 w-56 bg-white shadow-xl rounded-xl border border-gray-100 z-50 transition-all ${isUserMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                                         <div className="px-4 py-3 border-b border-gray-50">
                                             <p className="text-xs text-slate-400 mb-0">Tài khoản của</p>
-                                            <p className="text-sm font-bold text-slate-800 truncate mb-0">{user.name}</p>
+                                            <p className="text-sm font-bold text-slate-800 truncate mb-0">{displayUserName}</p>
                                         </div>
                                         <ul className="py-2 pl-0 mb-0">
                                             <li>

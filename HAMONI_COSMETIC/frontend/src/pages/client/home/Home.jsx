@@ -1,8 +1,76 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Star, Filter, RefreshCcw, AlertCircle, Leaf, ShieldCheck, Truck, Sparkles, ArrowRight, Zap, Flame, Droplets } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Filter, RefreshCcw, AlertCircle, Leaf, ShieldCheck, Truck, Sparkles, ArrowRight, Droplets, Flame } from 'lucide-react';
 import axiosClient from '../../../services/axiosClient';
+
+// ==========================================
+// COMPONENT: COUNTDOWN TIMER (THÊM MỚI)
+// ==========================================
+const parseVietnameseDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return null;
+    const [day, month, year] = parts;
+    return new Date(`${year}-${month}-${day}T00:00:00`).getTime();
+};
+
+const CountdownTimer = ({ startDateStr, endDateStr }) => {
+    const [timeLeft, setTimeLeft] = useState('');
+    const [status, setStatus] = useState(''); // 'upcoming', 'ongoing', 'ended'
+
+    useEffect(() => {
+        const start = parseVietnameseDate(startDateStr);
+        const end = parseVietnameseDate(endDateStr);
+        
+        if (!start || !end) return;
+
+        // Đẩy end time đến cuối ngày (23:59:59)
+        const realEnd = end + (24 * 60 * 60 * 1000) - 1;
+
+        const calculateTimeLeft = (difference) => {
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            setTimeLeft(`${days} ngày ${hours}h ${minutes}p ${seconds}s`);
+        };
+
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+
+            if (now < start) {
+                setStatus('upcoming');
+                calculateTimeLeft(start - now);
+            } else if (now >= start && now <= realEnd) {
+                setStatus('ongoing');
+                calculateTimeLeft(realEnd - now);
+            } else {
+                setStatus('ended');
+                setTimeLeft('');
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [startDateStr, endDateStr]);
+
+    if (status === 'ended' || !timeLeft) return null;
+
+    return (
+        <div className="inline-flex items-center gap-2 bg-slate-900/60 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full mb-4 shadow-lg w-max">
+            <span className="relative flex h-3 w-3">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'ongoing' ? 'bg-rose-400' : 'bg-amber-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${status === 'ongoing' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
+            </span>
+            <span className="text-sm font-medium">
+                {status === 'upcoming' ? 'Sắp diễn ra sau:' : 'Kết thúc sau:'} 
+                <strong className={`ml-2 tracking-wider ${status === 'ongoing' ? 'text-rose-300' : 'text-amber-300'}`}>{timeLeft}</strong>
+            </span>
+        </div>
+    );
+};
 
 // ==========================================
 // COMPONENT: HERO SLIDER
@@ -10,6 +78,7 @@ import axiosClient from '../../../services/axiosClient';
 const HeroSlider = ({ slides }) => {
     const [current, setCurrent] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
+    const navigate = useNavigate();
     
     useEffect(() => {
         if (!slides || slides.length <= 1) return;
@@ -18,6 +87,21 @@ const HeroSlider = ({ slides }) => {
         }, 5000);
         return () => clearInterval(timer);
     }, [current, slides]);
+
+    // HÀM XỬ LÝ CLICK: XEM CHI TIẾT
+    const handleViewDetails = (e, slide) => {
+        if (e) e.stopPropagation();
+        
+        if (slide.URLDich) {
+            if (slide.URLDich.startsWith('http')) {
+                window.open(slide.URLDich, '_blank');
+            } else {
+                navigate(slide.URLDich);
+            }
+        } else {
+            alert("Banner này chưa được gắn liên kết (Vui lòng gắn trong trang Admin).");
+        }
+    };
 
     const nextSlide = (e) => { e.stopPropagation(); setCurrent((prev) => (prev === slides.length - 1 ? 0 : prev + 1)); };
     const prevSlide = (e) => { e.stopPropagation(); setCurrent((prev) => (prev === 0 ? slides.length - 1 : prev - 1)); };
@@ -34,6 +118,7 @@ const HeroSlider = ({ slides }) => {
             className="relative w-full h-[250px] md:h-[480px] rounded-3xl overflow-hidden bg-slate-100 group shadow-md cursor-pointer"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onClick={(e) => handleViewDetails(e, activeSlide)} 
         >
             <AnimatePresence initial={false}>
                 <Motion.div 
@@ -57,15 +142,27 @@ const HeroSlider = ({ slides }) => {
                             {slideBadge}
                         </span>
                     )}
+
+                    {/* HIỂN THỊ COUNTDOWN TIMER */}
+                    {(activeSlide.NgayBatDau || activeSlide.NgayHetHan) && (
+                        <CountdownTimer startDateStr={activeSlide.NgayBatDau} endDateStr={activeSlide.NgayHetHan} />
+                    )}
+
                     <h2 className="text-3xl md:text-5xl lg:text-6xl font-black mb-4 max-w-2xl leading-tight text-white">
                         {slideTitle}
                     </h2>
                     <p className="text-slate-200 mb-6 max-w-lg text-sm md:text-base leading-relaxed">
                         {slideSubtitle}
                     </p>
-                    <button className="pointer-events-auto w-max bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 rounded-full text-base font-bold shadow-lg shadow-rose-500/40 transition-transform hover:-translate-y-1">
-                        {activeSlide.cta || 'Khám phá ngay'}
-                    </button>
+                    
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={(e) => handleViewDetails(e, activeSlide)}
+                            className="pointer-events-auto w-max bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 rounded-full text-base font-bold shadow-lg shadow-rose-500/40 transition-transform hover:-translate-y-1"
+                        >
+                            Xem chi tiết
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -115,14 +212,13 @@ const normalizeProducts = (products = []) => {
                 id: variant.id || `${product.id || index}-v${variantIndex + 1}`,
                 label: variant.label || variant.name || `Biến thể ${variantIndex + 1}`,
                 type: variant.type || 'Tùy chọn',
-                // Nếu API biến thể không trả cặp giá trước/sau giảm,
-                // dùng giá tổng hợp ở cấp sản phẩm để không mất thông tin khuyến mãi.
                 price: (variant.oldPrice != null || variant.originalPrice != null || variant.effectivePrice != null)
                     ? (Number(variant.effectivePrice ?? variant.price) || defaultPrice)
                     : defaultPrice,
                 oldPrice: (variant.oldPrice != null || variant.originalPrice != null || variant.effectivePrice != null)
                     ? (Number(variant.oldPrice ?? variant.originalPrice) || defaultOldPrice)
                     : defaultOldPrice,
+                stock: Number(variant?.stock ?? variant?.soLuongTon ?? 0),
                 inStock: Number(variant?.stock ?? variant?.soLuongTon ?? 0) > 0
                     || variant?.inStock === true
                     || variant?.inStock === 1
@@ -135,6 +231,7 @@ const normalizeProducts = (products = []) => {
                 type: 'Tùy chọn',
                 price: defaultPrice,
                 oldPrice: defaultOldPrice,
+                stock: Number(product?.stock ?? product?.soLuongTon ?? 0),
                 inStock: hasProductStock,
                 image: product.image
             }];
@@ -144,9 +241,11 @@ const normalizeProducts = (products = []) => {
         const basePrice = Number(primaryVariant.price) || defaultPrice;
         const baseOldPrice = Number(primaryVariant.oldPrice) || defaultOldPrice;
         const discountPercent = getDiscountPercent(basePrice, baseOldPrice);
+        
+        const totalStock = normalizedVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
 
         return {
-            id: product.id || product.MaSP,
+            id: product.id,
             name: product.name || product.TenSP,
             brand: product.brand || product.thuongHieu,
             category: product.category || product.TenDM,
@@ -156,6 +255,7 @@ const normalizeProducts = (products = []) => {
             rating: Number(product.rating) || 5,
             reviews: Number(product.reviews) || 0,
             soldCount: Number(product.soldCount) || 0,
+            totalStock: totalStock,
             isNew: isNew,
             discountPercent: discountPercent,
             variants: normalizedVariants,
@@ -165,26 +265,26 @@ const normalizeProducts = (products = []) => {
 };
 
 // ==========================================
-// COMPONENT: THẺ SẢN PHẨM (Clean & Minimal)
+// COMPONENT: THẺ SẢN PHẨM (ĐỒNG BỘ GIAO DIỆN MỚI)
 // ==========================================
 const ProductCard = ({ product }) => {
     const navigate = useNavigate();
 
     const defaultVariant = product.variants?.[0] || {};
-    const hasAnyVariantInStock = Array.isArray(product.variants) && product.variants.length > 0
-        ? product.variants.some((variant) => Number(variant?.stock ?? variant?.soLuongTon ?? 0) > 0
-            || variant?.inStock === true
-            || variant?.inStock === 1
-            || variant?.inStock === '1')
-        : false;
     const displayPrice = Number(defaultVariant.price) || Number(product.price) || 0;
     const displayOldPrice = Number(defaultVariant.oldPrice) || Number(product.oldPrice) || null;
     const discountPercent = product.discountPercent;
     const displayImage = defaultVariant.image || product.image;
+    
+// Kiểm tra tổng quát: Có số lượng > 0 HOẶC có cờ inStock = true
+const hasAnyVariantInStock = product.variants?.some(v => v.inStock);
 
-    const formatPrice = (price) => (price ? Number(price).toLocaleString('vi-VN') + 'đ' : 'Liên hệ');
+    // Fomat giá hiển thị đầy đủ (Ví dụ: 135.000đ)
+    const formatPrice = (price) => {
+        if (!price) return 'Liên hệ';
+        return Number(price).toLocaleString('vi-VN') + 'đ';
+    };
 
-    // Chuyển trang khi click vào ảnh hoặc tên
     const handleNavigate = () => {
         navigate(`/product/${product.id}`); 
     };
@@ -194,21 +294,21 @@ const ProductCard = ({ product }) => {
             whileHover={{ y: -6 }} 
             className="group bg-white rounded-2xl p-3 border border-rose-100/50 hover:border-rose-200 hover:shadow-[0_12px_30px_rgba(191,124,124,0.12)] transition-all duration-300 flex flex-col h-full relative overflow-hidden"
         >
-            {/* Nhãn dán NEW / Giảm giá */}
+            {/* TAG TRẠNG THÁI */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start pointer-events-none">
-                {product.isNew && (
+                {discountPercent > 0 && (
+                    <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
+                        -{discountPercent}%
+                    </span>
+                )}
+                {product.isNew && discountPercent === 0 && (
                     <span className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
                         NEW
                     </span>
                 )}
-                {discountPercent > 0 && (
-                    <span className="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
-                        -{discountPercent}%
-                    </span>
-                )}
             </div>
 
-            {/* Container Hình ảnh */}
+            {/* HÌNH ẢNH */}
             <div 
                 className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 bg-slate-50 flex items-center justify-center cursor-pointer"
                 onClick={handleNavigate}
@@ -216,7 +316,7 @@ const ProductCard = ({ product }) => {
                 <img src={displayImage} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
             </div>
 
-            {/* Thông tin sản phẩm */}
+            {/* THÔNG TIN SẢN PHẨM */}
             <div className="mt-auto flex flex-col flex-1 px-1">
                 <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] uppercase tracking-wider font-bold text-rose-500 truncate pr-2">{product.brand}</span>
@@ -224,7 +324,7 @@ const ProductCard = ({ product }) => {
                 </div>
 
                 <p 
-                    className="font-bold text-slate-800 text-[15px] leading-relaxed line-clamp-2 mb-2 group-hover:text-rose-600 transition-colors cursor-pointer"
+                    className="font-bold text-slate-800 text-[14px] sm:text-[15px] leading-relaxed line-clamp-2 mb-2 group-hover:text-rose-600 transition-colors cursor-pointer"
                     onClick={handleNavigate}
                 >
                     {product.name}
@@ -236,15 +336,21 @@ const ProductCard = ({ product }) => {
                     <span>({product.reviews || 0})</span>
                 </div>
 
+                {/* KHỐI GIÁ & TÌNH TRẠNG KHO */}
                 <div className="mt-auto pt-2.5 border-t border-slate-100">
                     <div className="flex items-end justify-between">
                         <div className="flex flex-col">
-                            <span className="text-base font-black text-rose-600 leading-none">{formatPrice(displayPrice)}</span>
-                            {displayOldPrice > displayPrice && (
-                                <span className="text-[10px] font-medium text-slate-400 line-through mt-1.5 leading-none">{formatPrice(displayOldPrice)}</span>
+                            <span className="text-[15px] sm:text-[16px] font-black leading-none text-rose-600">
+                                {formatPrice(displayPrice)}
+                            </span>
+                            {(displayOldPrice > displayPrice) && (
+                                <span className="text-[10px] font-medium text-slate-400 line-through mt-1.5 leading-none">
+                                    {formatPrice(displayOldPrice)}
+                                </span>
                             )}
                         </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${hasAnyVariantInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                        
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${hasAnyVariantInStock ? 'text-emerald-500 bg-emerald-50' : 'text-slate-500 bg-slate-100'}`}>
                             {hasAnyVariantInStock ? 'Còn hàng' : 'Hết hàng'}
                         </span>
                     </div>
@@ -275,7 +381,6 @@ export default function Home() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedBrand, setSelectedBrand] = useState('all');
 
-    // KẾT NỐI DỮ LIỆU THẬT
     useEffect(() => {
         const fetchHomeData = async () => {
             try {
@@ -286,7 +391,21 @@ export default function Home() {
 
                 const fromApi = normalizeProducts(homeResult.products || []);
                 setData({
-                    slides: homeResult.slides || [],
+                    slides: (homeResult.slides || []).map(s => {
+                        const timeText = (s.NgayBatDau && s.NgayHetHan) 
+                            ? `⏰ Ưu đãi áp dụng từ ${s.NgayBatDau} đến ${s.NgayHetHan}` 
+                            : 'Xem ngay các xu hướng và ưu đãi nổi bật đang chờ bạn.';
+
+                        return {
+                            ...s,
+                            image: s.DuongDanAnh || s.image,
+                            title: s.TieuDe || s.title,
+                            URLDich: s.URLDich,
+                            NgayBatDau: s.NgayBatDau,
+                            NgayHetHan: s.NgayHetHan,
+                            subtitle: timeText 
+                        };
+                    }),
                     products: fromApi
                 });
                 
@@ -310,7 +429,6 @@ export default function Home() {
         setSelectedBrand('all');
     };
 
-    // Lọc dữ liệu tổng
     const filteredProducts = data.products?.filter((product) => {
         const minVariantPrice = Math.min(...product.variants.map((v) => Number(v.price) || 0));
         const matchPrice = minVariantPrice <= maxPrice;
@@ -319,7 +437,6 @@ export default function Home() {
         return matchPrice && matchCategory && matchBrand;
     });
 
-    // PHÂN LOẠI SẢN PHẨM THÀNH CÁC SECTIONS (Tối đa 8 sản phẩm / mục)
     const todaySuggestionProducts = filteredProducts
         .filter((product) => product.isNew || product.discountPercent > 0)
         .slice(0, 8);
@@ -336,12 +453,10 @@ export default function Home() {
                 </div>
             )}  
 
-            {/* HERO SLIDER */}
             <div className="mb-6 shadow-sm">
                 {loading ? <div className="w-full h-[250px] md:h-[480px] bg-slate-100 rounded-3xl animate-pulse"></div> : <HeroSlider slides={data.slides} />}
             </div>
 
-            {/* THANH BỘ LỌC NGANG */}
             <div className="bg-white p-4 md:px-6 md:py-4 rounded-2xl border border-slate-200 shadow-sm mb-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sticky top-[var(--client-nav-offset)] z-30">
                 <div className="flex items-center gap-3 flex-wrap w-full">
                     <div className="flex items-center gap-2 text-rose-500 font-bold mr-2">
@@ -379,7 +494,6 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* VÙNG HIỂN THỊ CÁC SECTION SẢN PHẨM */}
             <div className="w-full mb-10 space-y-10">
                 
                 {loading ? (
@@ -388,7 +502,6 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        {/* 1. GỢI Ý HÔM NAY (GỘP NEW + SALE) */}
                         {todaySuggestionProducts.length > 0 && (
                             <section>
                                 <div className="flex items-center gap-2 mb-6">
@@ -403,7 +516,6 @@ export default function Home() {
                             </section>
                         )}
 
-                        {/* 2. SẢN PHẨM NỔI BẬT (SẮP XẾP THEO ĐÃ BÁN) */}
                         {featuredProducts.length > 0 && (
                             <section>
                                 <div className="flex items-center gap-2 mb-6">
@@ -418,7 +530,6 @@ export default function Home() {
                             </section>
                         )}
 
-                        {/* THÔNG BÁO KHÔNG TÌM THẤY */}
                         {filteredProducts.length === 0 && !error && (
                             <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
                                 <p className="text-slate-600 text-lg font-medium mb-4">Không tìm thấy sản phẩm phù hợp với bộ lọc.</p>
@@ -430,7 +541,6 @@ export default function Home() {
                     </>
                 )}
 
-                {/* NÚT XEM THÊM SẢN PHẨM */}
                 {!loading && filteredProducts?.length > 0 && (
                     <div className="mt-10 text-center">
                         <Link to="/products" className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-full font-bold transition-colors group">
@@ -441,9 +551,6 @@ export default function Home() {
                 )}
             </div>
 
-            {/* ========================================== */}
-            {/* SECTION: TRIẾT LÝ LÀM ĐẸP */}
-            {/* ========================================== */}
             <section className="py-16 bg-rose-50/50 rounded-3xl border border-rose-100/50 shadow-sm overflow-hidden mb-8">
                 <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center px-8 lg:px-16">
                     <div className="relative h-[400px] rounded-2xl overflow-hidden bg-slate-100 group">
@@ -481,9 +588,6 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* ========================================== */}
-            {/* SECTION: VỀ HAMONI COSMETIC */}
-            {/* ========================================== */}
             <section className="py-16 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-8">
                 <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center px-8 lg:px-16">
                     <div className="space-y-6">

@@ -201,7 +201,68 @@ const promotionController = {
         }
     },
 
-    // 6. XÓA KHUYẾN MÃI (HARD DELETE)
+    // 6. LẤY SẢN PHẨM CHI TIẾT CỦA KHUYẾN MÃI
+getPromotionProducts: async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const [[promotion]] = await db.execute(
+            `SELECT * FROM ChuongTrinhKhuyenMai WHERE MaCTKM = ?`,
+            [id]
+        );
+
+        if (!promotion) {
+            return res.status(404).json({
+                message: "Không tìm thấy chương trình khuyến mãi này!"
+            });
+        }
+
+        const [products] = await db.execute(`
+            SELECT 
+                sp.MaSP as id,
+                sp.TenSP as name,
+                sp.DaBan,
+                tk.SoLuongTon,
+                (
+                    SELECT DuongDanAnh
+                    FROM HinhAnh
+                    WHERE MaThamChieu = sp.MaSP
+                    AND LoaiThamChieu = 'SanPham'
+                    AND LaAnhChinh = 1
+                    LIMIT 1
+                ) as image,
+                bt.MaBienThe,
+                bt.TenBienThe,
+                bt.Gia as oldPrice,
+                CASE
+                    WHEN km.LoaiGiamGia = 'PhanTram'
+                        THEN bt.Gia - (bt.Gia * km.GiaTriGiam / 100)
+                    WHEN km.LoaiGiamGia = 'SoTien'
+                        THEN GREATEST(0, bt.Gia - km.GiaTriGiam)
+                    ELSE bt.Gia
+                END as price
+            FROM SanPham_KhuyenMai skm
+            JOIN ChuongTrinhKhuyenMai km ON skm.MaCTKM = km.MaCTKM
+            JOIN BienTheSanPham bt ON skm.MaBienThe = bt.MaBienThe
+            JOIN SanPham sp ON bt.MaSP = sp.MaSP
+            LEFT JOIN TonKho tk ON bt.MaBienThe = tk.MaBienThe
+            WHERE skm.MaCTKM = ?
+            ORDER BY sp.TenSP ASC, bt.TenBienThe ASC
+        `, [id]);
+
+        res.status(200).json({
+            promotion,
+            products
+        });
+
+    } catch (error) {
+        console.error("Lỗi lấy sản phẩm KM:", error);
+        res.status(500).json({
+            message: "Lỗi server"
+        });
+    }
+},
+    // 7. XÓA KHUYẾN MÃI (HARD DELETE)
     deletePromotion: async (req, res) => {
         const conn = await db.getConnection();
         try {

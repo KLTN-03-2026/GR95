@@ -2,25 +2,34 @@
 const db = require('../config/db');
 const ExcelJS = require('exceljs');
 
-
-// ===== BUILD FILTER =====
-const buildFilter = (query, isThongKe = false) => {
-  let where = "WHERE d.NgayDat IS NOT NULL AND 1=1";
+// ===== BUILD FILTER (ĐÃ FIX TRIỆT ĐỂ LỖI TÌM KIẾM SỐ) =====
+const buildFilter = (query) => {
+  let where = "WHERE d.NgayDat IS NOT NULL";
   const params = [];
 
-  // SEARCH
-  if (!isThongKe && query.keyword) {
-    const kw = `%${query.keyword}%`;
-    where += ` AND (
-      CAST(d.MaDH AS CHAR) LIKE ?
-      OR n.HoTen LIKE ?
-      OR sp.TenSP LIKE ?
-      OR DATE(d.NgayDat) LIKE ?
-    )`;
-    params.push(kw, kw, kw, kw);
+  if (query.keyword) {
+    const kwRaw = query.keyword.trim();
+    const kwLike = `%${kwRaw}%`;
+    
+    // Kiểm tra nếu keyword là số thuần túy
+    const isNumber = /^\d+$/.test(kwRaw);
+
+    if (isNumber) {
+      // FIX: Khi nhập số, CHỈ tìm đích danh Mã đơn hàng. 
+      // Không tìm LIKE ở Tên khách hay Sản phẩm để tránh bị dính số "5" trong "B5"
+      where += ` AND d.MaDH = ?`;
+      params.push(kwRaw);
+    } else {
+      // Khi nhập chữ: Tìm gần đúng trên tên Khách hàng hoặc Sản phẩm
+      where += ` AND (
+        n.HoTen LIKE ?
+        OR sp.TenSP LIKE ?
+      )`;
+      params.push(kwLike, kwLike);
+    }
   }
 
-  // FILTER
+  // 2. FILTER DROPDOWN
   if (query.sanPham && query.sanPham !== 'all') {
     where += " AND sp.MaSP = ?";
     params.push(query.sanPham);
@@ -31,13 +40,14 @@ const buildFilter = (query, isThongKe = false) => {
     params.push(query.khachHang);
   }
 
+  // 3. FILTER DATE
   if (query.tuNgay) {
-    where += " AND d.NgayDat >= ?";
+    where += " AND DATE(d.NgayDat) >= ?";
     params.push(query.tuNgay);
   }
 
   if (query.denNgay) {
-    where += " AND d.NgayDat <= ?";
+    where += " AND DATE(d.NgayDat) <= ?";
     params.push(query.denNgay);
   }
 
@@ -49,7 +59,9 @@ const buildFilter = (query, isThongKe = false) => {
 exports.getFilters = async (req, res) => {
   try {
     const [sanPhams] = await db.query("SELECT MaSP, TenSP FROM SanPham");
-    const [khachHangs] = await db.query("SELECT MaND, HoTen FROM NguoiDung");
+    
+    // ĐÃ FIX: Thêm điều kiện WHERE MaQuyen = 'CUST' để chỉ lấy đúng Khách hàng
+    const [khachHangs] = await db.query("SELECT MaND, HoTen FROM NguoiDung WHERE MaQuyen = 'CUST'");
 
     res.json({ sanPhams, khachHangs });
   } catch (err) {
@@ -68,11 +80,9 @@ exports.getOverview = async (req, res) => {
     let params = [];
 
     if (type === "reset") {
-      where = "";
-    } else if (type === "thongke") {
-      ({ where, params } = buildFilter(req.query, true));
+      where = "WHERE d.NgayDat IS NOT NULL";
     } else {
-      ({ where, params } = buildFilter(req.query, false));
+      ({ where, params } = buildFilter(req.query));
     }
 
     const [rows] = await db.query(`
@@ -126,11 +136,9 @@ exports.getOverview = async (req, res) => {
 
 
 // ===== 3️⃣ CHART =====
-// ===== 3️⃣ CHART =====
 exports.getCharts = async (req, res) => {
   try {
-    // Tận dụng buildFilter để biểu đồ nhận MỌI bộ lọc
-    const { where, params } = buildFilter(req.query, true);
+    const { where, params } = buildFilter(req.query);
 
     const tuNgay = req.query.tuNgay;
     const denNgay = req.query.denNgay;
@@ -145,7 +153,6 @@ exports.getCharts = async (req, res) => {
       }
     }
 
-    // 🔥 SỬA Ở ĐÂY: Dùng DATE_FORMAT để ép MySQL trả về chuỗi (VD: "2026-04-01") né lỗi múi giờ
     const timeGroup = isDailyView ? "DATE_FORMAT(d.NgayDat, '%Y-%m-%d')" : "MONTH(d.NgayDat)";
 
     const sqlRevenue = `
@@ -172,15 +179,8 @@ exports.getCharts = async (req, res) => {
       ORDER BY timeKey ASC
     `;
 
-    console.log("📊 DEBUG getCharts - isDailyView:", isDailyView, "where:", where, "params:", params);
-    
     const [revenueRows] = await db.query(sqlRevenue, params);
     const [orderRows] = await db.query(sqlOrders, params);
-    
-    console.log("📊 DEBUG - revenueRows:", revenueRows);
-    console.log("📊 DEBUG - orderRows:", orderRows);
-    console.log("📊 DEBUG - Total revenue rows:", revenueRows?.length);
-    console.log("📊 DEBUG - Total order rows:", orderRows?.length);
 
     const chartData = [];
 
@@ -189,7 +189,6 @@ exports.getCharts = async (req, res) => {
       let end = new Date(denNgay);
       
       while (curr <= end) {
-        // Tự build chuỗi ngày bằng tay để khớp chính xác với MySQL
         const yyyy = curr.getFullYear();
         const mm = String(curr.getMonth() + 1).padStart(2, '0');
         const dd = String(curr.getDate()).padStart(2, '0');
@@ -197,19 +196,16 @@ exports.getCharts = async (req, res) => {
 
         const display = `${dd}/${mm}`;
 
-        // Lọc dữ liệu chính xác 100% bằng chuỗi
         const rev = revenueRows.find(r => r.timeKey === dateStr)?.revenue || 0;
         const ord = orderRows.find(r => r.timeKey === dateStr)?.orders || 0;
 
         chartData.push({ month: display, revenue: Number(rev), orders: Number(ord) });
-        curr.setDate(curr.getDate() + 1); // Cộng lên 1 ngày
+        curr.setDate(curr.getDate() + 1); 
       }
     } else {
       for (let i = 1; i <= 12; i++) {
         const revRow = revenueRows.find(r => Number(r.timeKey) === i);
         const ordRow = orderRows.find(r => Number(r.timeKey) === i);
-        
-        console.log(`🔍 Tháng ${i}: revRow =`, revRow, "ordRow =", ordRow);
         
         chartData.push({
           month: `Tháng ${i}`,
@@ -219,7 +215,6 @@ exports.getCharts = async (req, res) => {
       }
     }
 
-    console.log("✅ Final chartData:", chartData);
     res.json({ chartData });
 
   } catch (err) {
@@ -227,7 +222,9 @@ exports.getCharts = async (req, res) => {
     res.status(500).json({ message: "Lỗi tạo dữ liệu biểu đồ" });
   }
 };
-// ===== 4️⃣ EXPORT EXCEL (XỊN) =====
+
+
+// ===== 4️⃣ EXPORT EXCEL =====
 exports.exportExcel = async (req, res) => {
   try {
     const { where, params } = buildFilter(req.query);
@@ -266,7 +263,6 @@ exports.exportExcel = async (req, res) => {
       });
     });
 
-    // HEADER STYLE
     sheet.getRow(1).font = { bold: true };
 
     res.setHeader(

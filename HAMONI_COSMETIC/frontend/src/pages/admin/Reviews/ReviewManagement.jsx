@@ -285,7 +285,7 @@ value={searchProductTerm}
                                                         </div>
                                                         {item.replies && item.replies.map((rep) => (
                                                             <div key={rep.MaPH} className="chat admin">
-                                                                --- Phản hồi từ shop --- {rep.NoiDung}
+                                                                --- Phản hồi từ {rep.MaQuyen === 'CUST' ? 'khách' : 'shop'} --- {rep.NoiDung}
                                                             </div>
                                                         ))}
                                                     </td>
@@ -364,17 +364,65 @@ value={searchProductTerm}
                                     </span>
                                 </p>
 
-                               <div className="chat-box">
+                                <div className="chat-box">
                                     <div className="chat user">
                                         <b>Khách:</b>{' '}
                                         {selectedReview.BinhLuan?.split('--- Phản hồi từ shop ---')[0]}
                                     </div>
+                                    
                                     {selectedReview.replies && selectedReview.replies.map((rep) => (
                                         <div key={rep.MaPH} className="chat admin">
-                                            <b>Shop:</b> {rep.NoiDung}
+                                            <b>{rep.MaQuyen === 'CUST' ? 'Khách' : 'Shop'}:</b> {rep.NoiDung}
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* ========================================== */}
+                                {/* 🔥 CODE HIỂN THỊ ẢNH VÀ VIDEO MỚI THÊM VÀO  */}
+                                {/* ========================================== */}
+                                {selectedReview?.HinhAnh && (
+                                  <div style={{ marginTop: '15px', marginBottom: '15px' }}>
+                                    <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>Hình ảnh & Video đính kèm:</span>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                      {(() => {
+                                        try {
+                                          // Giải mã chuỗi JSON từ Database thành mảng URL
+                                          const mediaUrls = JSON.parse(selectedReview.HinhAnh);
+return mediaUrls.map((url, index) => {
+                                            // Nếu link có đuôi mp4/mov thì dùng thẻ <video>
+                                            if (url.includes('.mp4') || url.includes('.mov')) {
+                                              return (
+                                                <video 
+                                                  key={index} 
+                                                  src={url} 
+                                                  controls 
+                                                  width="90" 
+                                                  height="90" 
+                                                  style={{ objectFit: 'cover', borderRadius: '8px', border: '1px solid #eee' }} 
+                                                />
+                                              );
+                                            }
+                                            // Ngược lại thì dùng thẻ <img>
+                                            return (
+                                              <img 
+                                                key={index} 
+                                                src={url} 
+                                                alt="review-media" 
+                                                width="90" 
+                                                height="90" 
+                                                style={{ objectFit: 'cover', borderRadius: '8px', border: '1px solid #eee' }} 
+                                              />
+                                            );
+                                          });
+                                        } catch (error) {
+                                          console.error("Lỗi đọc mảng hình ảnh:", error);
+                                          return null;
+                                        }
+                                      })()}
+                                    </div>
+                                  </div>
+                                )}
+                                {/* ========================================== */}
 
                                 <p>
                                     <b>Thời gian:</b>{' '}
@@ -389,14 +437,15 @@ value={searchProductTerm}
                                             setReplyText('');
                                             setShowReplyBox(true);
                                         }}
-                                    >
+>
                                         Phản hồi
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
-{showReplyBox && (
+
+                    {showReplyBox && (
                         <div className="modal-overlay" onClick={() => setShowReplyBox(false)}>
                             <div className="modal-box" onClick={(e) => e.stopPropagation()}>
                                 <h3>Phản hồi khách hàng</h3>

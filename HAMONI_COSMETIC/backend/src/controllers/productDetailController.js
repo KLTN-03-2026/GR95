@@ -1,6 +1,8 @@
 // src/controllers/productDetailController.js
 const db = require('../config/db');
 
+const COMPLETED_ORDER_STATUSES = ['HoanThanh', 'DaGiao'];
+
 // ==========================================
 // 1. LẤY TOÀN BỘ DỮ LIỆU CHI TIẾT (INFO, IMAGES, VARIANTS)
 // ==========================================
@@ -149,8 +151,10 @@ const getProductReviews = async (req, res) => {
         const [rows] = await db.execute(
             `SELECT
                 dg.MaDG,
+                dg.MaND,
                 dg.SoSao,
                 dg.BinhLuan,
+                dg.HinhAnh,
                 dg.NgayDanhGia,
                 nd.HoTen
              FROM DanhGia dg
@@ -161,10 +165,175 @@ const getProductReviews = async (req, res) => {
             [id]
         );
 
+        for (const review of rows) {
+            const [replies] = await db.execute(
+                `SELECT
+                    ph.MaPH,
+                    ph.MaND,
+                    ph.NoiDung,
+                    ph.NgayTao,
+                    nd.HoTen,
+                    nd.MaQuyen
+                 FROM DanhGia_PhanHoi ph
+                 JOIN NguoiDung nd ON nd.MaND = ph.MaND
+                 WHERE ph.MaDG = ?
+                 ORDER BY ph.NgayTao ASC`,
+                [review.MaDG]
+            );
+
+            review.replies = replies;
+        }
+
         res.status(200).json(rows);
     } catch (error) {
         console.error('Lỗi lấy đánh giá sản phẩm:', error);
         res.status(500).json({ message: 'Lỗi Server!' });
+    }
+};
+
+const getReviewReplyEligibility = async (req, res) => {
+    const { id } = req.params;
+    const userId = Number(req.user?.id || 0);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+        return res.status(401).json({ message: 'Bạn cần đăng nhập để phản hồi.' });
+    }
+
+    try {
+        const [reviewRows] = await db.execute(
+            `SELECT MaDG, MaND
+             FROM DanhGia
+             WHERE MaSP = ? AND MaND = ? AND IsHidden = 0
+             LIMIT 1`,
+            [id, userId]
+        );
+
+        const hasReviewed = reviewRows.length > 0;
+
+        const [purchaseRows] = await db.query(
+            `SELECT 1
+             FROM DonHang dh
+             JOIN ChiTietDonHang ctdh ON ctdh.MaDH = dh.MaDH
+             JOIN BienTheSanPham bt ON bt.MaBienThe = ctdh.MaBienThe
+             WHERE dh.MaND = ?
+               AND bt.MaSP = ?
+               AND dh.TrangThai IN (?)
+             LIMIT 1`,
+            [userId, id, COMPLETED_ORDER_STATUSES]
+        );
+
+        const hasCompletedPurchase = purchaseRows.length > 0;
+
+        const canReply = hasReviewed && hasCompletedPurchase;
+
+        return res.status(200).json({
+            canReply,
+            hasReviewed,
+            hasCompletedPurchase,
+            userId
+        });
+    } catch (error) {
+        console.error('Lỗi kiểm tra quyền phản hồi đánh giá:', error);
+        return res.status(500).json({ message: 'Lỗi Server!' });
+    }
+};
+
+const postCustomerReply = async (req, res) => {
+    const { reviewId } = req.params;
+    const userId = Number(req.user?.id || 0);
+    const replyComment = String(req.body?.replyComment || '').trim();
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+        return res.status(401).json({ message: 'Bạn cần đăng nhập để phản hồi.' });
+    }
+
+    if (!replyComment) {
+        return res.status(400).json({ message: 'Nội dung phản hồi không được để trống.' });
+    }
+
+    try {
+        const [reviewRows] = await db.execute(
+            `SELECT MaDG, MaSP, MaND
+             FROM DanhGia
+             WHERE MaDG = ? AND IsHidden = 0
+             LIMIT 1`,
+            [reviewId]
+        );
+
+        if (reviewRows.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy bài đánh giá.' });
+        }
+
+        const review = reviewRows[0];
+        if (Number(review.MaND) !== userId) {
+            return res.status(403).json({ message: 'Bạn chỉ có thể phản hồi bài đánh giá của chính mình.' });
+        }
+
+        const [purchaseRows] = await db.query(
+            `SELECT 1
+             FROM DonHang dh
+             JOIN ChiTietDonHang ctdh ON ctdh.MaDH = dh.MaDH
+             JOIN BienTheSanPham bt ON bt.MaBienThe = ctdh.MaBienThe
+             WHERE dh.MaND = ?
+               AND bt.MaSP = ?
+               AND dh.TrangThai IN (?)
+             LIMIT 1`,
+            [userId, review.MaSP, COMPLETED_ORDER_STATUSES]
+        );
+
+        if (purchaseRows.length === 0) {
+            return res.status(403).json({ message: 'Bạn chưa có đơn hàng hoàn tất cho sản phẩm này.' });
+        }
+
+        const [shopReplyRows] = await db.execute(
+            `SELECT 1
+             FROM DanhGia_PhanHoi ph
+             JOIN NguoiDung nd ON nd.MaND = ph.MaND
+             WHERE ph.MaDG = ?
+               AND nd.MaQuyen <> 'CUST'
+             LIMIT 1`,
+            [reviewId]
+        );
+
+        if (shopReplyRows.length === 0) {
+            return res.status(400).json({ message: 'Chỉ phản hồi lại khi shop đã trả lời đánh giá của bạn.' });
+        }
+
+        const [insertResult] = await db.execute(
+            `INSERT INTO DanhGia_PhanHoi (MaDG, MaND, NoiDung)
+             VALUES (?, ?, ?)`,
+            [reviewId, userId, replyComment]
+        );
+
+        await db.execute(
+            `UPDATE DanhGia
+             SET TrangThai = 'DA_PHAN_HOI'
+             WHERE MaDG = ?`,
+            [reviewId]
+        );
+
+        const [newReplyRows] = await db.execute(
+            `SELECT
+                ph.MaPH,
+                ph.MaND,
+                ph.NoiDung,
+                ph.NgayTao,
+                nd.HoTen,
+                nd.MaQuyen
+             FROM DanhGia_PhanHoi ph
+             JOIN NguoiDung nd ON nd.MaND = ph.MaND
+             WHERE ph.MaPH = ?
+             LIMIT 1`,
+            [insertResult.insertId]
+        );
+
+        return res.status(201).json({
+            message: 'Đã gửi phản hồi.',
+            reply: newReplyRows[0] || null
+        });
+    } catch (error) {
+        console.error('Lỗi gửi phản hồi khách hàng:', error);
+        return res.status(500).json({ message: 'Lỗi Server!' });
     }
 };
 
@@ -192,8 +361,28 @@ const getSuggestedProducts = async (req, res) => {
             `SELECT
                 sp.MaSP,
                 sp.TenSP,
-                COALESCE(MIN(bt.Gia), 0) AS GiaBan,
+                -- Giá bán (tính sau khuyến mãi nếu có) lấy min trên các biến thể
+                COALESCE(MIN(
+                    CASE
+                        WHEN km.MaCTKM IS NOT NULL AND NOW() BETWEEN km.NgayBatDau AND km.NgayKetThuc
+                        THEN CASE
+                            WHEN km.LoaiGiamGia = 'PhanTram' THEN GREATEST(0, bt.Gia - (bt.Gia * km.GiaTriGiam / 100))
+                            WHEN km.LoaiGiamGia = 'SoTien' THEN GREATEST(0, bt.Gia - km.GiaTriGiam)
+                            ELSE bt.Gia
+                        END
+                        ELSE bt.Gia
+                    END
+                ), 0) AS GiaBan,
+                -- Giá gốc: lấy min giá gốc các biến thể (dùng để so sánh và hiển thị giá gốc nếu > GiaBan)
+                COALESCE(MIN(bt.Gia), 0) AS GiaGoc,
                 COALESCE(ROUND(AVG(dg.SoSao), 1), 0) AS SoSaoTB,
+                COUNT(DISTINCT dg.MaDG) AS LuotDanhGia,
+                COALESCE((
+                    SELECT SUM(tk.SoLuongTon)
+                    FROM BienTheSanPham bt2
+                    LEFT JOIN TonKho tk ON tk.MaBienThe = bt2.MaBienThe
+                    WHERE bt2.MaSP = sp.MaSP
+                ), 0) AS SoLuongTon,
                 (
                     SELECT ha.DuongDanAnh
                     FROM HinhAnh ha
@@ -203,6 +392,8 @@ const getSuggestedProducts = async (req, res) => {
                 ) AS AnhChinh
              FROM SanPham sp
              LEFT JOIN BienTheSanPham bt ON bt.MaSP = sp.MaSP
+             LEFT JOIN SanPham_KhuyenMai spkm ON spkm.MaBienThe = bt.MaBienThe
+             LEFT JOIN ChuongTrinhKhuyenMai km ON km.MaCTKM = spkm.MaCTKM
              LEFT JOIN DanhGia dg ON dg.MaSP = sp.MaSP AND dg.IsHidden = 0
              WHERE sp.MaDM = ? AND sp.MaSP <> ?
              GROUP BY sp.MaSP, sp.TenSP
@@ -368,6 +559,8 @@ module.exports = {
     getProductById,
     getPublicProductDetail,
     getProductReviews,
+    getReviewReplyEligibility,
+    postCustomerReply,
     getSuggestedProducts,
     updateProductInfo,
     addProductImage,

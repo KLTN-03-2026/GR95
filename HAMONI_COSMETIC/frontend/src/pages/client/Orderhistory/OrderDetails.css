@@ -195,6 +195,28 @@
 }
 .btn-rate:hover{ opacity:.95 }
 
+.btn-review-product{
+  border:none;
+  border-radius:8px;
+  padding:0.5rem 0.8rem;
+  background:#ff6b6b;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+  font-size:0.9rem;
+  transition: all 0.2s ease;
+  white-space:nowrap;
+}
+
+.btn-review-product:hover{
+  background:#ee5a52;
+  transform: scale(1.05);
+}
+
+.btn-review-product:active{
+  transform: scale(0.95);
+}
+
 @media (max-width: 900px){
   .order-grid { grid-template-columns: 1fr }
   .order-summary { order: 2 }
