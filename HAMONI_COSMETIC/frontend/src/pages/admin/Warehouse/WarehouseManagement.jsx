@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import warehouseApi from "../../../services/warehouseApi";
 import "./WarehouseManagement.css";
 
@@ -102,7 +104,7 @@ const filteredLogs = useMemo(() => {
 };
 const exportLogs = () => {
     if (!filteredLogs || filteredLogs.length === 0) {
-        alert("Không có dữ liệu để xuất");
+        toast.warning("Không có dữ liệu để xuất");
         return;
     }
 
@@ -425,6 +427,8 @@ const exportLogs = () => {
                     </div>
                 </footer>
             </main>
+            
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

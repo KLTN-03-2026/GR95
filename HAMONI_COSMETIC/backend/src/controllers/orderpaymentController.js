@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { createNotification } = require('./notificationController');
 
 const CHECKOUT_STATUS = 'ChoXacNhan';
 const STOCK_OUT_MOVEMENT = 'XUAT_DON_HANG';
@@ -584,6 +585,14 @@ exports.confirmOnlinePayment = async (req, res) => {
                 : 'Khách hàng xác nhận thanh toán online',
             userId
         ]);
+
+        const io = req.app.get('io');
+        await createNotification({
+            userId,
+            title: 'Thanh toán online đã được xác nhận',
+            content: `Đơn hàng #${orderId} đã được xác nhận thanh toán thành công.`,
+            io
+        });
 
         await conn.commit();
 

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { createNotification } = require('./notificationController');
 
 const STOCK_OUTGOING_STATUS = 'DaXacNhan';
 const STOCK_RETURN_STATUS = 'DaHuy';
@@ -271,7 +272,7 @@ exports.updateOrderStatus = async (req, res) => {
         await conn.beginTransaction();
 
         const [[old]] = await conn.execute(
-            `SELECT TrangThai FROM DonHang WHERE MaDH = ?`,
+            `SELECT TrangThai, MaND FROM DonHang WHERE MaDH = ?`,
             [id]
         );
 
@@ -318,6 +319,14 @@ exports.updateOrderStatus = async (req, res) => {
             VALUES (?, ?, ?, NOW())
         `, [id, old.TrangThai, newStatus]);
 
+        const io = req.app.get('io');
+        await createNotification({
+            userId: old.MaND,
+            title: 'Cập nhật đơn hàng',
+            content: `Đơn hàng #${id} đã được chuyển sang trạng thái ${newStatus}.`,
+            io
+        });
+
         await conn.commit();
         res.json({ message: "OK" });
 
@@ -344,7 +353,7 @@ exports.cancelOrder = async (req, res) => {
 
         // check tồn tại
         const [[order]] = await conn.execute(
-            `SELECT TrangThai FROM DonHang WHERE MaDH = ?`,
+            `SELECT TrangThai, MaND FROM DonHang WHERE MaDH = ?`,
             [id]
         );
 
@@ -377,6 +386,14 @@ exports.cancelOrder = async (req, res) => {
             INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
             VALUES (?, ?, 'DaHuy', NOW())
         `, [id, order.TrangThai]);
+
+        const io = req.app.get('io');
+        await createNotification({
+            userId: order.MaND,
+            title: 'Đơn hàng đã bị hủy',
+            content: `Đơn hàng #${id} đã được hủy.`,
+            io
+        });
 
         await conn.commit();
         res.json({ message: "Đã hủy đơn hàng" });

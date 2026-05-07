@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, UploadCloud, Trash2, Plus } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient';
 import './ProductCreate.css'; // <-- Đã tách biệt hoàn toàn CSS
 
@@ -54,7 +56,7 @@ const ProductCreate = () => {
             const tempId = Date.now(); 
             setImages([...images, { MaHinhAnh: tempId, DuongDanAnh: uploadRes.url }]);
         } catch (error) {
-            alert("Lỗi tải ảnh lên hệ thống!");
+            toast.error("Lỗi tải ảnh lên hệ thống!");
             console.error(error);
         } finally {
             setIsUploading(false);
@@ -67,7 +69,7 @@ const ProductCreate = () => {
 
     const handleAddVariant = () => {
         if (!newVariant.TenBienThe || !newVariant.Gia) {
-            return alert("Vui lòng nhập đầy đủ tên phân loại và giá bán!");
+            return toast.warning("Vui lòng nhập đầy đủ tên phân loại và giá bán!");
         }
         const tempId = Date.now();
         setVariants([...variants, { MaBienThe: tempId, ...newVariant }]);
@@ -80,7 +82,7 @@ const ProductCreate = () => {
 
     const handleSaveNewProduct = async () => {
         if (!product.TenSP || !product.MaDM) {
-            return alert("Vui lòng nhập Tên sản phẩm và chọn Danh mục!");
+            return toast.warning("Vui lòng nhập Tên sản phẩm và chọn Danh mục!");
         }
         setIsSaving(true);
         try {
@@ -90,10 +92,10 @@ const ProductCreate = () => {
                 variants: variants.map(v => ({ TenBienThe: v.TenBienThe, Gia: v.Gia }))
             };
             await axiosClient.post('/products', payload);
-            alert("Tạo sản phẩm mới thành công!");
+            toast.success("Tạo sản phẩm mới thành công!");
             navigate('/admin/products');
         } catch (error) {
-            alert("Lỗi khi lưu sản phẩm mới!");
+            toast.error("Lỗi khi lưu sản phẩm mới!");
             console.error(error);
         } finally {
             setIsSaving(false);
@@ -243,6 +245,8 @@ const ProductCreate = () => {
 
                 </div>
             </div>
+            
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

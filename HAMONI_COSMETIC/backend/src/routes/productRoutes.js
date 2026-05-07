@@ -33,5 +33,6 @@ router.delete('/images/:imageId', productDetailController.deleteProductImage);
 // ===============================
 router.post('/:id/variants', productDetailController.addProductVariant);
 router.delete('/variants/:variantId', productDetailController.deleteProductVariant);
+router.put('/variants/:variantId', productDetailController.updateProductVariant); // <--- Route mới cho cập nhật biến thể
 
 module.exports = router;    

@@ -3,7 +3,8 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 require('./src/config/db');
-
+const http = require('http');
+const { Server } = require('socket.io');
 // Khởi tạo app Express
 const app = express();
 
@@ -12,7 +13,16 @@ app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true
 }));
-
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: 'http://localhost:5173',
+        credentials: true
+    }
+});
+app.set('io', io);
+const chatSocket = require('./src/sockets/chatSocket');
+chatSocket(io);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -36,6 +46,9 @@ const warehouseRoutes = require('./src/routes/warehouseRoutes');
 const bannerRoutes = require('./src/routes/bannerRoutes');
 const homeRoutes = require('./src/routes/homeRoutes');
 const clientProductRoutes = require('./src/routes/clientProductRoutes');
+const aiConfigRoutes = require('./src/routes/aiConfigRoutes');
+const adminChatRoutes = require('./src/routes/adminChatRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 
 // Đăng ký các API vào hệ thống
 app.use('/api/auth', authRoutes);
@@ -57,7 +70,9 @@ app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/client/products', clientProductRoutes);
-
+app.use('/api/ai-config', aiConfigRoutes);
+app.use('/api/admin/chats', adminChatRoutes);
+app.use('/api/notifications', notificationRoutes);
 // Route mặc định (Root)
 app.get('/', (req, res) => {
     res.json({
@@ -69,7 +84,7 @@ app.get('/', (req, res) => {
 // --- KHỞI ĐỘNG SERVER ---
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log('=================================');
     console.log(`🚀 Server Backend Hamoni đang chạy tại: http://localhost:${PORT}`);
     console.log('=================================');

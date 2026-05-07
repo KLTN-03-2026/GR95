@@ -1,6 +1,8 @@
 // src/pages/admin/Customer/CustomerManagement.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient'; 
 import { Search, Download, Trash2, Eye } from 'lucide-react'; // Đổi sang dùng Lucide React cho đồng bộ
 import './CustomerManagement.css'; 
@@ -44,14 +46,14 @@ const CustomerManagement = () => {
     }, [loadCustomers]);
 
     const handleDelete = async (id) => {
-        if (!canDelete) return alert("Bạn không có quyền thực hiện thao tác này!");
+        if (!canDelete) return toast.warning("Bạn không có quyền thực hiện thao tác này!");
         if (window.confirm("Bạn có chắc chắn muốn xóa khách hàng này không?")) {
             try {
                 await axiosClient.delete(`/customers/${id}`);
-                alert("Xóa thành công!");
+                toast.success("Xóa thành công!");
                 loadCustomers();
             } catch {
-                alert("Xóa thất bại!");
+                toast.error("Xóa thất bại!");
             }
         }
     };
@@ -71,7 +73,7 @@ const CustomerManagement = () => {
             link.parentNode.removeChild(link);
         } catch (error) {
             console.error("Lỗi khi tải file Excel:", error);
-            alert("Bạn không có quyền xuất file hoặc có lỗi xảy ra!");
+            toast.error("Bạn không có quyền xuất file hoặc có lỗi xảy ra!");
         }
     };
 
@@ -167,6 +169,8 @@ const CustomerManagement = () => {
                     </div>
                 )}
             </div>
+            
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

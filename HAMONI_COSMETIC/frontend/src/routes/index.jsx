@@ -58,7 +58,8 @@ import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
 import WarehouseManagement from '../pages/admin/Warehouse/WarehouseManagement';
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
-
+import AiConfigPage from '../pages/admin/AI/AiConfigPage';
+import AdminChat from '../pages/admin/AI/AdminChatPage';
 const NotFound = () => (
     <div className="flex justify-center items-center h-screen text-2xl font-bold text-gray-500">
         404 - Không tìm thấy trang
@@ -160,6 +161,8 @@ const AppRouter = () => {
                     <Route path="voucher-detail/:id" element={<VoucherDetail />} />
                     <Route path="voucherdetail/:id" element={<VoucherDetail />} />
                     <Route path="reviews" element={<ReviewManagement />} />
+                    <Route path="ai-config" element={<AiConfigPage />} />
+                    <Route path="chats" element={<AdminChat />} />
                 </Route>
 
                 {/* Trang 404 cho các đường dẫn sai */}
