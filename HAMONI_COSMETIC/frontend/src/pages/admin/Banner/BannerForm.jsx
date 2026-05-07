@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, AlertCircle, Upload } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { bannerApi } from '../../../services/bannerApi';
 import axios from 'axios';
 
 const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
     // 1. State Management
-    const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     const [preview, setPreview] = useState(''); 
     const [selectedFile, setSelectedFile] = useState(null); 
     const [errors, setErrors] = useState({}); // THÊM: State quản lý lỗi
@@ -56,7 +56,6 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
             }
 
             setSelectedFile(null);
-            setAlert({ show: false, type: '', message: '' });
             setErrors({}); // Xóa hết lỗi cũ khi mở form
         }
         
@@ -149,14 +148,14 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
             onClose();
         } catch (error) {
             const apiMessage = error?.response?.data?.message || error?.response?.data?.error;
-            setAlert({ show: true, type: 'danger', message: "Lỗi khi lưu: " + (apiMessage || error.message) });
+            toast.error("Lỗi khi lưu: " + (apiMessage || error.message));
         }
     };
 
     return createPortal(
         <div 
-            className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050, padding: '24px 16px', overflowY: 'auto' }}
+            className="position-fixed d-flex justify-content-center align-items-center" 
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050, padding: '24px 16px', overflowY: 'auto', inset: 0 }}
         >
             <div className="card shadow-lg border-0 rounded-4" style={{ width: '100%', maxWidth: '550px', maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
                 
@@ -169,13 +168,6 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                 </div>
 
                 <div className="card-body px-4 pb-4" style={{ overflowY: 'auto' }}>
-                    {alert.show && (
-                        <div className={`alert alert-${alert.type} d-flex align-items-center p-3 mb-4`} role="alert">
-                            {alert.type === 'success' ? <CheckCircle size={20} className="me-2" /> : <AlertCircle size={20} className="me-2" />}
-                            <div className="fw-medium" style={{ fontSize: '15px' }}>{alert.message}</div>
-                        </div>
-                    )}
-
                     <form onSubmit={handleSubmit} encType="multipart/form-data">
                         {/* Tiêu đề chiến dịch */}
                         <div className="mb-3">
@@ -214,9 +206,9 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                         onChange={handleFileChange}
                                     />
                                     <div 
-                                        className={`form-control bg-light text-muted d-flex align-items-center ${errors.image ? 'is-invalid border-danger' : 'border-0'}`}
+                                        className={`form-control bg-light text-muted d-flex align-items-center ${errors.image ? 'is-invalid border-danger' : ''}`}
                                         onClick={() => document.getElementById('upload-banner').click()}
-                                        style={{ cursor: 'pointer', fontSize: '14px' }}
+                                        style={{ cursor: 'pointer', fontSize: '14px', border: errors.image ? '1px solid #dc3545' : '1px solid #dee2e6' }}
                                     >
                                         {selectedFile ? selectedFile.name : (data?.DuongDanAnh ? "Đã có ảnh (Click để thay đổi)" : "Chọn ảnh từ máy tính...")}
                                     </div>
@@ -239,7 +231,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Link đích (URLDich)</label>
                                 <input 
                                     value={formValues.URLDich}
-                                    className="form-control bg-light border-1 py-2 px-3 rounded-3"
+                                    className="form-control bg-light border py-2 px-3 rounded-3"
                                     type="text"
                                     onChange={(e) => setFormValues({ ...formValues, URLDich: e.target.value })}
                                 />
@@ -247,7 +239,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                             <div className="col-md-6">
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Vị trí hiển thị</label>
                                 <select
-                                    className="form-select bg-light border-1 py-2 px-3 rounded-3"
+                                    className="form-select bg-light border py-2 px-3 rounded-3"
                                     value={formValues.ViTriHienThi}
                                     onChange={(e) => setFormValues({ ...formValues, ViTriHienThi: e.target.value })}
                                 >
@@ -265,7 +257,8 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <input
                                     type="number"
                                     min="1"
-                                    className="form-control bg-light border-1 py-2 px-3 rounded-3"
+                                    className="form-control bg-light py-2 px-3 rounded-3"
+                                    style={{ border: '1px solid #dee2e6' }}
                                     value={formValues.ThuTuHienThi}
                                     onChange={(e) => {
                                         const rawValue = e.target.value;
@@ -294,7 +287,8 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Trạng thái</label>
                                 <select
                                     value={formValues.TrangThai}
-                                    className="form-select bg-light border-1 py-2 px-3 rounded-3"
+                                    className="form-select bg-light py-2 px-3 rounded-3"
+                                    style={{ border: '1px solid #dee2e6' }}
                                     onChange={(e) => setFormValues({ ...formValues, TrangThai: e.target.value })}
                                 >
                                     <option value="Active">Đang hiển thị</option>
@@ -310,7 +304,8 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 </label>
                                 <input
                                     type="date"
-                                    className={`form-control bg-light border-1 py-2 px-3 rounded-3 ${errors.NgayBatDau ? 'is-invalid border-danger' : ''}`}
+                                    className={`form-control bg-light py-2 px-3 rounded-3 ${errors.NgayBatDau ? 'is-invalid border-danger' : ''}`}
+                                    style={{ border: errors.NgayBatDau ? '1px solid #dc3545' : '1px solid #dee2e6' }}
                                     value={formValues.NgayBatDau}
                                     onChange={(e) => {
                                         setFormValues({ ...formValues, NgayBatDau: e.target.value });
@@ -329,7 +324,8 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 </label>
                                 <input
                                     type="date"
-                                    className="form-control bg-light border-1 py-2 px-3 rounded-3"
+                                    className="form-control bg-light py-2 px-3 rounded-3"
+                                    style={{ border: '1px solid #dee2e6' }}
                                     value={formValues.NgayHetHan}
                                     onChange={(e) => setFormValues({ ...formValues, NgayHetHan: e.target.value })}
                                 />
@@ -343,13 +339,13 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
 
                         {/* Action Buttons */}
                         <div className="d-flex gap-3">
-                            <button type="button" className="btn btn-light flex-grow-1 border-0 fw-semibold" onClick={onClose}>
+                            <button type="button" className="btn btn-light border-0 fw-semibold" style={{ flexGrow: 1 }} onClick={onClose}>
                                 Hủy bỏ
                             </button>
                             <button 
                                 type="submit" 
-                                className="btn flex-grow-1 fw-bold text-white shadow-sm" 
-                                style={{ backgroundColor: '#81802E' }}
+                                className="btn fw-bold text-white shadow-sm"
+                                style={{ backgroundColor: '#81802E', flexGrow: 1 }}
                             >
                                 {editingId ? "Lưu thay đổi" : "Thêm mới"}
                             </button>

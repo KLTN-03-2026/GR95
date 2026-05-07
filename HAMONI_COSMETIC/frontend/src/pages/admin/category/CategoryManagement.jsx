@@ -1,6 +1,8 @@
 // src/pages/admin/category/CategoryManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Edit2, Trash2, Box, CheckCircle, Download } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { categoryApi } from '../../../services/categoryApi';
 import CategoryForm from './CategoryForm'; // Import Modal vào
 import './Category.css';
@@ -69,7 +71,7 @@ const CategoryManagement = () => {
                 loadData(); 
             } catch (error) {
                 console.error("Không thể xóa danh mục này:", error);
-                alert("Không thể xóa danh mục này!");
+                toast.error("Không thể xóa danh mục này!");
             }
         }
     };
@@ -161,6 +163,8 @@ const CategoryManagement = () => {
                     initialData={currentCat}
                     onSuccess={handleSuccess}
                 />
+
+                <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 
             </div>
         </div>

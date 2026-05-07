@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { Plus, Search, Filter } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient';
 import './ProductManagement.css'; 
 
@@ -91,7 +93,7 @@ const ProductManagement = () => {
         if (hasPermission('VIEW_PRODUCT') || hasPermission('EDIT_PRODUCT')) {
             navigate(`/admin/products/${maSP}`);
         } else {
-            alert("Bạn không có quyền xem chi tiết hoặc chỉnh sửa sản phẩm này!");
+            toast.warning("Bạn không có quyền xem chi tiết hoặc chỉnh sửa sản phẩm này!");
         }
     };
 
@@ -196,6 +198,8 @@ const ProductManagement = () => {
                     <button className="pagi-arrow" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}>›</button>
                 </div>
             </div>
+            
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Edit3, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit3, Trash2 } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { bannerApi } from '../../../services/bannerApi';
 import BannerForm from './BannerForm';
 
@@ -14,35 +16,16 @@ const BannerManagement = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
-    const [notification, setNotification] = useState({
-        show: false,
-        type: 'success',
-        message: ''
-    });
-    const notificationTimerRef = useRef(null);
-
     // 1. TẠO BIẾN TRIGGER ĐỂ BÁO HIỆU CẦN TẢI LẠI DỮ LIỆU
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const showNotification = (message, type = 'success') => {
-        if (notificationTimerRef.current) {
-            clearTimeout(notificationTimerRef.current);
+        if (type === 'success') {
+            toast.success(message);
+        } else {
+            toast.error(message);
         }
-
-        setNotification({ show: true, type, message });
-
-        notificationTimerRef.current = setTimeout(() => {
-            setNotification({ show: false, type: 'success', message: '' });
-        }, 2500);
     };
-
-    useEffect(() => {
-        return () => {
-            if (notificationTimerRef.current) {
-                clearTimeout(notificationTimerRef.current);
-            }
-        };
-    }, []);
 
     // 2. USEEFFECT GỌI API (Sẽ tự chạy lại khi chuyển trang HOẶC khi refreshTrigger thay đổi)
     useEffect(() => {
@@ -118,31 +101,6 @@ const BannerManagement = () => {
     return (
         <div className="banner-page-container">
             <h1 className="main-title">QUẢN LÝ BANNER</h1>
-
-            {notification.show && (
-                <div
-                    className="position-fixed top-0 end-0 p-3"
-                    style={{ zIndex: 1080, minWidth: '340px', maxWidth: '420px' }}
-                >
-                    <div className={`alert alert-${notification.type} alert-dismissible fade show shadow-sm mb-0`} role="alert">
-                        <div className="d-flex align-items-center gap-2 pe-3">
-                            {notification.type === 'success' ? (
-                                <CheckCircle2 size={18} />
-                            ) : (
-                                <AlertTriangle size={18} />
-                            )}
-                            <span>{notification.message}</span>
-                        </div>
-                    
-                    <button
-                        type="button"
-                        className="btn-close"
-                        aria-label="Close"
-                        onClick={() => setNotification({ show: false, type: 'success', message: '' })}
-                    ></button>
-                    </div>
-                </div>
-            )}
 
             {/* Khối danh sách chính */}
             <div className="table-card mt-4 shadow-sm">
@@ -307,6 +265,8 @@ const BannerManagement = () => {
                     ›
                 </button>
             </div>
+
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

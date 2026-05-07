@@ -224,17 +224,36 @@ const getSuggestedProducts = async (req, res) => {
 const updateProductInfo = async (req, res) => {
     const { id } = req.params;
     const { TenSP, MaDM, MoTa, ThanhPhan, CachSuDung, LoaiDaPhuHop } = req.body;
+
+    if (!TenSP || !String(TenSP).trim()) {
+        return res.status(400).json({ message: "Tên sản phẩm không được để trống!" });
+    }
+
+    if (!MaDM || !String(MaDM).trim()) {
+        return res.status(400).json({ message: "Vui lòng chọn danh mục cho sản phẩm!" });
+    }
+
     try {
+        const [productRows] = await db.execute('SELECT 1 FROM SanPham WHERE MaSP = ?', [id]);
+        if (productRows.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy sản phẩm để cập nhật!" });
+        }
+
+        const [categoryRows] = await db.execute('SELECT 1 FROM DanhMuc WHERE MaDM = ?', [MaDM]);
+        if (categoryRows.length === 0) {
+            return res.status(400).json({ message: "Danh mục không hợp lệ!" });
+        }
+
         await db.execute(
             `UPDATE SanPham 
              SET TenSP = ?, MaDM = ?, MoTa = ?, ThanhPhan = ?, CachSuDung = ?, LoaiDaPhuHop = ? 
              WHERE MaSP = ?`,
-            [TenSP, MaDM, MoTa, ThanhPhan, CachSuDung, LoaiDaPhuHop, id]
+            [String(TenSP).trim(), MaDM, MoTa || null, ThanhPhan || null, CachSuDung || null, LoaiDaPhuHop || null, id]
         );
         res.status(200).json({ message: "Cập nhật thông tin thành công!" });
     } catch (error) {
         console.error("Lỗi cập nhật sản phẩm:", error);
-        res.status(500).json({ message: "Lỗi Server!" });
+        res.status(500).json({ message: "Lỗi Server khi cập nhật sản phẩm!" });
     }
 };
 
@@ -293,7 +312,46 @@ const deleteProductVariant = async (req, res) => {
         res.status(500).json({ message: "Lỗi Server!" });
     }
 };
+// ==========================================
+// 4.1 CẬP NHẬT BIẾN THỂ (SỬA TÊN / GIÁ)
+// ==========================================
+const updateProductVariant = async (req, res) => {
+    const { variantId } = req.params; // Lấy ID từ URL
+    const { TenBienThe, Gia } = req.body; // Lấy dữ liệu từ Frontend gửi lên
 
+    if (!TenBienThe || !String(TenBienThe).trim()) {
+        return res.status(400).json({ message: "Tên phân loại không được để trống!" });
+    }
+
+    if (Gia === undefined || Gia === null || Gia === '') {
+        return res.status(400).json({ message: "Giá bán không được để trống!" });
+    }
+
+    const parsedGia = Number(Gia);
+    if (Number.isNaN(parsedGia) || parsedGia < 0) {
+        return res.status(400).json({ message: "Giá bán không hợp lệ!" });
+    }
+
+    const [variantRows] = await db.execute('SELECT 1 FROM BienTheSanPham WHERE MaBienThe = ?', [variantId]);
+    if (variantRows.length === 0) {
+        return res.status(404).json({ message: "Không tìm thấy biến thể để cập nhật!" });
+    }
+
+    if (!Gia && Gia !== 0) {
+        return res.status(400).json({ message: "Vui lòng nhập đầy đủ tên phân loại và giá!" });
+    }
+
+    try {
+        await db.execute(
+            `UPDATE BienTheSanPham SET TenBienThe = ?, Gia = ? WHERE MaBienThe = ?`,
+            [String(TenBienThe).trim(), parsedGia, variantId]
+        );
+        res.status(200).json({ message: "Cập nhật biến thể thành công!" });
+    } catch (error) {
+        console.error("Lỗi cập nhật biến thể:", error);
+        res.status(500).json({ message: "Lỗi Server khi cập nhật biến thể!" });
+    }
+};
 // ==========================================
 // 5. XÓA SẢN PHẨM
 // ==========================================
@@ -327,7 +385,7 @@ const deleteProduct = async (req, res) => {
 
         // Dọn dữ liệu liên quan trước khi xóa sản phẩm
         await conn.execute(
-            `DELETE FROM LichSuTonKho
+            `DELETE FROM LogTonKho
              WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
             [id]
         );
@@ -374,5 +432,6 @@ module.exports = {
     deleteProductImage,
     addProductVariant,
     deleteProductVariant,
+    updateProductVariant,
     deleteProduct
 };

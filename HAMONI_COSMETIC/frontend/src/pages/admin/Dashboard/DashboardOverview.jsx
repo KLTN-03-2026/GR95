@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import dashboardApi from '../../../services/dashboardApi';
 import './DashboardOverview.css';
 
@@ -82,7 +84,7 @@ const DashboardOverview = () => {
   const handleExportExcel = () => {
     import("xlsx").then(XLSX => {
       if (orders.length === 0) {
-        alert("Không có dữ liệu để xuất!");
+        toast.warning("Không có dữ liệu để xuất!");
         return;
       }
       const dataToExport = orders.map(o => ({
@@ -320,6 +322,8 @@ const DashboardOverview = () => {
           </table>
         </div>
       </div>
+
+      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 
     </div>
   );

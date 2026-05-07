@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import reportApi from "../../../services/reportApi"; 
 import './ExportExcelReport.css';
 const ExportExcelReport = () => {
@@ -51,7 +53,7 @@ useEffect(() => {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error("Lỗi xuất file:", error);
-            alert("Không thể kết nối Backend để xuất file!");
+            toast.error("Không thể kết nối Backend để xuất file!");
         } finally {
             setLoading(false);
         }
@@ -153,6 +155,8 @@ useEffect(() => {
                         {loading ? "ĐANG XUẤT..." : "📥 XUẤT EXCEL"}
                     </button>
                 </div>
+
+                <ToastContainer position="top-right" autoClose={3000} theme="colored" />
             </div>
         </div>
     );

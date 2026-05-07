@@ -221,6 +221,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             </NavLink>
                         </li>
                     )}
+                    {canViewModule('HIDE_MODULE_AI_CONFIG') && (
+                        <li>
+                            <NavLink to="/admin/ai-config" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                                <span className="icon">🤖</span>
+                                <span className="text">Cấu hình AI</span>
+                            </NavLink>
+                        </li>
+                    )}
+                    {canViewModule('HIDE_MODULE_ADMIN_CHAT') && (
+                        <li>
+                            <NavLink to="/admin/chats" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                                <span className="icon">💬</span>
+                                <span className="text">Chat Admin</span>
+                            </NavLink>
+                        </li>
+                    )}
 
                     {isAdmin && (
                         <li>
