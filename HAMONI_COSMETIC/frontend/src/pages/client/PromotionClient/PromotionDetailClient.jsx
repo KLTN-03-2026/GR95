@@ -6,7 +6,94 @@ import axiosClient from '../../../services/axiosClient';
 import './PromotionDetailClient.css';
 
 // ==========================================
-// 1. LOGIC XỬ LÝ DỮ LIỆU (Y CHANG TRANG HOME 100%)
+// COMPONENT: COUNTDOWN TIMER
+// ==========================================
+const parseVietnameseDate = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+        // Hỗ trợ cả định dạng ISO datetime (2026-05-10T00:00:00), ISO date (2026-05-10) và Việt Nam (10/05/2026)
+        if (dateStr.includes('-')) {
+            // ISO format: 2026-05-10 hoặc 2026-05-10T00:00:00Z
+            return new Date(dateStr).getTime();
+        } else if (dateStr.includes('/')) {
+            // Vietnamese format: 10/05/2026
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) return null;
+            const [day, month, year] = parts;
+            return new Date(`${year}-${month}-${day}T00:00:00`).getTime();
+        }
+        return null;
+    } catch (e) {
+        console.error('Lỗi parse ngày:', dateStr, e);
+        return null;
+    }
+};
+
+const CountdownTimer = ({ startDateStr, endDateStr }) => {
+    const [timeLeft, setTimeLeft] = useState('');
+    const [status, setStatus] = useState(''); // 'upcoming', 'ongoing', 'ended'
+
+    useEffect(() => {
+        const start = parseVietnameseDate(startDateStr);
+        const end = parseVietnameseDate(endDateStr);
+        
+        console.log('CountdownTimer mounted:', { startDateStr, endDateStr, start, end });
+        
+        if (!start || !end) {
+            console.warn('CountdownTimer: Invalid dates', { start, end });
+            return;
+        }
+
+        // Đẩy end time đến cuối ngày (23:59:59)
+        const realEnd = end + (24 * 60 * 60 * 1000) - 1;
+
+        const calculateTimeLeft = (difference) => {
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            setTimeLeft(`${days} ngày ${hours}h ${minutes}p ${seconds}s`);
+        };
+
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+
+            if (now < start) {
+                setStatus('upcoming');
+                calculateTimeLeft(start - now);
+            } else if (now >= start && now <= realEnd) {
+                setStatus('ongoing');
+                calculateTimeLeft(realEnd - now);
+            } else {
+                setStatus('ended');
+                setTimeLeft('');
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [startDateStr, endDateStr]);
+
+    // Luôn render nếu có status, thay vì return null khi ended
+    if (!timeLeft && status === 'ended') return null;
+
+    return (
+        <div className="inline-flex items-center gap-2 bg-slate-900/60 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full mb-4 shadow-lg w-max">
+            <span className="relative flex h-3 w-3">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'ongoing' ? 'bg-rose-400' : 'bg-amber-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${status === 'ongoing' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
+            </span>
+            <span className="text-sm font-medium">
+                {status === 'upcoming' ? 'Sắp diễn ra sau:' : 'Kết thúc sau:'} 
+                <strong className={`ml-2 tracking-wider ${status === 'ongoing' ? 'text-rose-300' : 'text-amber-300'}`}>{timeLeft || 'đang tính...'}</strong>
+            </span>
+        </div>
+    );
+};
+
+// ==========================================
+// 1. LOGIC XỬ LÝ DỮ LIỆU
 // ==========================================
 const checkIsNewProduct = (dateString) => {
     if (!dateString) return false;
@@ -54,10 +141,10 @@ const normalizeProducts = (products = []) => {
                 }
 
                 return {
-                    id: variant.id || `${product.id || index}-v${variantIndex + 1}`,
-                    label: variant.label || variant.name || `Biến thể ${variantIndex + 1}`,
+                    id: variant.id || variant.MaBienThe || `${product.id || index}-v${variantIndex + 1}`,
+                    label: variant.label || variant.name || variant.TenBienThe || `Biến thể ${variantIndex + 1}`,
                     type: variant.type || 'Tùy chọn',
-                    price: (variant.oldPrice != null || variant.originalPrice != null || variant.effectivePrice != null)
+                    price: (variant.oldPrice != null || variant.originalPrice != null || variant.effectivePrice != null || variant.price != null)
                         ? (Number(variant.effectivePrice ?? variant.price) || defaultPrice) : defaultPrice,
                     oldPrice: (variant.oldPrice != null || variant.originalPrice != null || variant.effectivePrice != null)
                         ? (Number(variant.oldPrice ?? variant.originalPrice) || defaultOldPrice) : defaultOldPrice,
@@ -98,14 +185,14 @@ const normalizeProducts = (products = []) => {
             totalStock: totalStock,
             isNew: isNew,
             discountPercent: discountPercent,
-            variants: normalizedVariants, // GIỮ NGUYÊN MẢNG NÀY ĐỂ PRODUCT CARD ĐỌC
+            variants: normalizedVariants, 
             badges: product.badges || []
         };
     });
 };
 
 // ==========================================
-// 2. GIAO DIỆN THẺ SẢN PHẨM (ĐÃ TRẢ VỀ CHUẨN HOME)
+// 2. GIAO DIỆN THẺ SẢN PHẨM
 // ==========================================
 const ProductCard = ({ product, isUpcoming, isExpired }) => {
     const navigate = useNavigate();
@@ -116,7 +203,6 @@ const ProductCard = ({ product, isUpcoming, isExpired }) => {
     const discountPercent = product.discountPercent;
     const displayImage = defaultVariant.image || product.image;
     
-    // ĐÚNG CÂU LỆNH CỦA TRANG HOME: Kiểm tra trong mảng variants
     const hasAnyVariantInStock = product.variants?.some(v => v.inStock);
 
     const formatPrice = (price) => {
@@ -133,7 +219,6 @@ const ProductCard = ({ product, isUpcoming, isExpired }) => {
             whileHover={!isExpired ? { y: -6 } : {}} 
             className={`group bg-white rounded-2xl p-3 border border-rose-100/50 hover:border-rose-200 hover:shadow-[0_12px_30px_rgba(191,124,124,0.12)] transition-all duration-300 flex flex-col h-full relative overflow-hidden ${isExpired ? 'promo-expired-card' : ''}`}
         >
-            {/* TAG TRẠNG THÁI */}
             {isExpired ? (
                 <div className="absolute top-0 left-0 bg-slate-500 text-white font-bold text-[11px] px-3 py-1 rounded-br-xl z-10 shadow-sm">
                     HẾT HẠN
@@ -153,7 +238,6 @@ const ProductCard = ({ product, isUpcoming, isExpired }) => {
                 </div>
             )}
 
-            {/* HÌNH ẢNH */}
             <div 
                 className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 bg-slate-50 flex items-center justify-center cursor-pointer"
                 onClick={handleNavigate}
@@ -161,7 +245,6 @@ const ProductCard = ({ product, isUpcoming, isExpired }) => {
                 <img src={displayImage} alt={product.name} className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${isUpcoming || isExpired ? 'opacity-80' : ''}`} />
             </div>
 
-            {/* THÔNG TIN SẢN PHẨM */}
             <div className="mt-auto flex flex-col flex-1 px-1">
                 <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] uppercase tracking-wider font-bold text-rose-500 truncate pr-2">{product.brand}</span>
@@ -181,7 +264,6 @@ const ProductCard = ({ product, isUpcoming, isExpired }) => {
                     <span>({product.reviews || 0})</span>
                 </div>
 
-                {/* KHỐI GIÁ & TÌNH TRẠNG KHO */}
                 <div className="mt-auto pt-2.5 border-t border-slate-100">
                     <div className="flex items-end justify-between">
                         <div className="flex flex-col">
@@ -224,7 +306,38 @@ export default function PromotionDetailClient() {
         const fetchPromoProducts = async () => {
             try {
                 const res = await axiosClient.get(`/promotions/${id}/products`);
-                setProducts(normalizeProducts(res.products)); 
+                
+                // === THUẬT TOÁN FRONTEND GÁNH TEAM: GOM NHÓM BIẾN THỂ TRÙNG LẶP ===
+                const rawProducts = res.products || [];
+                const groupedData = rawProducts.reduce((acc, currentItem) => {
+                    const productId = currentItem.id || currentItem.MaSP; 
+                    
+                    if (!acc[productId]) {
+                        // Nếu Sản phẩm chưa có -> Tạo mới và nhét biến thể này vào mảng variants
+                        acc[productId] = { 
+                            ...currentItem, 
+                            variants: [currentItem] 
+                        };
+                    } else {
+                        // Nếu Sản phẩm đã có -> Đẩy thêm biến thể vào mảng variants
+                        acc[productId].variants.push(currentItem);
+                        
+                        // Lấy giá của biến thể rẻ nhất làm giá hiện trên Card ngoài cùng
+                        const currentPrice = Number(currentItem.price) || 0;
+                        const accPrice = Number(acc[productId].price) || 0;
+                        if (currentPrice > 0 && currentPrice < accPrice) {
+                            acc[productId].price = currentPrice;
+                            acc[productId].oldPrice = currentItem.oldPrice;
+                        }
+                    }
+                    return acc;
+                }, {});
+
+                // Chuyển Object đã gom nhóm thành Array
+                const finalProductsArray = Object.values(groupedData);
+                // =================================================================
+
+                setProducts(normalizeProducts(finalProductsArray)); 
                 if (res.promotion) {
                     setPromoData(res.promotion); 
                 }
@@ -278,6 +391,13 @@ export default function PromotionDetailClient() {
                 </div>
             ) : (
                 <>
+                    {/* COUNTDOWN TIMER: LUÔN HIỂN THỊ NẾU CÓ DỮ LIỆU KHUYẾN MÃI */}
+                    {promoData && promoData.NgayBatDau && promoData.NgayKetThuc && (
+                        <div className="text-center mb-8">
+                            <CountdownTimer startDateStr={promoData.NgayBatDau} endDateStr={promoData.NgayKetThuc} />
+                        </div>
+                    )}
+
                     {/* BANNER 1: CHƯƠNG TRÌNH CHƯA BẮT ĐẦU */}
                     {isUpcoming && (
                         <Motion.div 

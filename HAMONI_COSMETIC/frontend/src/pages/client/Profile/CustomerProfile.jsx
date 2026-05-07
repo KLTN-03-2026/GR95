@@ -131,18 +131,25 @@ const CustomerProfile = () => {
                 return;
             }
             
-            // Validate Phone - phải là 10 số
-            if (formData.SoDienThoai.trim()) {
-                const phoneRegex = /^[0-9]{10}$/;
-                if (!phoneRegex.test(formData.SoDienThoai.trim())) {
-                    setAlertConfig({ show: true, type: 'danger', message: "Số điện thoại phải có đúng 10 chữ số!" });
-                    return;
-                }
+            // Validate Phone - bắt buộc và phải là 10 số
+            if (!formData.SoDienThoai || !formData.SoDienThoai.trim()) {
+                setAlertConfig({ show: true, type: 'danger', message: "Vui lòng nhập số điện thoại!" });
+                return;
+            }
+            const phoneRegex = /^[0-9]{10}$/;
+            if (!phoneRegex.test(formData.SoDienThoai.trim())) {
+                setAlertConfig({ show: true, type: 'danger', message: "Số điện thoại phải có đúng 10 chữ số!" });
+                return;
             }
             
-            // Validate Date of Birth - phải trước ngày hiện tại
-            if (formData.NgaySinh.trim()) {
+            // Validate Date of Birth - nếu có thì phải trước ngày hiện tại
+            if (formData.NgaySinh && formData.NgaySinh.trim()) {
                 const selectedDate = new Date(formData.NgaySinh);
+                if (Number.isNaN(selectedDate.getTime())) {
+                    setAlertConfig({ show: true, type: 'danger', message: "Ngày sinh không hợp lệ!" });
+                    return;
+                }
+
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 if (selectedDate >= today) {
@@ -153,7 +160,7 @@ const CustomerProfile = () => {
 
             await axiosClient.put('/auth/profile', {
                 HoTen: formData.HoTen, Email: formData.Email, SoDienThoai: formData.SoDienThoai,
-                GioiTinh: formData.GioiTinh, NgaySinh: formData.NgaySinh, DiaChi: formData.DiaChi,
+                GioiTinh: formData.GioiTinh, NgaySinh: formData.NgaySinh || null, DiaChi: formData.DiaChi,
                 AvatarUrl: formData.AvatarUrl || null
             });
             

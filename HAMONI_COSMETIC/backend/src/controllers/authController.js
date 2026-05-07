@@ -302,12 +302,34 @@ const updateProfile = async (req, res) => {
             return res.status(400).json({ message: "Họ tên và Email là bắt buộc!" });
         }
 
+        // Validate phone: required and 10 digits
+        if (!SoDienThoai || !String(SoDienThoai).trim()) {
+            return res.status(400).json({ message: "Số điện thoại là bắt buộc!" });
+        }
+        const phoneRegex = /^[0-9]{10}$/;
+        if (!phoneRegex.test(String(SoDienThoai).trim())) {
+            return res.status(400).json({ message: "Số điện thoại phải gồm 10 chữ số!" });
+        }
+
+        // Ngày sinh là tuỳ chọn: nếu được gửi thì validate, nếu không gửi thì lưu NULL
+        if (NgaySinh && String(NgaySinh).trim()) {
+            const parsedNgaySinh = new Date(NgaySinh);
+            if (Number.isNaN(parsedNgaySinh.getTime())) {
+                return res.status(400).json({ message: "Ngày sinh không hợp lệ!" });
+            }
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            if (parsedNgaySinh >= today) {
+                return res.status(400).json({ message: "Ngày sinh phải trước ngày hôm nay!" });
+            }
+        }
+
         // Try to update including AvatarUrl; if the column doesn't exist, fall back to update without it
         let result;
         try {
             result = await db.execute(
                 "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, GioiTinh = ?, NgaySinh = ?, DiaChi = ?, AvatarUrl = ? WHERE MaND = ?",
-                [HoTen, Email, SoDienThoai || '', GioiTinh || '', NgaySinh || '', DiaChi || '', AvatarUrl || '', userId]
+                [HoTen, Email, SoDienThoai || '', GioiTinh || '', NgaySinh && String(NgaySinh).trim() ? NgaySinh : null, DiaChi || '', AvatarUrl || '', userId]
             );
         } catch (err) {
             // If AvatarUrl column missing (migration not applied), fallback to old update
@@ -315,7 +337,7 @@ const updateProfile = async (req, res) => {
                 console.warn('AvatarUrl column missing, falling back to update without AvatarUrl');
                 result = await db.execute(
                     "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, GioiTinh = ?, NgaySinh = ?, DiaChi = ? WHERE MaND = ?",
-                    [HoTen, Email, SoDienThoai || '', GioiTinh || '', NgaySinh || '', DiaChi || '', userId]
+                    [HoTen, Email, SoDienThoai || '', GioiTinh || '', NgaySinh && String(NgaySinh).trim() ? NgaySinh : null, DiaChi || '', userId]
                 );
             } else {
                 throw err;

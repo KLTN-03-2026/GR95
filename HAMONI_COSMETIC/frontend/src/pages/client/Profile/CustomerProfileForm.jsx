@@ -111,8 +111,9 @@ const CustomerProfileForm = ({ formData, handleInputChange, handleUpdate }) => {
                             placeholder="0912345678"
                             pattern="[0-9]*"
                             maxLength="10"
+                            required
                         />
-                        <small className="form-text text-muted">Phải là 10 chữ số (VD: 0912345678)</small>
+                        <small className="form-text text-muted">Bắt buộc, phải là 10 chữ số (VD: 0912345678)</small>
                     </div>
 
                     <div className="col-md-6">
@@ -135,7 +136,7 @@ const CustomerProfileForm = ({ formData, handleInputChange, handleUpdate }) => {
                             onChange={handleInputChange}
                             max={new Date().toISOString().split('T')[0]}
                         />
-                        
+                        <small className="form-text text-muted">Không bắt buộc. Nếu có, chọn ngày sinh hợp lệ.</small>
                     </div>
 
                     <div className="col-md-6">
