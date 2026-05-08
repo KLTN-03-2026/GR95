@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { buildVietQrImageUrl } from '../../config/paymentQr';
+import orderApi from '../../services/orderApi';
 import './ordernotification.css';
 
 const paymentBankName = import.meta.env.VITE_PAYMENT_BANK_NAME || 'MoMo';
@@ -78,6 +79,56 @@ export const OnlinePaymentModal = ({
   confirming = false,
   formatCurrency,
 }) => {
+  const [isCanceling, setIsCanceling] = React.useState(false);
+
+  const handleCancelClick = async () => {
+    if (isCanceling || confirming) return;
+
+    console.log('[LegacyOrderPayment] cancel click', { orderId, confirming, isCanceling });
+
+    if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này? Hành động không thể hoàn tác.')) {
+      console.log('[LegacyOrderPayment] cancel aborted by confirm dialog', { orderId });
+      return;
+    }
+
+    try {
+      setIsCanceling(true);
+      console.log('[LegacyOrderPayment] calling cancelUnpaidOrder', { orderId });
+      const response = await orderApi.cancelUnpaidOrder({ orderId });
+
+      console.log('[LegacyOrderPayment] cancel API response', response);
+
+      const deletedOrderCount = Number(response?.data?.deleted?.donHang || 0);
+      if (deletedOrderCount !== 1) {
+        throw new Error('API hủy không xóa được đơn hàng trong bảng DonHang.');
+      }
+
+      try {
+        await orderApi.getOnlinePaymentStatus(orderId);
+        throw new Error('Hệ thống chưa xóa đơn hàng khỏi cơ sở dữ liệu. Vui lòng kiểm tra backend đang chạy bản mới nhất.');
+      } catch (statusError) {
+        const statusCode = statusError?.response?.status;
+        if (statusCode === 404) {
+          // OK: đơn đã xóa nên endpoint status trả 404.
+        } else {
+          console.warn('[LegacyOrderPayment] status verification failed', statusCode, statusError?.message);
+          throw statusError;
+        }
+      }
+
+      alert('Đã hủy đơn hàng thành công');
+      if (onCancel) {
+        onCancel(true);
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Lỗi hủy đơn';
+      console.error('Lỗi hủy đơn:', error);
+      alert(errorMessage);
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
   const transferCode = `HM-${orderId}`;
   const { hasValidBankConfig, qrImageUrl } = buildVietQrImageUrl({
     bankBin: paymentBankBin,
@@ -87,7 +138,7 @@ export const OnlinePaymentModal = ({
     transferCode,
   });
   return (
-    <div className="payment-modal-overlay" onClick={onCancel}>
+    <div className="payment-modal-overlay" onClick={handleCancelClick}>
       <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
         <h3>Quét mã để thanh toán</h3>
         <p className="payment-modal-subtitle">Vui lòng dùng mã QR bên dưới để thanh toán đơn hàng.</p>
@@ -139,7 +190,9 @@ export const OnlinePaymentModal = ({
         </div>
 
         <div className="payment-modal-actions">
-          <button className="btn-cancel" onClick={onCancel} disabled={confirming}>Hủy</button>
+          <button className="btn-cancel" onClick={handleCancelClick} disabled={confirming || isCanceling}>
+            {isCanceling ? 'Đang hủy...' : 'Hủy'}
+          </button>
           <button className="btn-confirm" onClick={onConfirm} disabled={confirming}>
             {confirming ? 'ĐANG XÁC NHẬN...' : 'Tôi đã thanh toán'}
           </button>

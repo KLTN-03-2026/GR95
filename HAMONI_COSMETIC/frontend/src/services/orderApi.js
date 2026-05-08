@@ -7,6 +7,7 @@ const orderApi = {
     placeOrder: (payload = {}) => axiosClient.post('/orderpayment/place', payload),
     confirmOnlinePayment: (payload) => axiosClient.post('/orderpayment/confirm-online', payload),
     getOnlinePaymentStatus: (orderId) => axiosClient.get(`/orderpayment/status/${orderId}`),
+    cancelUnpaidOrder: (payload) => axiosClient.post('/orderpayment/cancel-unpaid', payload),
     getMyOrderHistory: (params = {}) => axiosClient.get('/orderhistory/my-orders', { params }),
     getOrderDetails: (orderId) => axiosClient.get(`/orderdetails/${orderId}`),
     getOrderLogs: (orderId) => axiosClient.get(`/orderdetails/${orderId}/logs`)

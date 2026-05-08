@@ -492,13 +492,54 @@ const OrderPayment = () => {
     }
   };
 
-  const handleCloseOnlinePayment = () => {
+  const handleCloseOnlinePayment = (isOrderDeleted = false) => {
     if (confirmingOnlinePayment) return;
 
     setShowOnlinePaymentModal(false);
     setOnlinePaymentInfo(null);
-    pushNotice('Bạn đã hủy quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
+    if (isOrderDeleted) {
+      pushNotice('Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.');
+      return;
+    }
+
+    pushNotice('Bạn đã đóng màn hình quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
   };
+
+  const handleRequestCancelOnlinePayment = useCallback(async () => {
+    console.log('[OrderPayment] handleRequestCancelOnlinePayment called - confirmingOnlinePayment:', confirmingOnlinePayment, 'onlinePaymentInfo:', onlinePaymentInfo);
+    
+    if (confirmingOnlinePayment || !onlinePaymentInfo) {
+      console.log('[OrderPayment] Early return - confirmingOnlinePayment or no onlinePaymentInfo');
+      return;
+    }
+
+    try {
+      console.log('[OrderPayment] Starting cancel request for orderId:', onlinePaymentInfo.orderId);
+      setError('');
+      setNotice('');
+      pushNotice('Đang hủy đơn hàng...');
+
+      const response = await orderApi.cancelUnpaidOrder({
+        orderId: onlinePaymentInfo.orderId
+      });
+      console.log('[OrderPayment] Cancel API response:', response);
+
+      const deletedOrderCount = Number(response?.data?.deleted?.donHang || 0);
+      if (deletedOrderCount !== 1) {
+        throw new Error('API hủy không xóa được đơn hàng trong bảng DonHang.');
+      }
+
+      setShowOnlinePaymentModal(false);
+      setOnlinePaymentInfo(null);
+      pushNotice('Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.');
+
+      await loadCheckoutPreview(voucherCode, selectedVariantIds);
+    } catch (error) {
+      const errorMessage = error?.response?.data?.message || error.message || 'Lỗi hủy đơn';
+      console.error('[OrderPayment] cancel request failed', error);
+      pushError(errorMessage);
+    }
+  }, [confirmingOnlinePayment, onlinePaymentInfo, pushNotice, pushError, loadCheckoutPreview, voucherCode, selectedVariantIds]);
 
   const items = checkoutData?.items || [];
 
@@ -776,13 +817,17 @@ const OrderPayment = () => {
       </div>
 
       {showOnlinePaymentModal && onlinePaymentInfo && (
-        <OnlinePaymentModal
-          orderId={onlinePaymentInfo.orderId}
-          totalAmount={onlinePaymentInfo.totalAmount}
-          confirming={confirmingOnlinePayment}
-          onCancel={handleCloseOnlinePayment}
+        <>
+          {console.log('[OrderPayment] Rendering OnlinePaymentModal - orderId:', onlinePaymentInfo.orderId, 'handleRequestCancelOnlinePayment:', typeof handleRequestCancelOnlinePayment)}
+          <OnlinePaymentModal
+            orderId={onlinePaymentInfo.orderId}
+            totalAmount={onlinePaymentInfo.totalAmount}
+            confirming={confirmingOnlinePayment}
+            onCancel={handleCloseOnlinePayment}
+            onRequestCancel={handleRequestCancelOnlinePayment}
           formatCurrency={formatCurrency}
         />
+        </>
       )}
     </div>
   );

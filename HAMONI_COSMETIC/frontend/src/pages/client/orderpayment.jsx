@@ -311,12 +311,17 @@ const OrderPayment = () => {
     }
   };
 
-  const handleCloseOnlinePayment = () => {
+  const handleCloseOnlinePayment = (isOrderDeleted = false) => {
     if (confirmingOnlinePayment) return;
 
     setShowOnlinePaymentModal(false);
     setOnlinePaymentInfo(null);
-    setNotice('Bạn đã hủy quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
+    if (isOrderDeleted) {
+      setNotice('Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.');
+      return;
+    }
+
+    setNotice('Bạn đã đóng màn hình quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
   };
 
   const items = checkoutData?.items || [];

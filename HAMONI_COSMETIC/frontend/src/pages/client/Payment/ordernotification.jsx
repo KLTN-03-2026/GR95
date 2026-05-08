@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { buildVietQrImageUrl } from '../../../config/paymentQr';
 import './ordernotification.css';
@@ -76,10 +76,48 @@ export const OnlinePaymentModal = ({
   orderId,
   totalAmount,
   onCancel,
+  onRequestCancel,
   confirming = false,
   formatCurrency,
 }) => {
+  console.log('[OnlinePaymentModal] RENDER - orderId:', orderId, 'confirming:', confirming, 'onRequestCancel:', typeof onRequestCancel);
+  const cancelHandledRef = useRef(false);
+  
+  const handleCancelClick = async (event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (cancelHandledRef.current) {
+      return;
+    }
+
+    cancelHandledRef.current = true;
+    console.log('[OrderNotification] Button clicked - confirming:', confirming, 'onRequestCancel type:', typeof onRequestCancel);
+    
+    if (confirming) {
+      console.log('[OrderNotification] Already confirming, returning early');
+      cancelHandledRef.current = false;
+      return;
+    }
+
+    if (typeof onRequestCancel === 'function') {
+      console.log('[OrderNotification] Calling onRequestCancel callback');
+      await onRequestCancel();
+      cancelHandledRef.current = false;
+      return;
+    }
+
+    console.log('[OrderNotification] Using fallback onCancel');
+    if (onCancel) {
+      onCancel(false);
+    }
+    cancelHandledRef.current = false;
+  };
+
   const transferCode = `HM-${orderId}`;
+
   const { hasValidBankConfig, qrImageUrl } = buildVietQrImageUrl({
     bankBin: paymentBankBin,
     accountNumber: paymentAccountNumber,
@@ -87,11 +125,15 @@ export const OnlinePaymentModal = ({
     amount: totalAmount,
     transferCode,
   });
+
   return (
-    <div className="payment-modal-overlay" onClick={onCancel}>
+    <div className="payment-modal-overlay">
       <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
         <h3>Quét mã để thanh toán</h3>
-        <p className="payment-modal-subtitle">Vui lòng dùng mã QR bên dưới để thanh toán đơn hàng.</p>
+
+        <p className="payment-modal-subtitle">
+          Vui lòng dùng mã QR bên dưới để thanh toán đơn hàng.
+        </p>
 
         <div className="payment-qr-section">
           <div className="payment-qr-box" aria-label="Mã QR thanh toán">
@@ -100,6 +142,7 @@ export const OnlinePaymentModal = ({
               <span className="qr-corner qr-tr" />
               <span className="qr-corner qr-bl" />
               <span className="qr-corner qr-br" />
+
               {hasValidBankConfig ? (
                 <img
                   className="payment-qr-image"
@@ -109,29 +152,35 @@ export const OnlinePaymentModal = ({
                 />
               ) : (
                 <p className="payment-qr-fallback">
-                  Thiếu cấu hình ngân hàng để tạo QR. Vui lòng kiểm tra VITE_PAYMENT_BANK_BIN và VITE_PAYMENT_ACCOUNT_NUMBER.
+                  Thiếu cấu hình ngân hàng để tạo QR.
                 </p>
               )}
             </div>
+
             <p>Mã QR thanh toán</p>
           </div>
+
           <div className="payment-detail-list">
             <div className="payment-detail-row">
               <span>Ngân hàng</span>
               <strong>{paymentBankName}</strong>
             </div>
+
             <div className="payment-detail-row">
               <span>TK</span>
               <strong>{paymentAccountNumber}</strong>
             </div>
+
             <div className="payment-detail-row">
               <span>Tên TK</span>
               <strong>{paymentAccountName}</strong>
             </div>
+
             <div className="payment-detail-row">
               <span>Mã đơn</span>
               <strong>#HM-{orderId}</strong>
             </div>
+
             <div className="payment-detail-row total">
               <span>Số tiền</span>
               <strong>{formatCurrency(totalAmount)}</strong>
@@ -140,9 +189,29 @@ export const OnlinePaymentModal = ({
         </div>
 
         <div className="payment-modal-actions">
-          <button className="btn-cancel" onClick={onCancel} disabled={confirming}>Hủy</button>
-          <p className="payment-waiting-text" style={{ marginTop: '12px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-            {confirming ? 'Đang kiểm tra thanh toán...' : 'Đang chờ xác nhận thanh toán...'}
+          {console.log('[OnlinePaymentModal] About to render button, confirming:', confirming)}
+          <button
+            className="btn-cancel"
+            type="button"
+            onPointerDown={handleCancelClick}
+            onClick={handleCancelClick}
+            disabled={confirming}
+          >
+            Hủy đơn hàng
+          </button>
+
+          <p
+            className="payment-waiting-text"
+            style={{
+              marginTop: '12px',
+              textAlign: 'center',
+              color: '#666',
+              fontSize: '14px'
+            }}
+          >
+            {confirming
+              ? 'Đang kiểm tra thanh toán...'
+              : 'Đang chờ xác nhận thanh toán...'}
           </p>
         </div>
       </div>
