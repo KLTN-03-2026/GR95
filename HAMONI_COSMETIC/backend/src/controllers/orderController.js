@@ -166,9 +166,20 @@ console.log(`Check: ${totalItems} items / ${limitNum} per page = ${totalPages} p
             SELECT dh.MaDH as id, dh.NgayDat as ngayTao,
                    dh.TrangThai as trangThai,
                    dh.ThanhTien as tongTien,
-                   nd.HoTen as khachHang
+                   nd.HoTen as khachHang,
+                   tt.PhuongThuc as phuongThucThanhToan,
+                   tt.TrangThai as trangThaiThanhToan
             FROM DonHang dh
             LEFT JOIN NguoiDung nd ON dh.MaND = nd.MaND
+            LEFT JOIN (
+                SELECT t.MaDH, t.PhuongThuc, t.TrangThai
+                FROM ThanhToan t
+                INNER JOIN (
+                    SELECT MaDH, MAX(MaThanhToan) AS latestPaymentId
+                    FROM ThanhToan
+                    GROUP BY MaDH
+                ) latest ON latest.latestPaymentId = t.MaThanhToan
+            ) tt ON tt.MaDH = dh.MaDH
             ${whereClause}
             ORDER BY dh.NgayDat DESC
             LIMIT ? OFFSET ?
@@ -228,6 +239,14 @@ exports.getOrderDetail = async (req, res) => {
             ORDER BY NgayTao ASC
         `, [id]);
 
+        const [[payment]] = await db.execute(`
+            SELECT PhuongThuc, TrangThai, NgayThanhToan
+            FROM ThanhToan
+            WHERE MaDH = ?
+            ORDER BY MaThanhToan DESC
+            LIMIT 1
+        `, [id]);
+
         const isPrinted = logs.some(l => l.TrangThaiMoi === 'DaInHoaDon');
 
         // Mapping lại dữ liệu trả về cho chuẩn với React
@@ -247,6 +266,9 @@ exports.getOrderDetail = async (req, res) => {
             phiShip: Number(order.PhiShip || 0),
             tongTien: Number(order.ThanhTien),
             daInHoaDon: isPrinted,
+            phuongThucThanhToan: payment?.PhuongThuc || null,
+            trangThaiThanhToan: payment?.TrangThai || null,
+            ngayThanhToan: payment?.NgayThanhToan || null,
             chiTiet: items, // Trong items này đã có TenSP (viết hoa T và SP)
             lichSu: logs.map(l => ({
                 moTa: `${l.TrangThaiCu || "Khởi tạo"} → ${l.TrangThaiMoi}`,

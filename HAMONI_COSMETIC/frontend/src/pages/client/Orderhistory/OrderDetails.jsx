@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import axiosClient from '../../../services/axiosClient'
+import orderApi from '../../../services/orderApi'
 import ProductReview from '../ProductReview/ProductReview'
 import './OrderDetails.css'
 
@@ -11,7 +14,9 @@ export default function OrderDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [reviewingProduct, setReviewingProduct] = useState(null)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const mountedRef = useRef(true)
+  const productIdCacheRef = useRef(new Map())
 
   const fetchOrder = useCallback(async (options = {}) => {
     const { silent = false } = options
@@ -38,25 +43,52 @@ export default function OrderDetails() {
     }
   }, [id])
 
-  const handleReviewProduct = (product) => {
+  const resolveProductIdFromName = useCallback(async (name) => {
+    const normalizedName = String(name || '').trim()
+    if (!normalizedName) return null
+
+    const cached = productIdCacheRef.current.get(normalizedName)
+    if (cached) return cached
+
+    try {
+      const response = await axiosClient.get('/products', {
+        params: { search: normalizedName, page: 1, limit: 20 }
+      })
+
+      const products = Array.isArray(response?.data) ? response.data : []
+      const normalizedLower = normalizedName.toLowerCase()
+      const exactMatch = products.find((p) => String(p?.TenSP || '').trim().toLowerCase() === normalizedLower)
+      const fallbackMatch = products.find((p) => String(p?.TenSP || '').trim().toLowerCase().includes(normalizedLower))
+      const matched = exactMatch || fallbackMatch
+      const foundId = matched?.MaSP ?? null
+
+      if (foundId) {
+        productIdCacheRef.current.set(normalizedName, foundId)
+      }
+
+      return foundId
+    } catch (err) {
+      console.warn('Không thể dò mã sản phẩm từ tên:', err)
+      return null
+    }
+  }, [])
+
+  const handleReviewProduct = async (product) => {
     const userData = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : {}
     const MaND = userData?.MaND || userData?.id || userData?.MaKhachHang
-    
-    // Log toàn bộ keys của product để debug
-    console.log('Product object keys:', Object.keys(product))
-    console.log('Product full data:', product)
-    
-    const MaSP = product.MaSP || product.maSP || product.id || product.productId || product.MaSanPham || product.ma_sp || product.masp
-    console.log('Extracted MaSP:', MaSP)
-    
-    if (!MaSP) {
+    const tenSP = product.TenSP || product.tenSP || product.tenSanPham || product.name || ''
+
+    const MaSPDirect = product.MaSP || product.maSP || product.id || product.productId || product.MaSanPham || product.ma_sp || product.masp
+    const MaSPResolved = MaSPDirect || await resolveProductIdFromName(tenSP)
+
+    if (!MaSPResolved) {
       alert(`Không thể lấy mã sản phẩm.\n\nKeys có sẵn: ${Object.keys(product).join(', ')}\n\nVui lòng liên hệ admin.`)
       return
     }
     
     setReviewingProduct({
-      MaSP,
-      tenSP: product.TenSP || product.tenSP || product.tenSanPham || product.name || 'Sản phẩm',
+      MaSP: MaSPResolved,
+      tenSP: tenSP || 'Sản phẩm',
       DuongDanAnh: product.DuongDanAnh || product.image || product.hinhAnh || product.anh,
       MaND,
       MaDH: order?.id,
@@ -67,6 +99,105 @@ export default function OrderDetails() {
   const handleReviewClose = () => {
     setReviewingProduct(null)
   }
+
+  const handleCancelOrder = async () => {
+    if (!order?.id) {
+      return
+    }
+
+    setShowCancelConfirm(true)
+  }
+
+  const confirmCancelOrder = async () => {
+    setShowCancelConfirm(false)
+
+    try {
+      const response = await orderApi.cancelOrder({ orderId: order.id })
+
+      if (response?.data?.newStatus === 'DaHuy' || response?.message) {
+        if (response?.data?.hasCassoPayment) {
+          toast.info(
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              minWidth: '380px',
+              padding: '16px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '28px', color: '#0d47a1' }}>ℹ️</div>
+              <div>
+                <div style={{
+                  fontWeight: 700,
+                  fontSize: '16px',
+                  marginBottom: '8px',
+                  color: '#0d47a1'
+                }}>
+                  Đơn hàng đã được hủy thành công!
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: '#1565c0'
+                }}>
+                  Số tiền của bạn sẽ được hoàn lại sau 24 giờ.
+                  <br />
+                  Nếu chưa nhận được, vui lòng liên hệ với chúng tôi.
+                </div>
+              </div>
+            </div>,
+            {
+              position: 'top-center',
+              autoClose: false,
+              closeButton: true,
+              pauseOnHover: false,
+              style: {
+                backgroundColor: '#e3f2fd',
+                borderLeft: '4px solid #0d47a1',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                maxWidth: '500px',
+                padding: '0px',
+                margin: '20px auto',
+                borderRadius: '8px'
+              }
+            }
+          )
+        } else {
+          toast.success('Đơn hàng đã được hủy thành công!', {
+            position: 'top-center',
+            autoClose: 2000,
+            closeButton: true
+          })
+        }
+        setOrder((currentOrder) => (
+          currentOrder
+            ? { ...currentOrder, trangThai: 'DaHuy' }
+            : currentOrder
+        ))
+      } else {
+        toast.error(response?.message || 'Có lỗi xảy ra khi hủy đơn', {
+          position: 'top-center',
+          autoClose: 2000,
+          closeButton: true
+        })
+      }
+    } catch (err) {
+      const errorMsg = err?.response?.data?.message || err?.message || 'Lỗi kết nối'
+      toast.error(errorMsg, {
+        position: 'top-center',
+        autoClose: 2000,
+        closeButton: true
+      })
+      console.error('Lỗi hủy đơn:', err)
+    }
+  }
+
+  const cancelCancelOrder = () => {
+    setShowCancelConfirm(false)
+  }
+
+  const canCancelOrder = order && ['ChoXacNhan', 'DaXacNhan', 'DangGiao'].includes(order?.trangThai)
 
   useEffect(() => {
     mountedRef.current = true
@@ -147,11 +278,30 @@ export default function OrderDetails() {
 
   const statusOrder = { ChoXacNhan: 0, DaXacNhan: 1, DangGiao: 2, HoanThanh: 3, DaHuy: 3 }
   const currentIndex = statusOrder[order.trangThai] ?? (statusHistory?.length ? Math.max(0, statusHistory.length - 1) : 0)
-  const isCompleted = currentIndex >= 3 || order.trangThai === 'HoanThanh'
+  const isCompleted = (currentIndex >= 3 || order.trangThai === 'HoanThanh') && order.trangThai !== 'DaHuy'
   const finalStepLabel = order.trangThai === 'DaHuy' ? 'TRẢ HÀNG' : 'THÀNH CÔNG'
 
   return (
     <div className="order-page">
+      <ToastContainer
+        position="top-center"
+        autoClose={false}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        style={{
+          width: '100%',
+          maxWidth: '600px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999
+        }}
+        limit={1}
+      />
       {/* Progress bar: order status steps */}
       <div className="order-progress-container">
         <div className="order-progress-inner">
@@ -188,11 +338,6 @@ export default function OrderDetails() {
             <div className="success-notice-title">Đơn hàng đã hoàn thành</div>
             <div className="success-notice-text">Bạn có thể đánh giá sản phẩm để giúp cửa hàng cải thiện chất lượng dịch vụ.</div>
           </div>
-          <button type="button" className="btn-rate" onClick={() => {
-            if (items && items.length > 0) {
-              handleReviewProduct(items[0])
-            }
-          }}>Đánh giá sản phẩm</button>
         </div>
       )}
 
@@ -249,6 +394,58 @@ export default function OrderDetails() {
           <div className="totals-row"><span>Phí vận chuyển</span><span>{formatCurrency(phiShip)}</span></div>
           <div className="totals-row"><span>Giảm giá</span><span className="small-muted">-{formatCurrency(giamGia)}</span></div>
           <div className="totals-total"><span>Tổng cộng</span><span className="product-price">{formatCurrency(tongTien)}</span></div>
+
+          {canCancelOrder && (
+            <button 
+              className="btn-cancel-order"
+              onClick={handleCancelOrder}
+              style={{
+                width: '100%',
+                marginTop: '16px',
+                padding: '10px 16px',
+                backgroundColor: '#f44336',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#d32f2f'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#f44336'}
+            >
+              {order?.trangThai === 'DangGiao' ? '✕ Hủy đơn hàng' : 'Hủy đơn'}
+            </button>
+          )}
+
+          {showCancelConfirm && (
+            <div className="cancel-confirm-overlay">
+              <div className="cancel-confirm-modal">
+                <div className="cancel-confirm-header">
+                  <h3>Xác nhận hủy đơn</h3>
+                </div>
+                <div className="cancel-confirm-body">
+                  <p>Bạn có chắc muốn hủy đơn hàng <strong>#{order?.id}</strong>?</p>
+                  <p className="cancel-confirm-warning">Hành động này không thể hoàn tác.</p>
+                </div>
+                <div className="cancel-confirm-footer">
+                  <button 
+                    className="btn-cancel-no"
+                    onClick={cancelCancelOrder}
+                  >
+                    Hủy
+                  </button>
+                  <button 
+                    className="btn-cancel-yes"
+                    onClick={confirmCancelOrder}
+                  >
+                    Xác nhận hủy
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

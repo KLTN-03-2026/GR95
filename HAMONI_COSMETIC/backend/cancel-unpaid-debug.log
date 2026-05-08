@@ -1,0 +1,6 @@
+{"at":"2026-05-08T14:16:36.933Z","stage":"request-received","body":{"orderId":216},"userId":12,"hasAuthHeader":true}
+{"at":"2026-05-08T14:16:36.935Z","stage":"start","orderId":216,"userId":12}
+{"at":"2026-05-08T14:16:36.955Z","stage":"success","orderId":216,"userId":12,"deleted":{"chiTietDonHang":1,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}
+{"at":"2026-05-08T14:27:37.036Z","stage":"request-received","body":{"orderId":217},"userId":12,"hasAuthHeader":true}
+{"at":"2026-05-08T14:27:37.038Z","stage":"start","orderId":217,"userId":12}
+{"at":"2026-05-08T14:27:37.057Z","stage":"success","orderId":217,"userId":12,"deleted":{"chiTietDonHang":1,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}

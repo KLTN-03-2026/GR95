@@ -226,3 +226,214 @@
   .success-notice{ flex-direction:column; align-items:flex-start }
   .btn-rate{ width:100% }
 }
+
+/* Refund Toast Notification */
+.refund-toast-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 380px;
+  padding: 16px;
+  text-align: center;
+}
+
+.refund-toast-icon {
+  font-size: 28px;
+  color: #0d47a1;
+}
+
+.refund-toast-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.refund-toast-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0d47a1;
+}
+
+.refund-toast-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1565c0;
+}
+
+.refund-toast {
+  background-color: #e3f2fd !important;
+  border-left: 4px solid #0d47a1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  max-width: 500px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+
+/* Override React Toastify default info toast styling */
+.Toastify__toast--info {
+  background-color: #e3f2fd !important;
+  padding: 0 !important;
+  border-left: 4px solid #0d47a1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+}
+
+.Toastify__toast {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+@media (max-width: 600px) {
+  .refund-toast-container {
+    min-width: 320px;
+    padding: 12px;
+  }
+
+  .refund-toast-icon {
+    font-size: 24px;
+  }
+
+  .refund-toast-title {
+    font-size: 14px;
+  }
+
+  .refund-toast-message {
+    font-size: 13px;
+  }
+}
+
+/* Cancel Confirm Modal */
+.cancel-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.cancel-confirm-modal {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 90%;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.cancel-confirm-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.cancel-confirm-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.cancel-confirm-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.cancel-confirm-body p {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.cancel-confirm-warning {
+  color: #d94639;
+  font-weight: 600;
+}
+
+.cancel-confirm-footer {
+  padding: 16px 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  border-top: 1px solid #e5e5e5;
+}
+
+.btn-cancel-no {
+  padding: 10px 20px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel-no:hover {
+  background: #f3f4f6;
+}
+
+.btn-cancel-yes {
+  padding: 10px 20px;
+  border: none;
+  background: #d94639;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel-yes:hover {
+  background: #b91c1c;
+}
+
+.btn-cancel-yes:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 600px) {
+  .cancel-confirm-modal {
+    max-width: 90%;
+  }
+
+  .cancel-confirm-header {
+    padding: 16px;
+  }
+
+  .cancel-confirm-body {
+    padding: 16px;
+  }
+
+  .cancel-confirm-body p {
+    font-size: 14px;
+  }
+
+  .cancel-confirm-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-cancel-no,
+  .btn-cancel-yes {
+    width: 100%;
+  }
+}

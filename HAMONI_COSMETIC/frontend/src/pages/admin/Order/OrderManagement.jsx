@@ -71,6 +71,19 @@ setTotalPages(totalPages);
     const formatCurrency = (amount) =>
         new Intl.NumberFormat('vi-VN').format(amount || 0) + 'đ';
 
+    const isTransferPaidOrder = (order) => {
+        const method = String(order?.phuongThucThanhToan || '').toUpperCase();
+        const status = String(order?.trangThaiThanhToan || '').toUpperCase();
+        const transferMethods = ['VNPAY', 'THANHTOANTHEOSO', 'CHUYENKHOAN', 'BANK_TRANSFER'];
+
+        return transferMethods.includes(method) && status === 'DATHANHTOAN';
+    };
+
+    const getAmountNeedCollect = (order) => {
+        if (isTransferPaidOrder(order)) return 0;
+        return Number(order?.tongTien || 0);
+    };
+
     const getStatusClass = (status) => {
     if (!status) return "status-badge";
 
@@ -181,7 +194,7 @@ setTotalPages(totalPages);
                                     </td>
                                     <td>{new Date(order.ngayTao).toLocaleDateString('vi-VN')}</td>
                                     <td>{order.khachHang}</td>
-                                    <td className="total-amount-list">{formatCurrency(order.tongTien)}</td>
+                                    <td className="total-amount-list">{formatCurrency(getAmountNeedCollect(order))}</td>
                                     <td>
                                         <span className={getStatusClass(order.trangThai)}>
                                             {order.trangThai === 'HoanThanh' ? 'Hoàn thành' : 

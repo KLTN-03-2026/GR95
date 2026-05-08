@@ -58,6 +58,16 @@ const hasStatusChanged = Boolean(order?.trangThai) && status !== order?.trangTha
         return new Intl.NumberFormat('vi-VN').format(amount || 0) + 'đ';
     };
 
+    const isTransferPaidOrder = (data) => {
+        const method = String(data?.phuongThucThanhToan || '').toUpperCase();
+        const status = String(data?.trangThaiThanhToan || '').toUpperCase();
+        const transferMethods = ['VNPAY', 'THANHTOANTHEOSO', 'CHUYENKHOAN', 'BANK_TRANSFER'];
+
+        return transferMethods.includes(method) && status === 'DATHANHTOAN';
+    };
+
+    const totalNeedCollect = isTransferPaidOrder(order) ? 0 : Number(order?.tongTien || 0);
+
     // --- 2. CẬP NHẬT HÀM UPDATE (Bỏ Alert) ---
     const handleUpdateStatus = async () => {
     if (!hasStatusChanged) {
@@ -221,7 +231,7 @@ const handleCancelOrder = async () => {
                             <div className="bill-row"><span>SHIP</span><span>{formatCurrency(order.phiShip)}</span></div>
                             <div className="bill-total">
                                 <span>Tổng</span>
-                                <span className="final-price">{formatCurrency(order.tongTien)}</span>
+                                <span className="final-price">{formatCurrency(totalNeedCollect)}</span>
                             </div>
                         </div>
                         <div style={{ display: "flex", gap: "10px" }}>

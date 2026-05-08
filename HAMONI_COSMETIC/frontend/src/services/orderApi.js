@@ -10,7 +10,8 @@ const orderApi = {
     cancelUnpaidOrder: (payload) => axiosClient.post('/orderpayment/cancel-unpaid', payload),
     getMyOrderHistory: (params = {}) => axiosClient.get('/orderhistory/my-orders', { params }),
     getOrderDetails: (orderId) => axiosClient.get(`/orderdetails/${orderId}`),
-    getOrderLogs: (orderId) => axiosClient.get(`/orderdetails/${orderId}/logs`)
+    getOrderLogs: (orderId) => axiosClient.get(`/orderdetails/${orderId}/logs`),
+    cancelOrder: (payload) => axiosClient.post('/orderpayment/cancel-order', payload)
 };
 
 export default orderApi;

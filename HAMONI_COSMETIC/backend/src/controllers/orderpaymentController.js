@@ -249,6 +249,49 @@ const loadOrderItems = async (conn, orderId) => {
     return items;
 };
 
+const restoreOrderStock = async (conn, orderId) => {
+    const items = await loadOrderItems(conn, orderId);
+
+    for (const item of items) {
+        const quantity = Number(item.SoLuong || 0);
+
+        const [stocks] = await conn.query(`
+            SELECT MaKho, SoLuongTon
+            FROM TonKho
+            WHERE MaBienThe = ?
+            ORDER BY MaKho ASC
+            FOR UPDATE
+        `, [item.MaBienThe]);
+
+        const primaryStock = stocks[0];
+
+        if (primaryStock) {
+            await conn.query(`
+                UPDATE TonKho
+                SET SoLuongTon = SoLuongTon + ?
+                WHERE MaKho = ? AND MaBienThe = ?
+            `, [quantity, primaryStock.MaKho, item.MaBienThe]);
+        } else {
+            await conn.query(`
+                INSERT INTO TonKho (MaKho, MaBienThe, SoLuongTon)
+                VALUES (1, ?, ?)
+            `, [item.MaBienThe, quantity]);
+        }
+
+        const [[totalRow]] = await conn.query(`
+            SELECT COALESCE(SUM(SoLuongTon), 0) AS SoLuongTon
+            FROM TonKho
+            WHERE MaBienThe = ?
+        `, [item.MaBienThe]);
+
+        await conn.query(`
+            INSERT INTO LogTonKho
+            (MaBienThe, LoaiGiaoDich, SoLuongThayDoi, SoLuongTonHienTai, MaThamChieu, GhiChu)
+            VALUES (?, 'NHAP_DON_HUY', ?, ?, ?, 'Hoàn kho khi hủy đơn hàng')
+        `, [item.MaBienThe, quantity, totalRow.SoLuongTon, orderId]);
+    }
+};
+
 const getLatestOrderStockMovement = async (conn, orderId) => {
     const [[row]] = await conn.query(`
         SELECT LoaiGiaoDich
@@ -850,5 +893,106 @@ exports.cancelUnpaidOrder = async (req, res) => {
         if (conn) {
             conn.release();
         }
+    }
+};
+
+// ================= CUSTOMER CANCEL ORDER =================
+exports.customerCancelOrder = async (req, res) => {
+    const conn = await db.getConnection();
+
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'Bạn cần đăng nhập để hủy đơn' });
+        }
+
+        const orderId = Number(req.body?.orderId);
+        if (!orderId) {
+            return res.status(400).json({ message: 'Thiếu mã đơn hàng' });
+        }
+
+        await conn.beginTransaction();
+
+        // 1. Kiểm tra đơn hàng tồn tại và thuộc về khách hàng
+        const [[order]] = await conn.execute(`
+            SELECT MaDH, MaND, TrangThai
+            FROM DonHang
+            WHERE MaDH = ?
+            FOR UPDATE
+        `, [orderId]);
+
+        if (!order) {
+            await conn.rollback();
+            return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+        }
+
+        if (String(order.MaND) !== String(userId)) {
+            await conn.rollback();
+            return res.status(403).json({ message: 'Bạn không có quyền hủy đơn hàng này' });
+        }
+
+        // 2. Kiểm tra trạng thái đơn hàng - chỉ cho phép hủy nếu chưa hoàn thành/đã hủy
+        const validCancelStates = ['ChoXacNhan', 'DaXacNhan', 'DangGiao'];
+        if (!validCancelStates.includes(order.TrangThai)) {
+            await conn.rollback();
+            let message = 'Không thể hủy đơn hàng ở trạng thái này';
+            if (order.TrangThai === 'HoanThanh') {
+                message = 'Đơn hàng đã hoàn thành, không thể hủy';
+            } else if (order.TrangThai === 'DaHuy') {
+                message = 'Đơn hàng đã được hủy';
+            }
+            return res.status(400).json({ message });
+        }
+
+        // 3. Kiểm tra nếu đơn đã trừ kho (DaXacNhan hoặc DangGiao) - hoàn lại kho
+        const latestStockMovement = await getLatestOrderStockMovement(conn, orderId);
+        if (
+            (order.TrangThai === 'DaXacNhan' || order.TrangThai === 'DangGiao') &&
+            latestStockMovement === 'XUAT_DON_HANG'
+        ) {
+            await restoreOrderStock(conn, orderId);
+        }
+
+        // 4. Cập nhật trạng thái thành DaHuy
+        await conn.execute(`
+            UPDATE DonHang
+            SET TrangThai = 'DaHuy'
+            WHERE MaDH = ?
+        `, [orderId]);
+
+        // 5. Ghi log
+        await conn.execute(`
+            INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, GhiChu, NguoiThaoTac, NgayTao)
+            VALUES (?, ?, 'DaHuy', 'Khách hàng hủy đơn hàng', ?, NOW())
+        `, [orderId, order.TrangThai, userId]);
+
+        await conn.commit();
+
+        // Check nếu đơn có ghi nhận thanh toán từ Casso
+        const [[paymentRecord]] = await conn.execute(`
+            SELECT TrangThai FROM ThanhToan WHERE MaDH = ? LIMIT 1
+        `, [orderId]);
+
+        const hasCassoPayment = paymentRecord?.TrangThai === 'DaThanhToan';
+
+        return res.json({
+            message: 'Đã hủy đơn hàng thành công',
+            data: {
+                orderId,
+                newStatus: 'DaHuy',
+                hasCassoPayment
+            }
+        });
+
+    } catch (err) {
+        try {
+            await conn.rollback();
+        } catch (rollbackErr) {
+            console.error('Lỗi rollback customerCancelOrder:', rollbackErr.message);
+        }
+        console.error('Lỗi customerCancelOrder:', err);
+        return res.status(500).json({ message: err.message || 'Lỗi server' });
+    } finally {
+        conn.release();
     }
 };
