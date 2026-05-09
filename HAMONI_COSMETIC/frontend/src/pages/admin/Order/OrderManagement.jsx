@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import orderApi from '../../../services/orderApi';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './OrderManagement.css';
 
 const OrderManagement = () => {
@@ -62,6 +64,47 @@ setTotalPages(totalPages);
         return () => clearTimeout(timer);
     }, [loadOrders]);
 
+    // show toast for transfer-paid canceled orders that are not refunded
+    useEffect(() => {
+        if (loading) return;
+        if (!orders || orders.length === 0) return;
+
+        const flagged = orders.filter(o => {
+            try {
+                return o.trangThai === 'DaHuy' && isTransferPaidOrder(o) && !o.daHoanTien;
+            } catch {
+                return false;
+            }
+        });
+
+        if (flagged.length > 0) {
+            const ids = flagged.map(o => `#HM-${o.id}`).slice(0, 10).join(', ');
+            const msg = `Có ${flagged.length} đơn chuyển khoản đã hủy chưa hoàn tiền: ${ids}`;
+            toast.warning(msg, { position: 'top-right', autoClose: 8000 });
+        }
+    }, [orders, loading]);
+
+    // also fetch alerts endpoint to show server-side computed alerts (keeps list in sync)
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await orderApi.getRefundAlerts();
+                if (cancelled) return;
+                if (!res || !res.data) return;
+                const { count, ids } = res.data;
+                if (count > 0) {
+                    const msg = `Có ${count} đơn chuyển khoản đã hủy chưa hoàn tiền: ${ids.slice(0,10).map(i=>`#HM-${i}`).join(', ')}`;
+                    toast.warning(msg, { position: 'top-right', autoClose: 8000 });
+                }
+            } catch {
+                // ignore
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, []);
+
     // ===== RESET PAGE =====
     useEffect(() => {
         setCurrentPage(1);
@@ -115,6 +158,7 @@ setTotalPages(totalPages);
 
     return (
         <div className="order-admin-container">
+            <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover theme="light" />
             <h1 className="main-title">QUẢN LÝ ĐƠN HÀNG</h1>
 
             {/* ===== THANH CÔNG CỤ LỌC & TÌM KIẾM ===== */}

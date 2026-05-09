@@ -117,30 +117,11 @@ export default function OrderDetails() {
       if (response?.data?.newStatus === 'DaHuy' || response?.message) {
         if (response?.data?.hasCassoPayment) {
           toast.info(
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '12px',
-              minWidth: '380px',
-              padding: '16px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '28px', color: '#0d47a1' }}>ℹ️</div>
-              <div>
-                <div style={{
-                  fontWeight: 700,
-                  fontSize: '16px',
-                  marginBottom: '8px',
-                  color: '#0d47a1'
-                }}>
-                  Đơn hàng đã được hủy thành công!
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  lineHeight: '1.6',
-                  color: '#1565c0'
-                }}>
+            <div className="refund-toast-container">
+              <div className="refund-toast-icon">ℹ️</div>
+              <div className="refund-toast-content">
+                <div className="refund-toast-title">Đơn hàng đã được hủy thành công!</div>
+                <div className="refund-toast-message">
                   Số tiền của bạn sẽ được hoàn lại sau 24 giờ.
                   <br />
                   Nếu chưa nhận được, vui lòng liên hệ với chúng tôi.
@@ -152,15 +133,7 @@ export default function OrderDetails() {
               autoClose: false,
               closeButton: true,
               pauseOnHover: false,
-              style: {
-                backgroundColor: '#e3f2fd',
-                borderLeft: '4px solid #0d47a1',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                maxWidth: '500px',
-                padding: '0px',
-                margin: '20px auto',
-                borderRadius: '8px'
-              }
+              className: 'refund-toast'
             }
           )
         } else {
@@ -221,20 +194,10 @@ export default function OrderDetails() {
   if (reviewingProduct) {
     return (
       <div style={{ position: 'relative' }}>
-        <button 
-          onClick={handleReviewClose}
-          style={{ 
-            position: 'absolute', 
-            top: 10, 
-            left: 10, 
-            zIndex: 1000,
-            padding: '8px 12px',
-            backgroundColor: '#f0f0f0',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
+       <button 
+  onClick={handleReviewClose}
+  className="btn-review-back"
+>
           ← Quay lại
         </button>
         <ProductReview
@@ -397,24 +360,9 @@ export default function OrderDetails() {
 
           {canCancelOrder && (
             <button 
-              className="btn-cancel-order"
-              onClick={handleCancelOrder}
-              style={{
-                width: '100%',
-                marginTop: '16px',
-                padding: '10px 16px',
-                backgroundColor: '#f44336',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.3s'
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#d32f2f'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#f44336'}
-            >
+  className="btn-cancel-order"
+  onClick={handleCancelOrder}
+>
               {order?.trangThai === 'DangGiao' ? '✕ Hủy đơn hàng' : 'Hủy đơn'}
             </button>
           )}

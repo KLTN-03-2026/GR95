@@ -104,6 +104,8 @@ const OrderLogsPage = () => {
                             "{orderData.ghiChu || 'Khách hàng không để lại ghi chú.'}"
                         </p>
                     </div>
+
+                    
                 </div>
             </div>
 

@@ -120,6 +120,22 @@
 .btn-plain{ background:transparent; border:none; cursor:pointer; color:#555 }
 .btn-plain{ font-size:0.98rem; padding:0.4rem 0.2rem }
 
+.reviewing-product-page{
+  position:relative;
+}
+
+.review-back-button{
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:1000;
+  padding:8px 12px;
+  background:#f0f0f0;
+  border:1px solid #ddd;
+  border-radius:4px;
+  cursor:pointer;
+}
+
 @media (max-width: 767px){
   .order-grid{ grid-template-columns: 1fr; }
   .order-actions{ margin-top: 8px }
@@ -217,6 +233,32 @@
   transform: scale(0.95);
 }
 
+.btn-cancel-order{
+  width:100%;
+  margin-top:16px;
+  padding:10px 16px;
+  background:#f44336;
+  color:#fff;
+  border:none;
+  border-radius:4px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color 0.3s;
+}
+
+.btn-cancel-order:hover{
+  background:#d32f2f;
+}
+
+.order-details-toast-container{
+  width:100%;
+  max-width:600px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:9999;
+}
+
 @media (max-width: 900px){
   .order-grid { grid-template-columns: 1fr }
   .order-summary { order: 2 }
@@ -233,9 +275,11 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  min-width: 380px;
+  min-width: 280px;
+  max-width: 450px;
   padding: 16px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .refund-toast-icon {
@@ -259,15 +303,20 @@
   font-size: 14px;
   line-height: 1.6;
   color: #1565c0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  max-width: 100%;
 }
 
 .refund-toast {
   background-color: #e3f2fd !important;
   border-left: 4px solid #0d47a1 !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  max-width: 500px !important;
+  max-width: 470px !important;
   padding: 0 !important;
   border-radius: 8px !important;
+  margin: 20px auto !important;
 }
 
 /* Override React Toastify default info toast styling */
@@ -277,6 +326,8 @@
   border-left: 4px solid #0d47a1 !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   border-radius: 8px !important;
+  max-width: 470px !important;
+  margin: 20px auto !important;
 }
 
 .Toastify__toast {
@@ -285,7 +336,8 @@
 
 @media (max-width: 600px) {
   .refund-toast-container {
-    min-width: 320px;
+    min-width: 280px;
+    max-width: 320px;
     padding: 12px;
   }
 
@@ -436,4 +488,37 @@
   .btn-cancel-yes {
     width: 100%;
   }
+}
+
+.btn-cancel-order {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 16px;
+  background-color: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-cancel-order:hover {
+  background-color: #d32f2f;
+}
+.btn-review-back {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-review-back:hover {
+  background-color: #e5e5e5;
 }

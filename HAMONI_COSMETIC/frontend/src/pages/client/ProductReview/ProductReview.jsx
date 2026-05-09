@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './ProductReview.css';
 import 'react-toastify/dist/ReactToastify.css';
-import { createReview } from '../../../services/productreviewApi';
-import productApi from '../../../services/productApi';
+// ĐÃ SỬA: Import checkReviewHistory để kiểm tra chính xác theo đơn hàng
+import { createReview, checkReviewHistory } from '../../../services/productreviewApi';
 import { ToastContainer, toast } from 'react-toastify';
 
 const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiDonHang, alreadyReviewed = false }) => {
@@ -14,8 +14,8 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
   const [previews, setPreviews] = useState([]);
   const [checkingReview, setCheckingReview] = useState(alreadyReviewed ? false : true);
   
-  // SỬA Ở ĐÂY: Thay isSubmitted bằng formStatus để chia 3 màn hình rõ ràng
-  const [formStatus, setFormStatus] = useState(alreadyReviewed ? 'duplicate' : 'idle'); // 'idle' | 'success' | 'duplicate'
+  // Trạng thái để chia 3 màn hình: 'idle' (Form), 'success' (Tim đỏ), 'duplicate' (Ổ khóa)
+  const [formStatus, setFormStatus] = useState(alreadyReviewed ? 'duplicate' : 'idle'); 
 
   useEffect(() => {
     if (alreadyReviewed) {
@@ -39,17 +39,22 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
 
     const checkReviewExists = async () => {
       const currentMaND = getCurrentMaND();
-      if (!MaSP || !currentMaND) {
+      
+      // Bắt buộc phải có đủ MaSP, MaDH và MaND để kiểm tra chính xác
+      if (!MaSP || !MaDH || !currentMaND) {
         setCheckingReview(false);
         return;
       }
 
       try {
         setCheckingReview(true);
-        const response = await productApi.getProductReviews(MaSP, { limit: 1000 });
-        const reviews = Array.isArray(response) ? response : [];
-        const hasReviewed = reviews.some((review) => String(review.MaND) === String(currentMaND));
-        if (hasReviewed) {
+        // ĐÃ SỬA: Gọi API check lịch sử theo ĐƠN HÀNG thay vì lấy chung chung của sản phẩm
+        const response = await checkReviewHistory(MaDH, MaSP, currentMaND);
+        
+        // Xử lý dữ liệu trả về từ Axios
+        const resData = response.data ? response.data : response;
+
+        if (resData && resData.hasReview === true) {
           setFormStatus('duplicate');
         }
       } catch (error) {
@@ -60,14 +65,12 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
     };
 
     checkReviewExists();
-  }, [MaSP, MaND, alreadyReviewed]);
+  }, [MaSP, MaDH, MaND, alreadyReviewed]);
 
-  // 1. Hàm xử lý giới hạn TỐI ĐA 5 ẢNH và 5 VIDEO
   const handleFileChange = (e) => {
     const newFiles = Array.from(e.target.files);
     if (newFiles.length === 0) return;
 
-    // Đếm số lượng ảnh và video HIỆN TẠI đang có trong giỏ
     let currentImagesCount = selectedFiles.filter(f => f.type.startsWith('image/')).length;
     let currentVideosCount = selectedFiles.filter(f => f.type.startsWith('video/')).length;
 
@@ -77,7 +80,6 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
     let videoLimitExceeded = false;
 
     newFiles.forEach(file => {
-      // Nếu là ẢNH
       if (file.type.startsWith('image/')) {
         if (currentImagesCount < 5) {
           allowedFiles.push(file);
@@ -87,7 +89,6 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
           imageLimitExceeded = true;
         }
       } 
-      // Nếu là VIDEO
       else if (file.type.startsWith('video/')) {
         if (currentVideosCount < 5) {
           allowedFiles.push(file);
@@ -99,17 +100,13 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
       }
     });
 
-    // Báo lỗi nếu chọn lố
     if (imageLimitExceeded) toast.error("Bạn chỉ được tải lên tối đa 5 ảnh!");
     if (videoLimitExceeded) toast.error("Bạn chỉ được tải lên tối đa 5 video!");
 
-    // Cập nhật danh sách file hợp lệ
     if (allowedFiles.length > 0) {
       setSelectedFiles(prev => [...prev, ...allowedFiles]);
       setPreviews(prev => [...prev, ...allowedPreviews]);
     }
-
-    // Reset lại ô input để khách có thể chọn lại file vừa xóa
     e.target.value = null;
   };
 
@@ -129,7 +126,6 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
       return;
     }
 
-    // Kiểm tra dung lượng từng file (Tối đa 5MB)
     for (let i = 0; i < selectedFiles.length; i++) {
       if (selectedFiles[i].size > 5 * 1024 * 1024) { 
         toast.error(`File "${selectedFiles[i].name}" quá lớn. Tối đa 5MB!`);
@@ -152,31 +148,16 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
       }
     }
 
-    if (!realMaND) {
+    if (!realMaND || !MaSP || !MaDH) {
       toast.dismiss(loadingToast);
-      toast.error("Không tìm thấy thông tin tài khoản. Vui lòng đăng nhập!");
+      toast.error("Thiếu thông tin đánh giá (MaSP/MaDH).");
       return; 
-    }
-
-    // Validate IDs before sending — don't fall back to unsafe defaults
-    if (!MaSP) {
-      toast.dismiss(loadingToast);
-      toast.error("Không tìm thấy thông tin sản phẩm. Vui lòng thử lại.");
-      return;
-    }
-    if (!MaDH) {
-      toast.dismiss(loadingToast);
-      toast.error("Không tìm thấy mã đơn hàng. Vui lòng thử lại.");
-      return;
     }
 
     const formData = new FormData();
     formData.append("MaND", realMaND);
     formData.append("MaSP", MaSP);
     formData.append("MaDH", MaDH);
-
-    // Debug: ensure correct IDs and rating are sent
-    console.log('Submitting review', { realMaND, MaSP, MaDH, rating });
     formData.append("SoSao", rating);
     formData.append("BinhLuan", comment);
     
@@ -192,45 +173,36 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
 
       if (response.success || response.data?.success || response.status === 201) {
         toast.success("Đánh giá thành công! Cảm ơn bạn.");
-        
-        // CẬP NHẬT TRẠNG THÁI: THÀNH CÔNG
         setFormStatus('success');
-        
       } else {
         toast.error(response.message || "Có lỗi xảy ra");
       }
     } catch (error) {
       toast.dismiss(loadingToast);
-      console.error("Lỗi submit:", error);
-      
-      // Nếu Backend báo lỗi đã đánh giá rồi (chặn từ DB)
-      const errorMessage = error?.response?.data?.message || "";
+      const errorMessage = error?.response?.data?.message || "Lỗi kết nối đến máy chủ.";
       if (errorMessage.includes("đã được bạn đánh giá") || errorMessage.includes("đã đánh giá")) {
         toast.error("Bạn đã đánh giá sản phẩm này rồi!");
-        
-        // CẬP NHẬT TRẠNG THÁI: BỊ TRÙNG (ĐÃ ĐÁNH GIÁ)
         setFormStatus('duplicate'); 
       } else {
-        toast.error(errorMessage || "Lỗi kết nối đến máy chủ.");
+        toast.error(errorMessage);
       }
     }
   };
 
+  // 1. Màn hình đang tải
   if (checkingReview) {
     return (
       <div className="product-review-wrapper">
         <ToastContainer position="top-center" autoClose={3000} theme="colored" />
         <div className="review-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h2 style={{ color: '#333', marginBottom: '10px' }}>Đang kiểm tra đánh giá...</h2>
-          <p style={{ color: '#666' }}>Vui lòng chờ trong giây lát để xác định xem bạn đã đánh giá sản phẩm này chưa.</p>
+          <p style={{ color: '#666' }}>Vui lòng chờ trong giây lát.</p>
         </div>
       </div>
     );
   }
 
-  // ==========================================
-  // GIAO DIỆN 1: KHI GỬI THÀNH CÔNG (TIM ĐỎ)
-  // ==========================================
+  // 2. Màn hình gửi thành công (Tim đỏ)
   if (formStatus === 'success') {
     return (
       <div className="product-review-wrapper">
@@ -243,24 +215,20 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
     );
   }
 
-  // ==========================================
-  // GIAO DIỆN 2: KHI BỊ TRÙNG ĐÁNH GIÁ (Ổ KHÓA)
-  // ==========================================
+  // 3. Màn hình đã đánh giá rồi (Ổ khóa)
   if (formStatus === 'duplicate') {
     return (
       <div className="product-review-wrapper">
         <ToastContainer position="top-center" autoClose={3000} theme="colored" />
         <div className="review-card" style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h2 style={{ color: '#f44336', marginBottom: '10px' }}>Đã đánh giá 🔒</h2>
-          <p style={{ color: '#666' }}>Bạn đã gửi đánh giá cho sản phẩm này rồi. Cảm ơn bạn đã luôn tin tưởng và ủng hộ HAMONI!</p>
+          <p style={{ color: '#666' }}>Bạn đã gửi đánh giá cho sản phẩm này của đơn hàng này rồi. Cảm ơn bạn!</p>
         </div>
       </div>
     );
   }
 
-  // ==========================================
-  // GIAO DIỆN 3: FORM ĐÁNH GIÁ MẶC ĐỊNH
-  // ==========================================
+  // 4. Màn hình Form mặc định
   return (
     <div className="product-review-wrapper">
       <ToastContainer position="top-center" autoClose={3000} theme="colored" />
@@ -306,7 +274,6 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
         <div className="form-section">
           <label className="section-label">Hình ảnh & Video thực tế (Tối đa 5 Ảnh & 5 Video)</label>
           <div className="image-upload-container">
-            
             {previews.map((file, index) => (
               <div key={index} className="preview-item">
                 {file.type.includes('video') ? (
@@ -318,7 +285,6 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
               </div>
             ))}
             
-            {/* Chỉ hiện nút thêm nếu tổng số file < 10 (5 ảnh + 5 video) */}
             {selectedFiles.length < 10 && (
               <label className="upload-trigger">
                 <input 

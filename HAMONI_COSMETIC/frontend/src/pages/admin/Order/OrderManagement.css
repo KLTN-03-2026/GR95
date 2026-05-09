@@ -381,6 +381,21 @@
     margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;
 }
 
+.paid-badge {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fff;
+    color: #666; /* match SHIP/VOUCHER label color */
+    font-weight: 700;
+    margin-bottom: 12px;
+    border: 1px solid #f0f0f0;
+}
+
+.paid-amount { font-size: 16px; color: #666; font-weight: 700; }
+
 .bill-row {
     display: flex; justify-content: space-between; margin-bottom: 10px;
     color: #666; font-size: 14px;
@@ -388,9 +403,13 @@
 
 .bill-total {
     display: flex; justify-content: space-between;
-    margin-top: 15px; padding-top: 15px;
-    border-top: 2px dashed #eee;
+    margin-top: 15px;
     font-weight: 700;
+    background: #fff;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid #f0f0f0;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.03);
 }
 
 .final-price { font-size: 24px; color: #ef4444; }
@@ -434,6 +453,22 @@
 .status-dropdown {
     width: 100%; padding: 12px; border-radius: 8px;
     border: 1px solid #ddd; background: #f9f9f9; margin-bottom: 15px;
+}
+
+/* Refund select small control */
+.refund-select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    font-weight: 700;
+    cursor: pointer;
+}
+.refund-select.refunded {
+    background: #c8e6c9; color: #1b5e20; border-color: #a5d6a7;
+}
+.refund-select.notRefunded {
+    background: #ffcdd2; color: #c62828; border-color: #ef9a9a;
 }
 
 .action-btns { display: flex; gap: 10px; }
