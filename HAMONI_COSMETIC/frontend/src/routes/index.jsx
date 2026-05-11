@@ -140,6 +140,9 @@ const AppRouter = () => {
           <Route path="product/:productId" element={<ProductDetailView />} />
           <Route path="orderpayment" element={<OrderPayment />} />
           <Route path="profile" element={<CustomerProfile />} />
+          <Route path="orders" element={<OrderHistory />} />
+          <Route path="orderhistory" element={<OrderHistory />} />
+          <Route path="order/:id" element={<ClientOrderDetail />} />
 
           {/* CHÈN NGAY TẠI ĐÂY LÀ CHUẨN NHẤT NÈ */}
           <Route
