@@ -54,7 +54,22 @@ const getUserCartItems = async (conn, userId, selectedVariantIds = []) => {
         SELECT
             gh.MaBienThe AS maBienThe,
             gh.SoLuong AS soLuong,
-            bt.Gia AS donGia,
+            COALESCE(
+                (
+                    SELECT MIN(
+                        CASE
+                            WHEN km2.LoaiGiamGia = 'PhanTram' THEN GREATEST(0, bt.Gia - (bt.Gia * km2.GiaTriGiam / 100))
+                            WHEN km2.LoaiGiamGia = 'SoTien' THEN GREATEST(0, bt.Gia - km2.GiaTriGiam)
+                            ELSE bt.Gia
+                        END
+                    )
+                    FROM SanPham_KhuyenMai spkm2
+                    JOIN ChuongTrinhKhuyenMai km2 ON km2.MaCTKM = spkm2.MaCTKM
+                    WHERE spkm2.MaBienThe = bt.MaBienThe
+                      AND NOW() BETWEEN km2.NgayBatDau AND km2.NgayKetThuc
+                ),
+                bt.Gia
+            ) AS donGia,
             bt.TenBienThe AS tenBienThe,
             sp.MaSP AS maSP,
             sp.TenSP AS tenSP,

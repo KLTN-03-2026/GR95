@@ -28,7 +28,6 @@
   margin-bottom: 20px;
   /* BO GÓC ĐẸP */
   border-radius: 8px;
-  
 }
 
 .nav-left {
@@ -224,7 +223,10 @@
   background: white;
   box-shadow: 0 -5px 10px rgba(0, 0, 0, 0.05);
   margin-top: 20px;
-  z-index: 100;
+  
+  /* ĐÃ FIX: Giảm z-index xuống 10 để không đè lên menu header */
+  z-index: 10; 
+  
   /* BO GÓC FOOTER */
   border-radius: 8px 8px 0 0;
 }

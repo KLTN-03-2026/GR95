@@ -56,6 +56,7 @@ const reviewController = {
                     dg.MaDG,
                     dg.SoSao,
                     dg.BinhLuan,
+                    dg.HinhAnh, /* 🔥 ĐÃ THÊM CỘT HÌNH ẢNH VÀO ĐÂY ĐỂ TRẢ VỀ CHO FRONTEND */
                     dg.TrangThai,
                     dg.NgayDanhGia,
                     nd.HoTen,
@@ -87,10 +88,9 @@ const reviewController = {
                 query += " AND dg.NgayDanhGia <= ?";
                 params.push(endDate);
             }
-
-            // 🔥 [MỚI THÊM] Lọc theo sản phẩm được chọn bên Sidebar
+// 🔥 [MỚI THÊM] Lọc theo sản phẩm được chọn bên Sidebar
             if (MaSP && MaSP !== 'ALL') {
-query += " AND dg.MaSP = ?"; 
+                query += " AND dg.MaSP = ?"; 
                 params.push(MaSP); 
             }
 
@@ -108,9 +108,11 @@ query += " AND dg.MaSP = ?";
                 const [replies] = await db.query(`
                     SELECT 
                         ph.MaPH,
+                        ph.MaND,
                         ph.NoiDung,
                         ph.NgayTao,
-                        nd.HoTen
+                        nd.HoTen,
+                        nd.MaQuyen
                     FROM DanhGia_PhanHoi ph
                     JOIN NguoiDung nd ON ph.MaND = nd.MaND
                     WHERE ph.MaDG = ?
@@ -136,9 +138,11 @@ query += " AND dg.MaSP = ?";
             const [rows] = await db.query(`
                 SELECT 
                     ph.MaPH,
+                    ph.MaND,
                     ph.NoiDung,
                     ph.NgayTao,
-                    nd.HoTen
+                    nd.HoTen,
+                    nd.MaQuyen
                 FROM DanhGia_PhanHoi ph
                 JOIN NguoiDung nd ON ph.MaND = nd.MaND
                 WHERE ph.MaDG = ?
@@ -182,10 +186,9 @@ query += " AND dg.MaSP = ?";
             if (!replyComment) {
                 return res.status(400).json({ message: "Nội dung phản hồi rỗng!" });
             }
-
-            // ✅ INSERT vào bảng DanhGia_PhanHoi (CHO PHÉP NHIỀU LẦN)
+// ✅ INSERT vào bảng DanhGia_PhanHoi (CHO PHÉP NHIỀU LẦN)
             await db.query(
-`INSERT INTO DanhGia_PhanHoi (MaDG, MaND, NoiDung)
+                `INSERT INTO DanhGia_PhanHoi (MaDG, MaND, NoiDung)
                  VALUES (?, ?, ?)`,
                 [id, 1, replyComment] // 1 = admin (sau này lấy từ login)
             );

@@ -15,7 +15,8 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'HAMONI_Uploads', // Tên thư mục nó sẽ tự tạo trên Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'], // Chỉ cho phép up ảnh
+    resource_type: 'auto', // Tự động nhận diện loại file (ảnh, video...)
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp','mp4','mov'], // Chỉ cho phép up ảnh
     // transformation: [{ width: 500, height: 500, crop: 'limit' }] // Bạn có thể mở comment dòng này nếu muốn tự động thu nhỏ ảnh
   },
 });

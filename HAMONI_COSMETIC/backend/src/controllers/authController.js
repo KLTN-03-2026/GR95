@@ -92,11 +92,10 @@ const getCurrentUser = async (req, res) => {
     try {
         const userId = req.user.id; 
 
-        // Đã nâng cấp SQL: JOIN bảng NguoiDung với PHANQUYEN để lấy DanhSachQuyen
+        // SQL lấy thông tin người dùng (cho cả Admin, Staff và Customer)
         const sql = `
-            SELECT u.MaND, u.MaQuyen, u.HoTen, u.Email, u.SoDienThoai, u.TrangThai, p.DanhSachQuyen 
+            SELECT u.MaND, u.MaQuyen, u.HoTen, u.Email, u.SoDienThoai, u.TrangThai, u.DiaChi, u.GioiTinh, u.NgaySinh, u.AvatarUrl
             FROM NguoiDung u
-            JOIN PHANQUYEN p ON u.MaQuyen = p.MaQuyen
             WHERE u.MaND = ?
         `;
         const [users] = await db.execute(sql, [userId]);
@@ -107,45 +106,31 @@ const getCurrentUser = async (req, res) => {
 
         const user = users[0];
 
-        // 1. CHẶN KHÁCH HÀNG
-        if (user.MaQuyen === 'CUST') {
-            return res.status(403).json({ 
-                message: "Cảnh báo bảo mật: Khách hàng không có quyền truy cập hệ thống quản trị!" 
-            });
-        }
-
-        // 2. KIỂM TRA KHÓA TÀI KHOẢN
+        // Check if account is locked
         if (user.TrangThai === 0) {
             return res.status(403).json({ 
                 message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin!" 
             });
         }
 
-        // 3. GIẢI MÃ CHUỖI QUYỀN (Từ JSON sang Mảng)
-        let permissionsArray = [];
-        if (user.MaQuyen === 'ADMIN') {
-            permissionsArray = ['ALL']; 
-        } else if (user.DanhSachQuyen) {
-            try {
-                permissionsArray = JSON.parse(user.DanhSachQuyen);
-            } catch (e) {
-                console.warn("Lỗi parse quyền của user:", e);
-                permissionsArray = [];
-            }
-        }
+        // Determine user role
+        let displayRole = "Khách hàng";
+        if (user.MaQuyen === 'ADMIN') displayRole = "Quản lý";
+        else if (user.MaQuyen === 'STAFF') displayRole = "Nhân viên";
+        else if (user.MaQuyen === 'KHO') displayRole = "Nhân viên kho";
 
-        const displayRole = user.MaQuyen === 'ADMIN' ? "Quản lý" : "Nhân viên";
-
-        // 4. TRẢ VỀ TOÀN BỘ CHO REACT
         res.status(200).json({
             user: {
                 id: user.MaND,
                 hoTen: user.HoTen,
                 email: user.Email,
                 soDienThoai: user.SoDienThoai,
+                diaChi: user.DiaChi,
+                gioiTinh: user.GioiTinh,
+                ngaySinh: user.NgaySinh,
+                avatarUrl: user.AvatarUrl || null,
                 role: displayRole,
-                maQuyen: user.MaQuyen,
-                permissions: permissionsArray 
+                maQuyen: user.MaQuyen
             }
         });
 
@@ -311,17 +296,54 @@ const updateProfile = async (req, res) => {
             return res.status(401).json({ message: "Lỗi xác thực: Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại!" });
         }
         
-        const { HoTen, Email, SoDienThoai } = req.body;
+        const { HoTen, Email, SoDienThoai, GioiTinh, NgaySinh, DiaChi, AvatarUrl } = req.body;
         
         if (!HoTen || !Email) {
             return res.status(400).json({ message: "Họ tên và Email là bắt buộc!" });
         }
 
-        const result = await db.execute(
-            "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ? WHERE MaND = ?",
-            [HoTen, Email, SoDienThoai || '', userId]
-        );
-        
+        // Validate phone: required and 10 digits
+        if (!SoDienThoai || !String(SoDienThoai).trim()) {
+            return res.status(400).json({ message: "Số điện thoại là bắt buộc!" });
+        }
+        const phoneRegex = /^[0-9]{10}$/;
+        if (!phoneRegex.test(String(SoDienThoai).trim())) {
+            return res.status(400).json({ message: "Số điện thoại phải gồm 10 chữ số!" });
+        }
+
+        // Ngày sinh là tuỳ chọn: nếu được gửi thì validate, nếu không gửi thì lưu NULL
+        if (NgaySinh && String(NgaySinh).trim()) {
+            const parsedNgaySinh = new Date(NgaySinh);
+            if (Number.isNaN(parsedNgaySinh.getTime())) {
+                return res.status(400).json({ message: "Ngày sinh không hợp lệ!" });
+            }
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            if (parsedNgaySinh >= today) {
+                return res.status(400).json({ message: "Ngày sinh phải trước ngày hôm nay!" });
+            }
+        }
+
+        // Try to update including AvatarUrl; if the column doesn't exist, fall back to update without it
+        let result;
+        try {
+            result = await db.execute(
+                "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, GioiTinh = ?, NgaySinh = ?, DiaChi = ?, AvatarUrl = ? WHERE MaND = ?",
+                [HoTen, Email, SoDienThoai || '', GioiTinh || '', NgaySinh && String(NgaySinh).trim() ? NgaySinh : null, DiaChi || '', AvatarUrl || '', userId]
+            );
+        } catch (err) {
+            // If AvatarUrl column missing (migration not applied), fallback to old update
+            if (err && err.message && err.message.includes('Unknown column')) {
+                console.warn('AvatarUrl column missing, falling back to update without AvatarUrl');
+                result = await db.execute(
+                    "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, GioiTinh = ?, NgaySinh = ?, DiaChi = ? WHERE MaND = ?",
+                    [HoTen, Email, SoDienThoai || '', GioiTinh || '', NgaySinh && String(NgaySinh).trim() ? NgaySinh : null, DiaChi || '', userId]
+                );
+            } else {
+                throw err;
+            }
+        }
+
         if (result[0].affectedRows === 0) {
             return res.status(404).json({ message: "Không tìm thấy người dùng để cập nhật!" });
         }
@@ -333,10 +355,62 @@ const updateProfile = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { oldPassword, newPassword } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ message: "Lỗi xác thực: Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại!" });
+        }
+
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ message: "Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới!" });
+        }
+
+        if (newPassword.length < 3) {
+            return res.status(400).json({ message: "Mật khẩu mới phải có ít nhất 6 ký tự!" });
+        }
+
+        const [users] = await db.execute(
+            "SELECT MatKhau FROM NguoiDung WHERE MaND = ?",
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy người dùng để đổi mật khẩu!" });
+        }
+
+        const currentPassword = users[0].MatKhau;
+        if (oldPassword !== currentPassword) {
+            return res.status(401).json({ message: "Mật khẩu cũ không chính xác!" });
+        }
+
+        if (oldPassword === newPassword) {
+            return res.status(400).json({ message: "Mật khẩu mới phải khác mật khẩu cũ!" });
+        }
+
+        const [result] = await db.execute(
+            "UPDATE NguoiDung SET MatKhau = ? WHERE MaND = ?",
+            [newPassword, userId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Không thể cập nhật mật khẩu!" });
+        }
+
+        res.status(200).json({ message: "Đổi mật khẩu thành công!" });
+    } catch (error) {
+        console.error("Lỗi đổi mật khẩu:", error);
+        res.status(500).json({ message: "Lỗi server khi đổi mật khẩu. " + (error.message || "") });
+    }
+};
+
 module.exports = {
     login,
     getCurrentUser,
     updateProfile,
+    changePassword,
     register,
     verifyOTP,
     resendOTP
