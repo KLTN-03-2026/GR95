@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import { Outlet, Link, useNavigate, useLocation } from "react-router-dom"; // Đã bổ sung useLocation
 import {
   Search,
   ShoppingCart,
@@ -17,6 +17,7 @@ import { useStore } from "../../store/useStore";
 import ChatWidget from "./ChatWidget";
 import io from "socket.io-client";
 import "./ClientLayout.css";
+
 // CẤU HÌNH API VÀ SOCKET
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -26,39 +27,78 @@ const SOCKET_BASE =
   "http://localhost:5000";
 const socket = io(SOCKET_BASE, { transports: ["websocket"] });
 
-const ClientLayout = () => {
-  // 1. GỌI USER VÀ STATE TỪ GLOBAL STORE
-  const { user, logout, cartVariantCount } = useStore();
+const getStoredUserInfo = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user_info")) || {};
+  } catch {
+    return {};
+  }
+};
 
-  // UI States
+const ClientLayout = () => {
+  const SEARCH_HISTORY_KEY = "hamoni_search_history";
+  const MAX_HISTORY_ITEMS = 8;
+
+  // --- 1. GLOBAL STATE & ROUTER ---
+  const { user, logout, cartVariantCount } = useStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // --- 2. LOCAL STATE ---
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSearchSuggest, setShowSearchSuggest] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  // Notification States
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  // State Search
+  const [searchKeyword, setSearchKeyword] = useState(
+    () => new URLSearchParams(location.search).get("search") || "",
+  );
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter(Boolean).slice(0, MAX_HISTORY_ITEMS)
+        : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // State Notifications
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Refs
+  // --- 3. REFS & VARIABLES ---
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
-  const navigate = useNavigate();
 
-  // --- HIỆU ỨNG UI & CLICK OUTSIDE ---
+  const storedUserInfo = getStoredUserInfo();
+  const displayUser = user || storedUserInfo;
+  const displayUserName =
+    displayUser?.name ||
+    displayUser?.hoTen ||
+    storedUserInfo?.hoTen ||
+    storedUserInfo?.name ||
+    "";
+  const displayAvatar =
+    displayUser?.avatarUrl || storedUserInfo?.avatarUrl || "";
+
+  // --- 4. EFFECTS ---
+  // Xử lý scroll
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Xử lý click ra ngoài để đóng menu
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Đóng User Menu nếu click ra ngoài
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setIsUserMenuOpen(false);
       }
-      // Đóng Notification Menu nếu click ra ngoài
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setIsNotifOpen(false);
       }
@@ -78,11 +118,10 @@ const ClientLayout = () => {
     };
   }, []);
 
-  // --- LOGIC THÔNG BÁO (REAL-TIME & API) ---
+  // Lấy thông báo & Socket realtime
   useEffect(() => {
-    if (!user?.id) return; // Nếu chưa đăng nhập thì không gọi thông báo
+    if (!user?.id) return;
 
-    // Lấy lịch sử thông báo từ DB
     const fetchNotifications = async () => {
       try {
         const res = await fetch(`${API_BASE}/notifications/${user.id}`);
@@ -98,10 +137,7 @@ const ClientLayout = () => {
 
     fetchNotifications();
 
-    // Join room Socket để nhận thông báo realtime
     socket.emit("join_notification_room", user.id);
-
-    // Lắng nghe thông báo mới
     socket.on("new_notification", (newNotif) => {
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
@@ -111,6 +147,34 @@ const ClientLayout = () => {
       socket.off("new_notification");
     };
   }, [user?.id]);
+
+  // --- 5. HANDLERS ---
+  const handleSearchSubmit = () => {
+    const keyword = searchKeyword.trim();
+    if (!keyword) {
+      navigate("/products");
+      return;
+    }
+
+    setSearchHistory((prev) => {
+      const normalizedKeyword = keyword.toLowerCase();
+      const next = [
+        keyword,
+        ...prev.filter((item) => item.toLowerCase() !== normalizedKeyword),
+      ].slice(0, MAX_HISTORY_ITEMS);
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+
+    navigate(`/products?search=${encodeURIComponent(keyword)}`);
+    setShowSearchSuggest(false);
+  };
+
+  const handleHistoryClick = (keyword) => {
+    setSearchKeyword(keyword);
+    navigate(`/products?search=${encodeURIComponent(keyword)}`);
+    setShowSearchSuggest(false);
+  };
 
   const handleMarkAsRead = async (notifId) => {
     setNotifications((prev) =>
@@ -138,7 +202,6 @@ const ClientLayout = () => {
     }
   };
 
-  // --- LOGIC ĐĂNG XUẤT ---
   const handleLogout = () => {
     setIsUserMenuOpen(false);
     logout();
@@ -146,15 +209,12 @@ const ClientLayout = () => {
     navigate("/login");
   };
 
+  // --- 6. RENDER GIAO DIỆN ---
   return (
     <div className="client-theme min-h-screen flex flex-col bg-gray-50 text-slate-800">
       {/* NAVBAR */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
-          isScrolled
-            ? "bg-white shadow-md"
-            : "bg-white/95 backdrop-blur-sm border-b border-gray-100"
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white/95 backdrop-blur-sm border-b border-gray-100"}`}
       >
         <h1 className="hidden">
           Hamoni Cosmetic - Mỹ phẩm thiên nhiên cao cấp
@@ -217,37 +277,56 @@ const ClientLayout = () => {
                 type="text"
                 placeholder="Tìm kiếm kem dưỡng, serum..."
                 className="w-full bg-slate-100 text-sm rounded-full py-2.5 pl-5 pr-12 border border-transparent focus:bg-white focus:border-rose-300 focus:ring-4 focus:ring-rose-100 outline-none transition-all"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
                 onFocus={() => setShowSearchSuggest(true)}
                 onBlur={() =>
                   setTimeout(() => setShowSearchSuggest(false), 200)
                 }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearchSubmit();
+                }}
               />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-colors">
+              <button
+                onClick={handleSearchSubmit}
+                onMouseDown={(e) => e.preventDefault()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-colors"
+              >
                 <Search size={14} />
               </button>
             </div>
 
-            {/* Gợi ý tìm kiếm */}
+            {/* Gợi ý tìm kiếm (Lịch sử) */}
             {showSearchSuggest && (
               <div className="absolute top-full mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-100 p-4 z-50">
                 <p className="text-xs font-semibold text-slate-400 mb-2 uppercase">
                   Lịch sử tìm kiếm
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-xs bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-slate-200">
-                    Serum Vitamin C
-                  </span>
-                  <span className="text-xs bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-slate-200">
-                    Kem chống nắng
-                  </span>
+                  {searchHistory.length > 0 ? (
+                    searchHistory.map((item) => (
+                      <button
+                        key={item}
+                        className="text-xs bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-slate-200 border-0"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleHistoryClick(item)}
+                      >
+                        {item}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      Chưa có lịch sử tìm kiếm
+                    </span>
+                  )}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Icons Right */}
+          {/* Icons Right (Thông báo, Giỏ hàng, User) */}
           <div className="flex items-center gap-6">
-            {/* 1. THÔNG BÁO (ĐÃ NÂNG CẤP REAL-TIME + DROPDOWN) */}
+            {/* 1. THÔNG BÁO */}
             <div className="relative flex items-center" ref={notifRef}>
               <button
                 onClick={() => {
@@ -265,7 +344,6 @@ const ClientLayout = () => {
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
-                {/* Tooltip */}
                 {!isNotifOpen && (
                   <span className="client-icon-tooltip absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                     Thông báo
@@ -283,7 +361,7 @@ const ClientLayout = () => {
                     {unreadCount > 0 && (
                       <button
                         onClick={handleMarkAllAsRead}
-                        className="text-[11px] text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1"
+                        className="text-[11px] text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1 border-0 bg-transparent"
                       >
                         <Check size={12} /> Đánh dấu đã đọc
                       </button>
@@ -352,18 +430,28 @@ const ClientLayout = () => {
               </span>
             </div>
 
+            {/* 3. USER MENU */}
             <div className="hidden sm:block relative py-2" ref={userMenuRef}>
               {user ? (
                 <div>
-                  {/* 1. NÚT AVATAR ĐẲNG CẤP */}
                   <button
                     type="button"
                     onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                    className="flex items-center gap-3 text-left outline-none group"
+                    className="flex items-center gap-3 text-left outline-none group border-0 bg-transparent"
                   >
                     <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-rose-400 via-pink-400 to-purple-400 p-[2px] transition-transform duration-300 group-hover:scale-105 group-hover:shadow-[0_0_15px_rgba(244,63,94,0.4)]">
-                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-rose-600 font-black text-sm">
-                        {user.name ? user.name.charAt(0) : "U"}
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-rose-600 font-black text-sm overflow-hidden">
+                        {displayAvatar ? (
+                          <img
+                            src={displayAvatar}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : displayUserName ? (
+                          displayUserName.charAt(0)
+                        ) : (
+                          "U"
+                        )}
                       </div>
                     </div>
                     <div className="hidden lg:flex flex-col items-start">
@@ -371,40 +459,44 @@ const ClientLayout = () => {
                         Xin chào,
                       </span>
                       <span className="text-sm font-bold text-slate-800 group-hover:text-rose-500 transition-colors duration-300 max-w-[120px] truncate">
-                        {user.name}
+                        {displayUserName}
                       </span>
                     </div>
                   </button>
 
-                  {/* 2. DROPDOWN MÀU TRẮNG ĐẶC (Đã fix lỗi nhìn xuyên thấu) */}
                   <div
                     className={`client-user-menu absolute top-full right-0 mt-4 w-72 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] rounded-[24px] border border-slate-100 z-50 transition-all duration-400 origin-top-right overflow-hidden ${isUserMenuOpen ? "opacity-100 scale-100 visible translate-y-0" : "opacity-0 scale-95 invisible -translate-y-4"}`}
                   >
-                    {/* Thẻ Profile Mini */}
                     <div className="m-2 p-4 bg-gradient-to-br from-rose-50 to-slate-50 rounded-[18px] border border-slate-100/50 flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 text-white flex items-center justify-center text-lg font-black shadow-inner flex-shrink-0">
-                        {user.name ? user.name.charAt(0) : "U"}
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 text-white flex items-center justify-center text-lg font-black shadow-inner flex-shrink-0 overflow-hidden">
+                        {displayAvatar ? (
+                          <img
+                            src={displayAvatar}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : displayUserName ? (
+                          displayUserName.charAt(0)
+                        ) : (
+                          "U"
+                        )}
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <h4 className="text-base font-extrabold text-slate-800 truncate m-0 leading-tight">
-                          {user.name}
+                          {displayUserName}
                         </h4>
                         <p className="text-xs text-slate-500 truncate m-0 mt-0.5">
                           {user.email || "Thành viên VIP"}
                         </p>
                       </div>
                     </div>
-
-                    {/* Các Menu Items */}
                     <div className="px-2 pb-2 flex flex-col gap-1">
                       <Link
                         to="/profile"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="group relative flex items-center gap-3 p-3 rounded-2xl overflow-hidden no-underline bg-white"
                       >
-                        {/* Background trượt khi hover */}
                         <div className="absolute inset-0 bg-rose-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
-
                         <div className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-rose-500 group-hover:shadow-sm transition-all duration-300">
                           <Settings
                             size={18}
@@ -414,20 +506,17 @@ const ClientLayout = () => {
                         <span className="relative z-10 text-sm font-semibold text-slate-600 group-hover:text-rose-600 transition-colors">
                           Tài khoản của tôi
                         </span>
-
                         <ChevronRight
                           size={16}
                           className="relative z-10 ml-auto text-rose-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
                         />
                       </Link>
-
                       <Link
                         to="/orders"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="group relative flex items-center gap-3 p-3 rounded-2xl overflow-hidden no-underline bg-white"
                       >
                         <div className="absolute inset-0 bg-rose-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
-
                         <div className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-rose-500 group-hover:shadow-sm transition-all duration-300">
                           <FileText
                             size={18}
@@ -437,15 +526,12 @@ const ClientLayout = () => {
                         <span className="relative z-10 text-sm font-semibold text-slate-600 group-hover:text-rose-600 transition-colors">
                           Lịch sử đơn hàng
                         </span>
-
                         <ChevronRight
                           size={16}
                           className="relative z-10 ml-auto text-rose-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
                         />
                       </Link>
                     </div>
-
-                    {/* Nút Đăng xuất */}
                     <div className="p-2 bg-slate-50 mt-1">
                       <button
                         onClick={handleLogout}
@@ -454,14 +540,13 @@ const ClientLayout = () => {
                         <LogOut
                           size={18}
                           className="group-hover:-translate-x-1 transition-transform duration-300"
-                        />
+                        />{" "}
                         Đăng xuất
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
-                /* 3. TRẠNG THÁI CHƯA ĐĂNG NHẬP (Guest) */
                 <div className="flex items-center group relative">
                   <Link
                     to="/login"
@@ -573,7 +658,7 @@ const ClientLayout = () => {
                   placeholder="Email của bạn..."
                   className="w-full bg-slate-50 border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-rose-300"
                 />
-                <button className="bg-slate-900 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                <button className="bg-slate-900 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border-0">
                   Gửi
                 </button>
               </div>
