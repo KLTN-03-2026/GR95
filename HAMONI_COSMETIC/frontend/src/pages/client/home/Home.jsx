@@ -92,7 +92,9 @@ const HeroSlider = ({ slides }) => {
     const handleViewDetails = (e, slide) => {
         if (e) e.stopPropagation();
         
-        if (slide.URLDich) {
+        if (slide.MaSP) {
+            navigate(`/product/${slide.MaSP}`);
+        } else if (slide.URLDich) {
             if (slide.URLDich.startsWith('http')) {
                 window.open(slide.URLDich, '_blank');
             } else {
@@ -400,6 +402,7 @@ export default function Home() {
                             ...s,
                             image: s.DuongDanAnh || s.image,
                             title: s.TieuDe || s.title,
+                            MaSP: s.MaSP,
                             URLDich: s.URLDich,
                             NgayBatDau: s.NgayBatDau,
                             NgayHetHan: s.NgayHetHan,

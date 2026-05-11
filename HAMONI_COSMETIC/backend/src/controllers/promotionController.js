@@ -221,7 +221,6 @@ getPromotionProducts: async (req, res) => {
             SELECT 
                 sp.MaSP as id,
                 sp.TenSP as name,
-                sp.DaBan,
                 tk.SoLuongTon,
                 (
                     SELECT DuongDanAnh

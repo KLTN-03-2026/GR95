@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './ProductInventoryReport.css';
 import reportApi from "../../../services/reportApi"; 
 import axiosClient from "../../../services/axiosClient";
@@ -75,7 +77,7 @@ const ProductInventoryReport = () => {
 
         } catch (error) {
             console.error("Lỗi khi xuất file Excel:", error);
-            alert("Không thể xuất dữ liệu. Vui lòng thử lại sau!");
+            toast.error("Không thể xuất dữ liệu. Vui lòng thử lại sau!");
         }
     };
 
@@ -270,6 +272,8 @@ const ProductInventoryReport = () => {
                     </div>
                 )}
             </div>
+
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

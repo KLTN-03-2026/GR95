@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 import axiosClient from '../../../services/axiosClient';
 
 const EmployeeForm = ({ isOpen, onClose, onSuccess }) => {
-    const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // State quản lý dữ liệu nhập vào
@@ -36,41 +36,34 @@ const EmployeeForm = ({ isOpen, onClose, onSuccess }) => {
     // Gửi dữ liệu lên API
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setAlert({ show: false, type: '', message: '' });
 
         // Chạy Validation
         const errorMessage = validateForm();
         if (errorMessage) {
-            setAlert({ show: true, type: 'danger', message: errorMessage });
+            toast.error(errorMessage);
             return;
         }
 
         setIsSubmitting(true);
         try {
             await axiosClient.post('/employees', formData);
-            setAlert({ show: true, type: 'success', message: 'Thêm nhân viên thành công!' });
+            toast.success('Thêm nhân viên thành công!');
             
-            // Đợi 1.5s để người dùng kịp đọc thông báo rồi mới đóng Modal
             setTimeout(() => {
-                setAlert({ show: false, type: '', message: '' });
-                setFormData({ HoTen: '', Email: '', SoDienThoai: '', MaQuyen: 'STAFF', MatKhau: '' }); // Reset form
+                setFormData({ HoTen: '', Email: '', SoDienThoai: '', MaQuyen: 'STAFF', MatKhau: '' });
                 setIsSubmitting(false);
                 onSuccess(); 
             }, 1500);
 
         } catch (err) {
-            setAlert({ 
-                show: true, 
-                type: 'danger', 
-                message: err.response?.data?.message || "Lỗi kết nối máy chủ, vui lòng thử lại!" 
-            });
+            toast.error(err.response?.data?.message || "Lỗi kết nối máy chủ, vui lòng thử lại!");
             setIsSubmitting(false);
         }
     };
 
     return createPortal(
         <div 
-            className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+            className="position-fixed top-0 inset-s-0 w-100 h-100 d-flex justify-content-center align-items-center" 
             style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050 }}
         >
             <div className="card shadow-lg border-0 rounded-4" style={{ width: '100%', maxWidth: '600px' }}>
@@ -80,14 +73,6 @@ const EmployeeForm = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div className="card-body px-4 pb-4">
-                    {/* Bảng thông báo (Alert) Bootstrap */}
-                    {alert.show && (
-                        <div className={`alert alert-${alert.type} d-flex align-items-center p-3 mb-4`} role="alert">
-                            {alert.type === 'success' ? <CheckCircle size={20} className="me-2" /> : <AlertCircle size={20} className="me-2 flex-shrink-0" />}
-                            <div className="fw-medium" style={{ fontSize: '14px' }}>{alert.message}</div>
-                        </div>
-                    )}
-
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3 mb-4">
                             <div className="col-md-6">

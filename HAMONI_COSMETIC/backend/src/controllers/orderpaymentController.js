@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const db = require('../config/db');
+const { createNotification } = require('./notificationController');
 
 const cancelDebugLogPath = path.join(__dirname, '../../cancel-unpaid-debug.log');
 
@@ -657,6 +658,14 @@ exports.confirmOnlinePayment = async (req, res) => {
                 : 'Khách hàng xác nhận thanh toán online',
             userId
         ]);
+
+        const io = req.app.get('io');
+        await createNotification({
+            userId,
+            title: 'Thanh toán online đã được xác nhận',
+            content: `Đơn hàng #${orderId} đã được xác nhận thanh toán thành công.`,
+            io
+        });
 
         await conn.commit();
 

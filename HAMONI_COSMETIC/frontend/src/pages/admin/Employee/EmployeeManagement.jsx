@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../../../services/axiosClient';
 import { Plus, Search, Trash2, Download } from 'lucide-react'; // Đã thêm Download
 import { useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './EmployeeManagement.css';
 import EmployeeForm from './EmployeeForm';
 
@@ -41,10 +43,10 @@ const EmployeeManagement = () => {
         if (window.confirm("Bạn có chắc chắn muốn xóa nhân viên này khỏi hệ thống không?")) {
             try {
                 await axiosClient.delete(`/employees/${id}`);
-                alert("Đã xóa nhân viên thành công!"); // Đổi thông báo
+                toast.success("Đã xóa nhân viên thành công!");
                 loadEmployees();
             } catch {
-                alert("Lỗi! Không thể xóa nhân viên này.");
+                toast.error("Lỗi! Không thể xóa nhân viên này.");
             }
         }
     };
@@ -75,7 +77,7 @@ const EmployeeManagement = () => {
             
         } catch (error) {
             console.error("Lỗi khi tải file Excel:", error);
-            alert("Bạn không có quyền xuất file hoặc có lỗi xảy ra!");
+            toast.error("Bạn không có quyền xuất file hoặc có lỗi xảy ra!");
         }
     };
 
@@ -229,6 +231,8 @@ const EmployeeManagement = () => {
                     loadEmployees(); // Load lại dữ liệu bảng (thay bằng tên hàm tải data của bạn)
                 }} 
             />
+
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

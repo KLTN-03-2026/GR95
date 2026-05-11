@@ -246,20 +246,55 @@ CREATE TABLE LogDonHang (
     CONSTRAINT FK_LogDonHang_DH FOREIGN KEY (MaDH) REFERENCES DonHang(MaDH)
 );
 
-CREATE TABLE PhienChatAI (
+CREATE TABLE PhienChat (
     MaPhien INT PRIMARY KEY AUTO_INCREMENT,
-    MaND INT, 
-    TieuDe VARCHAR(255) DEFAULT 'Cuộc hội thoại mới',
+    MaND INT NULL,
+    SessionID VARCHAR(255) NULL UNIQUE, -- Khách vãng lai dùng SessionID
+    MaNhanVienXuLy INT NULL, -- Nhân viên đang xử lý (khi TrangThai = 'human')
+    TieuDe VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Cuộc hội thoại mới',
+    TrangThai ENUM('pending', 'bot', 'human', 'closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'bot',
     NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
     NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT FK_ChatAI_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND)
+    IsDeleted TINYINT(1) DEFAULT 0,
+    CONSTRAINT FK_Chat_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND) ON DELETE SET NULL,
+    CONSTRAINT FK_Chat_NhanVien FOREIGN KEY (MaNhanVienXuLy) REFERENCES NguoiDung(MaND) ON DELETE SET NULL,
+    INDEX idx_MaND (MaND),
+    INDEX idx_SessionID (SessionID),
+    INDEX idx_TrangThai (TrangThai),
+    INDEX idx_NgayTao (NgayTao),
+    INDEX idx_IsDeleted (IsDeleted)
 );
 
-CREATE TABLE ChiTietChatAI (
+CREATE TABLE ChiTietChat (
     MaTinNhan INT PRIMARY KEY AUTO_INCREMENT,
-    MaPhien INT,
-    VaiTro ENUM('user', 'assistant') NOT NULL, 
-    NoiDung TEXT NOT NULL,
+    MaPhien INT NOT NULL,
+    VaiTro ENUM('CUST', 'BOT', 'STAFF', 'ADMIN') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    NoiDung TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     NgayGui DATETIME DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_ChiTietChat_Phien FOREIGN KEY (MaPhien) REFERENCES PhienChatAI(MaPhien) ON DELETE CASCADE
+    IsDeleted TINYINT(1) DEFAULT 0,
+    CONSTRAINT FK_ChiTietChat_Phien FOREIGN KEY (MaPhien) REFERENCES PhienChat(MaPhien) ON DELETE CASCADE,
+    INDEX idx_MaPhien (MaPhien),
+    INDEX idx_NgayGui (NgayGui),
+    INDEX idx_VaiTro (VaiTro)
+);
+
+-- 9. CẤU HÌNH AI (MỚI)
+CREATE TABLE CauHinhAI (
+    MaCauHinh INT PRIMARY KEY AUTO_INCREMENT,
+    PromptCoBan TEXT, 
+    DuLieuHuanLuyen LONGTEXT, 
+    NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_NgayCapNhat (NgayCapNhat)
+);
+CREATE TABLE ThongBao (
+    MaTB INT AUTO_INCREMENT PRIMARY KEY,
+    MaND INT NOT NULL,               -- Khóa ngoại trỏ đến bảng NguoiDung (Người nhận thông báo)
+    TieuDe VARCHAR(255) NOT NULL,    -- Ví dụ: "Đơn hàng mới", "Có tin nhắn hỗ trợ"
+    NoiDung TEXT NOT NULL,           -- Chi tiết thông báo
+    TrangThaiDoc TINYINT(1) DEFAULT 0, -- 0: Chưa đọc, 1: Đã đọc
+    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP, -- Tự động lấy giờ hiện tại khi tạo
+    
+    -- Liên kết khóa ngoại với bảng NguoiDung (Giả sử bảng user của bạn tên là NguoiDung và khóa chính là MaND)
+    -- Lệnh CASCADE giúp tự động xóa thông báo nếu tài khoản người dùng đó bị xóa
+    FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND) ON DELETE CASCADE
 );

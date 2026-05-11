@@ -4,7 +4,13 @@ const getHomeData = async (req, res) => {
     try {
         // 1. Logic lấy Banners
         const [banners] = await db.query(`
-            SELECT MaBanner, TieuDe, DuongDanAnh as image, URLDich as link
+            SELECT 
+                MaBanner, 
+                TieuDe, 
+                DuongDanAnh as image, 
+                URLDich, 
+                DATE_FORMAT(NgayBatDau, '%d/%m/%Y') AS NgayBatDau,
+                DATE_FORMAT(NgayHetHan, '%d/%m/%Y') AS NgayHetHan
             FROM BannerToanCuc 
             WHERE TrangThai IN ('Active', 'KichHoat')
               AND ViTriHienThi IN ('TrangChu', 'HeroBanner')
@@ -13,7 +19,7 @@ const getHomeData = async (req, res) => {
             ORDER BY ThuTuHienThi ASC, MaBanner ASC
         `);
 
-        // 2. Logic lấy Sản phẩm
+        // 2. Logic lấy Sản phẩm (GIỮ NGUYÊN 100% CỦA BẠN)
         const [products] = await db.query(`
             SELECT 
                 sp.MaSP as id, 
@@ -171,7 +177,9 @@ const getHomeData = async (req, res) => {
                 id: b.MaBanner,
                 image: b.image,
                 title: b.TieuDe,
-                URLDich: b.link,
+                URLDich: b.URLDich,
+                NgayBatDau: b.NgayBatDau,
+                NgayHetHan: b.NgayHetHan,
                 cta: 'Xem chi tiết'
             })),
             products: products.map(p => ({

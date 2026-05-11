@@ -1,5 +1,7 @@
 // src/pages/admin/Profile/Profile.jsx
 import React, { useState, useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient';
 import authApi from '../../../services/authApi';
 import { Save, User, Mail, Phone, ShieldCheck, CheckCircle, AlertCircle, Key } from 'lucide-react';
@@ -170,7 +172,7 @@ const Profile = () => {
 
                                 {/* Các nút bấm */}
                                 <div className="d-flex justify-content-between align-items-center">
-                                    <button type="button" className="btn btn-outline-secondary fw-semibold d-flex align-items-center gap-2 px-4 py-2" onClick={() => alert("Tính năng đổi mật khẩu đang phát triển!")}>
+                                    <button type="button" className="btn btn-outline-secondary fw-semibold d-flex align-items-center gap-2 px-4 py-2" onClick={() => toast.info("Tính năng đổi mật khẩu đang phát triển!")}>
                                         <Key size={18} /> Đổi mật khẩu
                                     </button>
                                     
@@ -183,6 +185,8 @@ const Profile = () => {
                     </div>
                 </div>
             </div>
+
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

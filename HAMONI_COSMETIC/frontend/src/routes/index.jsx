@@ -1,38 +1,39 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // ==========================================
 // 0. IMPORT COMPONENTS
 // ==========================================
-import ScrollRestoration from '../components/ScrollRestoration';
+import ScrollRestoration from "../components/ScrollRestoration";
 
 // ==========================================
 // 1. IMPORT LAYOUTS
 // ==========================================
-import AdminLayout from '../layouts/AdminLayout/AdminLayout';
-import ClientLayout from '../layouts/ClientLayout/ClientLayout';
+import AdminLayout from "../layouts/AdminLayout/AdminLayout";
+import ClientLayout from "../layouts/ClientLayout/ClientLayout";
 
 // ==========================================
 // 2. IMPORT CLIENT PAGES (Khách hàng)
 // ==========================================
-import Home from '../pages/client/home/Home';
-import ClientProducts from '../pages/client/products/ClientProducts';
-import ProductDetailView from '../pages/client/ProductDetailView/ProductDetailView';
-import ShoppingCart from '../pages/client/Cart/ShoppingCart';
-import OrderPayment from '../pages/client/Payment/orderpayment';
+
+import Home from "../pages/client/home/Home";
+import ClientProducts from "../pages/client/products/ClientProducts";
+import ProductDetailView from "../pages/client/ProductDetailView/ProductDetailView";
+import ShoppingCart from "../pages/client/Cart/ShoppingCart";
+import OrderPayment from "../pages/client/Payment/orderpayment";
 import OrderHistory from '../pages/client/Orderhistory/Orderhistory';
 import ClientOrderDetail from '../pages/client/Orderhistory/OrderDetails';
-import CustomerProfile from '../pages/client/Profile/CustomerProfile';
-import PromotionClient from '../pages/client/PromotionClient/PromotionClient';
-import PromotionDetailClient from '../pages/client/PromotionClient/PromotionDetailClient';
+import CustomerProfile from "../pages/client/Profile/CustomerProfile";
+import PromotionClient from "../pages/client/PromotionClient/PromotionClient";
+import PromotionDetailClient from "../pages/client/PromotionClient/PromotionDetailClient";
 
 // ==========================================
 // 3. IMPORT AUTH PAGES (Xác thực)
 // ==========================================
-import Login from '../pages/auth/Login';
-import Register from '../pages/auth/Register';
-import OTP from '../pages/auth/OTP';
-import ForgotPassword from '../pages/auth/ForgotPassword';
+import Login from "../pages/auth/Login";
+import Register from "../pages/auth/Register";
+import OTP from "../pages/auth/OTP";
+import ForgotPassword from "../pages/auth/ForgotPassword";
 
 // ==========================================
 // 4. IMPORT ADMIN PAGES (Quản trị)
@@ -63,120 +64,151 @@ import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
 import WarehouseManagement from '../pages/admin/Warehouse/WarehouseManagement';
 import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
 import BannerManagement from '../pages/admin/Banner/BannerManagement';
+import AiConfigPage from "../pages/admin/AI/AiConfigPage";
+import AdminChat from "../pages/admin/AI/AdminChatPage";
+import ProductReview from "../pages/client/ProductReview/ProductReview";
 
 const NotFound = () => (
-    <div className="flex justify-center items-center h-screen text-2xl font-bold text-gray-500">
-        404 - Không tìm thấy trang
-    </div>
+  <div className="flex justify-center items-center h-screen text-2xl font-bold text-gray-500">
+    404 - Không tìm thấy trang
+  </div>
 );
 
 // --- BẢO VỆ ĐƯỜNG DẪN ADMIN ---
 const AdminRoute = ({ children }) => {
-    const token = localStorage.getItem('token');
-    const userRaw = localStorage.getItem('user');
+  const token = localStorage.getItem("token");
+  const userRaw = localStorage.getItem("user");
 
-    if (!token || !userRaw) {
-        return <Navigate to="/login" replace />;
+  if (!token || !userRaw) {
+    return <Navigate to="/login" replace />;
+  }
+
+  try {
+    const user = JSON.parse(userRaw);
+    const roleCode = user?.maQuyen;
+    const isAdminAreaAllowed =
+      roleCode === "ADMIN" || roleCode === "STAFF" || roleCode === "KHO";
+
+    if (!isAdminAreaAllowed) {
+      return <Navigate to="/" replace />;
     }
+  } catch {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    return <Navigate to="/login" replace />;
+  }
 
-    try {
-        const user = JSON.parse(userRaw);
-        const roleCode = user?.maQuyen;
-        const isAdminAreaAllowed = roleCode === 'ADMIN' || roleCode === 'STAFF' || roleCode === 'KHO';
-
-        if (!isAdminAreaAllowed) {
-            return <Navigate to="/" replace />;
-        }
-    } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        return <Navigate to="/login" replace />;
-    }
-
-    return children;
+  return children;
 };
 
 const AppRouter = () => {
-    return (
-        <BrowserRouter>
-            <ScrollRestoration />
-            <Routes>
-                {/* ==========================================
+
+  // Try to read logged-in user to provide MaND for test route
+  let _storedUser = null;
+  try {
+    _storedUser = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    _storedUser = null;
+  }
+  const testMaND =
+    _storedUser?.MaND || _storedUser?.id || _storedUser?.MaKhachHang || null;
+  return (
+    <BrowserRouter>
+      <ScrollRestoration />
+      <Routes>
+        {/* ==========================================
+
                     KHU VỰC 1: XÁC THỰC (Không cần Layout)
                     ========================================== */}
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/otp" element={<OTP />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/otp" element={<OTP />} />
 
-                {/* ==========================================
+        {/* ==========================================
                     KHU VỰC 2: KHÁCH HÀNG (Sử dụng ClientLayout)
                     ========================================== */}
-                <Route path="/" element={<ClientLayout />}>
-                    <Route index element={<Home />} />
-                    <Route path="products" element={<ClientProducts />} />
-                    <Route path="promotions" element={<PromotionClient />} />
-                    <Route path="khuyen-mai/:id" element={<PromotionDetailClient />} />
-                    <Route path="gio-hang" element={<ShoppingCart />} />
-                    <Route path="cart" element={<ShoppingCart />} />
-                    <Route path="product/:productId" element={<ProductDetailView />} />
-                    <Route path="orderpayment" element={<OrderPayment />} />
-                    <Route path="orderhistory" element={<OrderHistory />} />
-                    <Route path="order/:id" element={<ClientOrderDetail />} />
-                    <Route path="profile" element={<CustomerProfile />} />
-                </Route>
 
-                {/* ==========================================
+        <Route path="/" element={<ClientLayout />}>
+          <Route index element={<Home />} />
+          <Route path="products" element={<ClientProducts />} />
+          <Route path="promotions" element={<PromotionClient />} />
+          {/* Thêm đúng 1 dòng Route này để web hiểu link /khuyen-mai/2 */}
+          <Route path="khuyen-mai/:id" element={<PromotionDetailClient />} />
+          <Route path="gio-hang" element={<ShoppingCart />} />
+          <Route path="cart" element={<ShoppingCart />} />
+          <Route path="product/:productId" element={<ProductDetailView />} />
+          <Route path="orderpayment" element={<OrderPayment />} />
+          <Route path="profile" element={<CustomerProfile />} />
+
+          {/* CHÈN NGAY TẠI ĐÂY LÀ CHUẨN NHẤT NÈ */}
+          <Route
+            path="test-review"
+            element={
+              <ProductReview
+                MaSP={1}
+                MaDH={22}
+                MaND={testMaND}
+                productName="Huile Botanique Éclat"
+                trangThaiDonHang="HoanThanh"
+              />
+            }
+          />
+        </Route>
+
+        {/* ==========================================
                     KHU VỰC 3: QUẢN TRỊ VIÊN (Sử dụng AdminLayout + Bọc AdminRoute)
                     ========================================== */}
-                <Route
-                    path="/admin"
-                    element={
-                        <AdminRoute>
-                            <AdminLayout />
-                        </AdminRoute>
-                    }
-                >
-                    <Route index element={<ProductManagement />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="customers" element={<CustomerManagement />} />
-                    <Route path="customer-detail/:id" element={<CustomerDetail />} />
-                    <Route path="categories" element={<CategoryManagement />} />
-                    <Route path="categories/add" element={<CategoryForm />} />
-                    <Route path="categories/edit/:id" element={<CategoryForm />} />
-                    <Route path="roles" element={<RoleManagement />} />
-                    <Route path="employee" element={<EmployeeManagement />} />
-                    <Route path="employee/add" element={<EmployeeForm />} />
-                    <Route path="employee/edit/:id" element={<EmployeeForm />} />
-                    <Route path="employee-detail/:id" element={<EmployeeDetail />} />
-                    <Route path="products" element={<ProductManagement />} />
-                    <Route path="products/add" element={<ProductCreate />} />
-                    <Route path="products/:id" element={<ProductDetail />} />
-                    <Route path="orders" element={<OrderManagement />} />
-                    <Route path="orders/:id" element={<OrderDetail />} />
-                    <Route path="orders/:id/logs" element={<OrderLogsPage />} />
-                    <Route path="warehouse" element={<WarehouseManagement />} />
-                    <Route path="warehouse-logs" element={<WarehouseLog />} />
-                    <Route path="inventory-report" element={<ProductInventoryReport />} />
-                    <Route path="banners" element={<BannerManagement />} />
-                    <Route path="banners/add" element={<BannerManagement />} />
-                    <Route path="banners/edit/:id" element={<BannerManagement />} />
-                    <Route path="promotions" element={<PromotionManagement />} />
-                    <Route path="promotions/create" element={<PromotionCreate />} />
-                    <Route path="promotions/:id" element={<PromotionDetail />} />
-                    <Route path="vouchers" element={<VoucherManagement />} />
-                    <Route path="vouchers/:id" element={<VoucherDetail />} />
-                    <Route path="voucher-detail/:id" element={<VoucherDetail />} />
-                    <Route path="voucherdetail/:id" element={<VoucherDetail />} />
-                    <Route path="reviews" element={<ReviewManagement />} />
-                </Route>
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<ProductManagement />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="customers" element={<CustomerManagement />} />
+          <Route path="customer-detail/:id" element={<CustomerDetail />} />
+          <Route path="categories" element={<CategoryManagement />} />
+          <Route path="categories/add" element={<CategoryForm />} />
+          <Route path="categories/edit/:id" element={<CategoryForm />} />
+          <Route path="roles" element={<RoleManagement />} />
+          <Route path="employee" element={<EmployeeManagement />} />
+          <Route path="employee/add" element={<EmployeeForm />} />
+          <Route path="employee/edit/:id" element={<EmployeeForm />} />
+          <Route path="employee-detail/:id" element={<EmployeeDetail />} />
+          <Route path="products" element={<ProductManagement />} />
+          <Route path="products/add" element={<ProductCreate />} />
+          <Route path="products/:id" element={<ProductDetail />} />
+          <Route path="orders" element={<OrderManagement />} />
+          <Route path="orders/:id" element={<OrderDetail />} />
+          <Route path="orders/:id/logs" element={<OrderLogsPage />} />
+          <Route path="warehouse" element={<WarehouseManagement />} />
+          <Route path="warehouse-logs" element={<WarehouseLog />} />
+          <Route path="inventory-report" element={<ProductInventoryReport />} />
+          <Route path="banners" element={<BannerManagement />} />
+          <Route path="banners/add" element={<BannerManagement />} />
+          <Route path="banners/edit/:id" element={<BannerManagement />} />
+          <Route path="promotions" element={<PromotionManagement />} />
+          <Route path="promotions/create" element={<PromotionCreate />} />
+          <Route path="promotions/:id" element={<PromotionDetail />} />
+          <Route path="vouchers" element={<VoucherManagement />} />
+          <Route path="vouchers/:id" element={<VoucherDetail />} />
+          <Route path="voucher-detail/:id" element={<VoucherDetail />} />
+          <Route path="voucherdetail/:id" element={<VoucherDetail />} />
+          <Route path="reviews" element={<ReviewManagement />} />
+          <Route path="ai-config" element={<AiConfigPage />} />
+          <Route path="chats" element={<AdminChat />} />
+        </Route>
 
-                {/* Trang 404 cho các đường dẫn sai */}
-                <Route path="*" element={<NotFound />} />
-            </Routes>
-        </BrowserRouter>
-    );
+        {/* Trang 404 cho các đường dẫn sai */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
 };
 
 export default AppRouter;
