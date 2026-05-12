@@ -224,9 +224,12 @@ const WarehouseLog = () => {
 
     return (
         <div className="log-page-container">
+            <button className="back-btn-text" onClick={() => navigate('/admin/warehouse')}>
+                ← Quay lại kho hàng
+            </button>
             {/* ===== TOAST NOTIFICATIONS ===== */}
             <ToastContainer 
-                position="bottom-right" 
+                position="top-right" 
                 autoClose={3000}
                 hideProgressBar={false}
                 newestOnTop={true}
@@ -235,6 +238,9 @@ const WarehouseLog = () => {
                 pauseOnFocusLoss
                 draggable
                 pauseOnHover
+                className="warehouse-toast-container"
+                toastClassName="warehouse-toast"
+                bodyClassName="warehouse-toast-body"
             />
 
             <h1>{type === "inbound" ? "NHẬP KHO" : "XUẤT KHO"}</h1>
@@ -256,7 +262,6 @@ const WarehouseLog = () => {
                     ) : (
                         <>
                             <option value="">-- Loại xuất --</option>
-                            <option value="SALE">Bán hàng</option>
                             <option value="SUPPLIER_RETURN">Trả NCC</option>
                             <option value="DESTROY">Tiêu hủy</option>
                         </>

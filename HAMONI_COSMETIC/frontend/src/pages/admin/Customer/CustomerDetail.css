@@ -70,14 +70,12 @@
     background-color: #fefce8;
 }
 
-.status-badge-readonly {
-    display: inline-block;
-    background: white;
-    padding: 8px 24px;
-    border-radius: 50px;
-    font-weight: 700;
-    border: 1px solid #fde68a;
-    margin-top: 10px;
+.status-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
 }
 
 .status-badge-active {
@@ -90,6 +88,47 @@
     color: #c62828;
     border-color: #ffcdd2;
     background: #fff1f1;
+}
+
+.status-editor {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.status-editor select {
+    min-width: 160px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid #d6d8dc;
+    background: #fff;
+    font-weight: 600;
+    outline: none;
+}
+
+.status-editor select:focus {
+    border-color: #7d8471;
+}
+
+.btn-status-update {
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    background: #1f2937;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-status-update:hover:not(:disabled) {
+    background: #111827;
+}
+
+.btn-status-update:disabled {
+    opacity: 0.7;
+    cursor: wait;
 }
 
 .analytics-bottom-grid {

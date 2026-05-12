@@ -260,19 +260,35 @@ setTotalPages(totalPages);
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(prev => prev - 1)}
                     >
-                        ‹
+                        ‹ Trước
                     </button>
 
                     <div className="pagi-numbers-group">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                            <button
-                                key={pageNum}
-                                className={`pagi-item ${currentPage === pageNum ? 'active' : ''}`}
-                                onClick={() => setCurrentPage(pageNum)}
-                            >
-                                {pageNum}
-                            </button>
-                        ))}
+                        {(() => {
+                            // Tính toán phạm vi trang để hiển thị (chỉ 3 trang)
+                            let startPage = Math.max(1, currentPage - 1);
+                            let endPage = Math.min(totalPages, startPage + 2);
+                            
+                            // Nếu gần cuối, shift lại để lúc nào cũng có 3 trang
+                            if (endPage - startPage < 2) {
+                                startPage = Math.max(1, endPage - 2);
+                            }
+                            
+                            const pages = [];
+                            for (let i = startPage; i <= endPage; i++) {
+                                pages.push(i);
+                            }
+                            
+                            return pages.map((pageNum) => (
+                                <button
+                                    key={pageNum}
+                                    className={`pagi-item ${currentPage === pageNum ? 'active' : ''}`}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                >
+                                    {pageNum}
+                                </button>
+                            ));
+                        })()}
                     </div>
 
                     <button 
@@ -280,7 +296,7 @@ setTotalPages(totalPages);
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(prev => prev + 1)}
                     >
-                        ›
+                        Sau ›
                     </button>
                 </div>
             </div>

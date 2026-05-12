@@ -86,6 +86,34 @@ td {
     border-bottom: 1px solid #f3f3f3;
 }
 
+/* make table cells use consistent inner layout so inputs align */
+table td > .product-picker,
+table td > div.price-input-cell,
+table td > input,
+table td > .log-stock-cell {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+table td input[type="number"],
+table td input[type="text"],
+table td textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-soft);
+    font-size: 14px;
+}
+
+/* ensure the remove button stays compact */
+td > button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 8px;
+}
+
 td:first-child {
     position: relative;
 }
@@ -283,6 +311,26 @@ tr.warning-row td {
     font-weight: 600;
 }
 /* ===== TOAST NOTIFICATION ===== */
+.warehouse-toast-container {
+    top: 20px;
+    right: 20px;
+}
+
+.warehouse-toast {
+    min-width: 340px;
+    max-width: 460px;
+    border-radius: 16px;
+    padding: 18px 22px;
+    font-size: 15px;
+    line-height: 1.5;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+}
+
+.warehouse-toast-body {
+    font-size: 15px;
+    font-weight: 600;
+}
+
 .toast-container {
     position: fixed;
     top: 20px;

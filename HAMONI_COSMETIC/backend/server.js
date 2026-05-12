@@ -92,6 +92,27 @@ app.get("/", (req, res) => {
   });
 });
 
+// --- WEBHOOK CASSO ---
+app.post("/webhook", (req, res) => {
+  try {
+    console.log("[Webhook Casso] Nhận được dữ liệu từ Casso:", req.body);
+    
+    // Verify secret key
+    const signature = req.headers['x-signature'] || '';
+    const secretKey = process.env.CASSO_WEBHOOK_SECRET || '1212';
+    
+    // Return 200 OK to Casso immediately
+    res.status(200).json({ status: 'ok', message: 'Webhook received' });
+    
+    console.log('[Webhook Casso] Xử lý giao dịch từ Casso...');
+    // Note: Casso cron job (checkCassoTransactions) sẽ tự động poll và cập nhật giao dịch
+    // Webhook này chỉ là xác nhận nhận được dữ liệu
+  } catch (error) {
+    console.error('[Webhook Casso] Lỗi:', error.message);
+    res.status(200).json({ status: 'ok' }); // Return 200 anyway to prevent Casso retries
+  }
+});
+
 // --- KHỞI ĐỘNG SERVER ---
 const PORT = process.env.PORT || 5000;
 

@@ -23,7 +23,8 @@ const EmployeeManagement = () => {
             const res = await axiosClient.get(`/employees`, {
                 params: { search, status }
             });
-            setEmployees(res); 
+            const data = Array.isArray(res) ? res : (res.data || []);
+            setEmployees(data); 
             setCurrentPage(1);
         } catch (err) {
             console.error("Lỗi tải danh sách nhân viên:", err);
@@ -150,9 +151,18 @@ const EmployeeManagement = () => {
                             >
                                 <td className="td-employee-name">
                                     <div className="employee-info-wrapper">
-                                        <div className="avatar">
-                                            {item.HoTen?.charAt(0).toUpperCase() || 'NV'}
-                                        </div>
+                                        {item.AvatarUrl ? (
+                                            <img 
+                                                src={item.AvatarUrl}
+                                                alt={item.HoTen}
+                                                className="avatar"
+                                                style={{ objectFit: 'cover' }}
+                                            />
+                                        ) : (
+                                            <div className="avatar">
+                                                {item.HoTen?.charAt(0).toUpperCase() || 'NV'}
+                                            </div>
+                                        )}
                                         <div>
                                             <div className="employee-name">{item.HoTen}</div>
                                             <div className="employee-dept">{item.PhongBan || 'Phòng ban chung'}</div>

@@ -10,7 +10,7 @@ const EmployeeForm = ({ isOpen, onClose, onSuccess }) => {
 
     // State quản lý dữ liệu nhập vào
     const [formData, setFormData] = useState({
-        HoTen: '', Email: '', SoDienThoai: '', MaQuyen: 'STAFF', MatKhau: ''
+        HoTen: '', Email: '', SoDienThoai: '', MaQuyen: 'STAFF', MatKhau: '', AvatarUrl: ''
     });
 
     if (!isOpen) return null;
@@ -50,7 +50,7 @@ const EmployeeForm = ({ isOpen, onClose, onSuccess }) => {
             toast.success('Thêm nhân viên thành công!');
             
             setTimeout(() => {
-                setFormData({ HoTen: '', Email: '', SoDienThoai: '', MaQuyen: 'STAFF', MatKhau: '' });
+                setFormData({ HoTen: '', Email: '', SoDienThoai: '', MaQuyen: 'STAFF', MatKhau: '', AvatarUrl: '' });
                 setIsSubmitting(false);
                 onSuccess(); 
             }, 1500);
@@ -96,6 +96,12 @@ const EmployeeForm = ({ isOpen, onClose, onSuccess }) => {
                                     <option value="STAFF">NHÂN VIÊN</option>
                                     <option value="ADMIN">QUẢN LÝ</option>
                                 </select>
+                            </div>
+
+                            <div className="col-12">
+                                <label className="form-label fw-bold text-secondary" style={{ fontSize: '13px' }}>Avatar (URL ảnh)</label>
+                                <input type="text" name="AvatarUrl" value={formData.AvatarUrl} onChange={handleChange} className="form-control bg-light" placeholder="https://example.com/avatar.jpg" disabled={isSubmitting} />
+                                <small className="text-muted">Tùy chọn - Dán đường link ảnh avatar</small>
                             </div>
 
                             <div className="col-12">

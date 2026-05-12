@@ -1,29 +1,42 @@
 // src/pages/admin/Customer/CustomerDetail.jsx
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient'; // Đổi sang dùng axiosClient
 import './CustomerDetail.css';
 
 const CustomerDetail = () => {
     const { id } = useParams();
     const [data, setData] = useState(null);
+    const [statusValue, setStatusValue] = useState('1');
+    const [isSaving, setIsSaving] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
-    useEffect(() => {
-        const fetchCustomerDetail = async () => {
-            try {
-                // Gọi đúng endpoint backend: /api/customers/detail-analytics/:id
-                const res = await axiosClient.get(`/customers/detail-analytics/${id}`);
-                
-                // AXIOS CLIENT ĐÃ BÓC VỎ SẴN NÊN KHÔNG DÙNG res.data NỮA
-                setData(res); 
-            } catch (err) {
-                console.error("Lỗi fetch chi tiết:", err);
-            }
-        };
-
-        fetchCustomerDetail();
+    // Hàm fetch dữ liệu (useCallback để tránh infinite loop)
+    const fetchCustomerDetail = useCallback(async () => {
+        try {
+            const res = await axiosClient.get(`/customers/detail-analytics/${id}`);
+            setData(res); 
+            setStatusValue(String(res.customerInfo?.TrangThai ?? 1));
+        } catch (err) {
+            console.error("Lỗi fetch chi tiết:", err);
+            toast.error("Không thể tải chi tiết khách hàng!");
+        }
     }, [id]);
+
+    // Fetch khi component mount hoặc id thay đổi
+    useEffect(() => {
+        fetchCustomerDetail();
+    }, [fetchCustomerDetail]);
+
+    // Refetch khi quay lại trang này
+    useEffect(() => {
+        if (location.pathname === `/admin/customer-detail/${id}`) {
+            fetchCustomerDetail();
+        }
+    }, [location.pathname, id, fetchCustomerDetail]);
 
     const getInitials = (name) => {
         if (!name) return "H";
@@ -37,11 +50,31 @@ const CustomerDetail = () => {
         return colors[index];
     };
 
+    const handleUpdateStatus = async () => {
+        setIsSaving(true);
+        try {
+            const nextStatus = statusValue === '1' ? 1 : 0;
+            await axiosClient.put(`/customers/${id}/status`, { TrangThai: nextStatus });
+
+            setData((prev) => prev ? ({
+                ...prev,
+                customerInfo: {
+                    ...prev.customerInfo,
+                    TrangThai: nextStatus,
+                }
+            }) : prev);
+
+            toast.success("Cập nhật trạng thái thành công!");
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Không thể cập nhật trạng thái!");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     if (!data) return <div className="loading-screen">Đang tải dữ liệu Hamoni...</div>;
 
     const fullName = data.customerInfo?.HoTen || "Khách Hàng";
-    const statusText = data.customerInfo?.TrangThai === 1 || data.customerInfo?.TrangThai === 'Hoạt động' ? "Hoạt động" : "Bị chặn";
-    const statusClass = statusText === "Hoạt động" ? "status-badge-active" : "status-badge-banned";
 
     return (
         <div className="admin-detail-analytics-container">
@@ -56,9 +89,17 @@ const CustomerDetail = () => {
 
                 {/* Thông tin khách hàng */}
                 <div className="info-card profile-info-card">
-                    <div className="avatar-box" style={{ backgroundColor: getAvatarBgColor(fullName) }}>
-                        {getInitials(fullName)}
-                    </div>
+                    {data.customerInfo?.Avatar ? (
+                        <div className="avatar-box" style={{
+                            backgroundImage: `url(${data.customerInfo.Avatar})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                        }}></div>
+                    ) : (
+                        <div className="avatar-box" style={{ backgroundColor: getAvatarBgColor(fullName) }}>
+                            {getInitials(fullName)}
+                        </div>
+                    )}
                     <div className="profile-details-grid">
                         <div className="detail-item">
                             <label>HỌ VÀ TÊN</label>
@@ -82,8 +123,16 @@ const CustomerDetail = () => {
                 {/* TRẠNG THÁI */}
                 <div className="info-card status-filter-card">
                     <h3 className="card-title-medium">Trạng thái tài khoản</h3>
-                    <div className={`status-badge-readonly ${statusClass}`}>
-                        ● <strong>{statusText}</strong>
+                    <div className="status-edit-row">
+                        <div className="status-editor">
+                            <select value={statusValue} onChange={(e) => setStatusValue(e.target.value)}>
+                                <option value="1">Hoạt động</option>
+                                <option value="0">Bị chặn</option>
+                            </select>
+                            <button className="btn-status-update" onClick={handleUpdateStatus} disabled={isSaving}>
+                                {isSaving ? 'Đang lưu...' : 'Cập nhật'}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -120,6 +169,8 @@ const CustomerDetail = () => {
                     </div>
                 </div>
             </div>
+
+            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, ChevronDown, X } from 'lucide-react';
+import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, X } from 'lucide-react';
 import orderApi from '../../../services/orderApi';
-import axiosClient from '../../../services/axiosClient';
 import { PRODUCT_PLACEHOLDER_IMAGE } from '../../../config/imageLinks';
 import OrderNotification, { OnlinePaymentModal } from './ordernotification';
 import './orderpayment.css'; // Import file CSS riêng
@@ -26,10 +25,6 @@ const OrderPayment = () => {
   const [selectedVariantIds, setSelectedVariantIds] = useState([]);
   const [continueShoppingProductId, setContinueShoppingProductId] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const [voucherOptions, setVoucherOptions] = useState([]);
-  const [loadingVouchers, setLoadingVouchers] = useState(false);
-  const [showVoucherList, setShowVoucherList] = useState(false);
-  const voucherPickerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     recipientName: '',
@@ -76,38 +71,7 @@ const OrderPayment = () => {
     }
   }, []);
 
-  const getVoucherBenefitText = (voucher) => {
-    const percentDiscount = Number(voucher?.PhanTramGiam);
-    const fixedDiscount = Number(voucher?.SoTienGiam);
-    const maxDiscount = Number(voucher?.GiamToiDa);
 
-    if (Number.isFinite(percentDiscount) && percentDiscount > 0) {
-      return maxDiscount > 0
-        ? `Giảm ${percentDiscount}% (tối đa ${formatCurrency(maxDiscount)})`
-        : `Giảm ${percentDiscount}%`;
-    }
-
-    if (Number.isFinite(fixedDiscount) && fixedDiscount > 0) {
-      return `Giảm ${formatCurrency(fixedDiscount)}`;
-    }
-
-    return 'Ưu đãi đặc biệt';
-  };
-
-  const fetchVoucherOptions = useCallback(async () => {
-    if (loadingVouchers) return;
-
-    setLoadingVouchers(true);
-    try {
-      const response = await axiosClient.get('vouchers');
-      const rawVouchers = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
-      setVoucherOptions(rawVouchers);
-    } catch {
-      pushError('Không thể tải danh sách voucher lúc này.');
-    } finally {
-      setLoadingVouchers(false);
-    }
-  }, [loadingVouchers, pushError]);
 
   const splitAddress = (fullAddress) => {
     const raw = String(fullAddress || '').trim();
@@ -290,24 +254,7 @@ const OrderPayment = () => {
     }
   }, [notice, noticeToastTick, showToast]);
 
-  useEffect(() => {
-    if (showVoucherList && voucherOptions.length === 0) {
-      fetchVoucherOptions();
-    }
-  }, [fetchVoucherOptions, showVoucherList, voucherOptions.length]);
 
-  useEffect(() => {
-    if (!showVoucherList) return;
-
-    const handleClickOutside = (event) => {
-      if (voucherPickerRef.current && !voucherPickerRef.current.contains(event.target)) {
-        setShowVoucherList(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showVoucherList]);
 
   // Auto-polling để kiểm tra thanh toán từ Casso mỗi 3 giây
   useEffect(() => {
@@ -371,25 +318,7 @@ const OrderPayment = () => {
     );
   }, [checkoutData?.items?.length, formData, loadingCheckout, placingOrder]);
 
-  const availableVouchers = useMemo(() => {
-    const now = new Date();
-    const subtotal = Number(checkoutData?.tongTien || 0);
 
-    return voucherOptions
-      .filter((voucher) => {
-        const status = String(voucher?.TrangThai || '').toLowerCase();
-        const remaining = Number(voucher?.SoLuong || 0) - Number(voucher?.SoLuongDaDung || 0);
-        const minimumOrder = Number(voucher?.DonTaiThieu || 0);
-        const startAt = voucher?.NgayBatDau ? new Date(voucher.NgayBatDau) : null;
-        const endAt = voucher?.NgayKetThuc ? new Date(voucher.NgayKetThuc) : null;
-
-        const isActive = status === 'kichhoat';
-        const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt);
-
-        return isActive && remaining > 0 && isInDateRange && subtotal >= minimumOrder;
-      })
-      .sort((a, b) => Number(b?.PhanTramGiam || b?.SoTienGiam || 0) - Number(a?.PhanTramGiam || a?.SoTienGiam || 0));
-  }, [checkoutData?.tongTien, voucherOptions]);
 
   const getValidationMessage = () => {
     if (loadingCheckout) return 'Đang tải giỏ hàng, vui lòng đợi trong giây lát.';
@@ -410,20 +339,20 @@ const OrderPayment = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSelectVoucher = async (code) => {
-    const normalizedCode = String(code || '').trim().toUpperCase();
-    if (!normalizedCode) return;
-
+  const handleVoucherChange = (value) => {
+    const normalizedCode = String(value || '').trim().toUpperCase();
     setVoucherCode(normalizedCode);
-    setShowVoucherList(false);
-    await loadCheckoutPreview(normalizedCode, selectedVariantIds);
   };
 
-  const handleClearVoucher = async () => {
-    setVoucherCode('');
-    setShowVoucherList(false);
-    await loadCheckoutPreview('', selectedVariantIds);
-  };
+  const applyVoucher = useCallback(async (code) => {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    if (!normalizedCode) {
+      await loadCheckoutPreview('', selectedVariantIds);
+      return;
+    }
+    
+    await loadCheckoutPreview(normalizedCode, selectedVariantIds);
+  }, [loadCheckoutPreview, selectedVariantIds]);
 
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder) {
@@ -733,52 +662,39 @@ const OrderPayment = () => {
 
               <div className="coupon-section">
                 <p className="coupon-label"><Ticket size={14} /> Mã giảm giá</p>
-                <div className="voucher-picker" ref={voucherPickerRef}>
-                  <button
-                    type="button"
-                    className="voucher-picker-toggle"
-                    onClick={() => setShowVoucherList((prev) => !prev)}
+                <div className="voucher-input-wrapper">
+                  <input
+                    type="text"
+                    placeholder="Nhập mã giảm giá"
+                    value={voucherCode}
+                    onChange={(e) => handleVoucherChange(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && applyVoucher(voucherCode)}
                     disabled={loadingCheckout || placingOrder}
-                  >
-                    <span>{voucherCode ? `Đã chọn: ${voucherCode}` : 'Nhấn để chọn voucher'}</span>
-                    <ChevronDown size={16} className={showVoucherList ? 'voucher-chevron open' : 'voucher-chevron'} />
-                  </button>
-
+                    className="voucher-input-field"
+                    maxLength="50"
+                  />
                   {voucherCode.trim() && (
                     <button
                       type="button"
                       className="coupon-clear-button"
-                      onClick={handleClearVoucher}
+                      onClick={() => {
+                        handleVoucherChange('');
+                        applyVoucher('');
+                      }}
                       aria-label="Xóa mã giảm giá"
                     >
                       <X size={14} />
                     </button>
                   )}
-
-                  {showVoucherList && (
-                    <div className="voucher-picker-list">
-                      {loadingVouchers && <div className="voucher-picker-empty">Đang tải voucher...</div>}
-                      {!loadingVouchers && availableVouchers.length === 0 && (
-                        <div className="voucher-picker-empty">Không có voucher phù hợp với đơn hàng hiện tại.</div>
-                      )}
-                      {!loadingVouchers && availableVouchers.map((voucher) => (
-                        <button
-                          key={voucher.MaVoucher}
-                          type="button"
-                          className={`voucher-option ${voucherCode === voucher.MaVoucher ? 'active' : ''}`}
-                          onClick={() => handleSelectVoucher(voucher.MaVoucher)}
-                        >
-                          <div className="voucher-option-top">
-                            <span className="voucher-code">{voucher.MaVoucher}</span>
-                            <span className="voucher-benefit">{getVoucherBenefitText(voucher)}</span>
-                          </div>
-                          <div className="voucher-option-bottom">
-                            Đơn tối thiểu {formatCurrency(voucher.DonTaiThieu || 0)}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    className="voucher-apply-btn"
+                    onClick={() => applyVoucher(voucherCode)}
+                    disabled={loadingCheckout || placingOrder || !voucherCode.trim()}
+                    aria-label="Áp dụng mã giảm giá"
+                  >
+                    Áp dụng
+                  </button>
                 </div>
               </div>
 

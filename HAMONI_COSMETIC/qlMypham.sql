@@ -21,6 +21,9 @@ CREATE TABLE NguoiDung (
     MatKhau VARCHAR(255) NOT NULL,
     SoDienThoai VARCHAR(20),
     DiaChi VARCHAR(255),
+    GioiTinh VARCHAR(10),
+    NgaySinh DATE,
+    AvatarUrl VARCHAR(500),
     TrangThai TINYINT(1) DEFAULT 1, 
     NgayDangKy DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT FK_NguoiDung_PhanQuyen FOREIGN KEY (MaQuyen) REFERENCES PHANQUYEN(MaQuyen)

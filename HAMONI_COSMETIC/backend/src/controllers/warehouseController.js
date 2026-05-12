@@ -65,13 +65,14 @@ const [[lastLog]] = await db.execute(`
             SELECT 
                 l.LoaiGiaoDich,
                 l.SoLuongThayDoi,
+                l.GhiChu,
                 sp.TenSP,
                 l.NgayTao AS thoiGian
             FROM LogTonKho l
             JOIN BienTheSanPham bt ON l.MaBienThe = bt.MaBienThe
             JOIN SanPham sp ON bt.MaSP = sp.MaSP
             ORDER BY l.NgayTao DESC
-            LIMIT 5
+            LIMIT 100
         `);
 
         res.json({
