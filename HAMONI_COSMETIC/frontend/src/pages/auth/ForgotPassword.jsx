@@ -1,195 +1,225 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Key, Lock, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
-import axiosClient from '../../services/axiosClient'; // Đảm bảo đường dẫn đúng
-import './ForgotPassword.css';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, ShieldCheck, LockKeyhole } from "lucide-react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import axiosClient from "../../services/axiosClient";
+import "./ForgotPassword.css";
 
 const ForgotPassword = () => {
-    const navigate = useNavigate();
-    
-    // State quản lý luồng: step 1 (Nhập Email), step 2 (Nhập OTP & Mật khẩu mới)
-    const [step, setStep] = useState(1);
-    const [email, setEmail] = useState('');
-    const [otp, setOtp] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    
-    const [isLoading, setIsLoading] = useState(false);
-    const [alert, setAlert] = useState({ show: false, type: '', message: '' });
+  const navigate = useNavigate();
 
-    // Xử lý Bước 1: Gửi yêu cầu lấy OTP
-    const handleSendOTP = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setAlert({ show: false, type: '', message: '' });
+  // State quản lý luồng (1: Nhập Email, 2: Đổi mật khẩu)
+  const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-        try {
-            // Gọi API gửi OTP (Chúng ta sẽ làm ở Backend sau)
-            await axiosClient.post('/auth/forgot-password', { Email: email });
-            
-            setAlert({ show: true, type: 'success', message: 'Mã xác nhận (OTP) đã được gửi đến email của bạn!' });
-            setTimeout(() => {
-                setAlert({ show: false, type: '', message: '' });
-                setStep(2); // Chuyển sang bước 2
-            }, 1500);
-        } catch (error) {
-            setAlert({ 
-                show: true, 
-                type: 'danger', 
-                message: error.response?.data?.message || 'Email không tồn tại trong hệ thống!' 
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  // Form Data
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-    // Xử lý Bước 2: Xác nhận OTP và đặt lại mật khẩu
-    const handleResetPassword = async (e) => {
-        e.preventDefault();
-        if (newPassword.length < 6) {
-            setAlert({ show: true, type: 'danger', message: 'Mật khẩu mới phải có ít nhất 6 ký tự!' });
-            return;
-        }
+  // ==========================================
+  // XỬ LÝ BƯỚC 1: GỬI YÊU CẦU LẤY OTP
+  // ==========================================
+  const handleRequestOTP = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      return toast.warning("Vui lòng nhập địa chỉ email!");
+    }
 
-        setIsLoading(true);
-        setAlert({ show: false, type: '', message: '' });
+    // Regex kiểm tra định dạng email cơ bản
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return toast.warning("Email không hợp lệ!");
+    }
 
-        try {
-            // Gọi API đặt lại mật khẩu
-            await axiosClient.post('/auth/reset-password', { 
-                Email: email, 
-                OTP: otp, 
-                MatKhauMoi: newPassword 
-            });
-            
-            setAlert({ show: true, type: 'success', message: 'Đặt lại mật khẩu thành công! Đang chuyển hướng...' });
-            setTimeout(() => {
-                navigate('/login'); // Đổi mật khẩu xong thì đá về trang Login
-            }, 2000);
-        } catch (error) {
-            setAlert({ 
-                show: true, 
-                type: 'danger', 
-                message: error.response?.data?.message || 'Mã OTP không chính xác hoặc đã hết hạn!' 
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    setIsLoading(true);
+    try {
+      const response = await axiosClient.post("/auth/forgot-password", {
+        email,
+      });
 
-    return (
-        <div className="forgot-password-container">
-            <div className="forgot-card shadow-lg rounded-4 border-0">
-                <div className="card-body p-5">
-                    <div className="text-center mb-4">
-                        <h2 className="fw-bold text-dark mb-2">HAMONI</h2>
-                        <p className="text-muted">
-                            {step === 1 ? 'Khôi phục quyền truy cập tài khoản' : 'Thiết lập mật khẩu mới'}
-                        </p>
-                    </div>
+      toast.success(
+        response?.message || "Mã OTP đã được gửi đến email của bạn!",
+      );
+      setStep(2);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        "Lỗi khi gửi yêu cầu. Có thể email chưa được đăng ký.";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                    {alert.show && (
-                        <div className={`alert alert-${alert.type} d-flex align-items-center p-3 mb-4`} role="alert">
-                            {alert.type === 'success' ? <CheckCircle size={20} className="me-2 flex-shrink-0" /> : <AlertCircle size={20} className="me-2 flex-shrink-0" />}
-                            <div className="fw-medium" style={{ fontSize: '14px' }}>{alert.message}</div>
-                        </div>
-                    )}
+  // ==========================================
+  // XỬ LÝ BƯỚC 2: ĐẶT LẠI MẬT KHẨU
+  // ==========================================
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!otp || !newPassword || !confirmPassword) {
+      return toast.warning("Vui lòng điền đầy đủ thông tin!");
+    }
+    if (newPassword.length < 6) {
+      return toast.warning("Mật khẩu mới phải có ít nhất 6 ký tự!");
+    }
+    if (newPassword !== confirmPassword) {
+      return toast.warning("Mật khẩu xác nhận không trùng khớp!");
+    }
 
-                    {/* BƯỚC 1: NHẬP EMAIL */}
-                    {step === 1 && (
-                        <form onSubmit={handleSendOTP}>
-                            <div className="mb-4">
-                                <label className="form-label fw-bold text-secondary" style={{ fontSize: '14px' }}>Địa chỉ Email của bạn</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-light border-end-0">
-                                        <Mail size={18} className="text-muted" />
-                                    </span>
-                                    <input 
-                                        type="email" 
-                                        className="form-control form-control-lg bg-light border-start-0 ps-0" 
-                                        placeholder="Ví dụ: admin@hamoni.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required 
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
-                            
-                            <button 
-                                type="submit" 
-                                className="btn w-100 fw-bold text-white mb-3 py-2" 
-                                style={{ backgroundColor: '#003399', fontSize: '15px' }}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? <span className="spinner-border spinner-border-sm"></span> : 'Gửi mã xác nhận'}
-                            </button>
-                        </form>
-                    )}
+    setIsLoading(true);
+    try {
+      const response = await axiosClient.post("/auth/reset-password", {
+        email,
+        otp,
+        newPassword,
+      });
 
-                    {/* BƯỚC 2: NHẬP OTP & MẬT KHẨU MỚI */}
-                    {step === 2 && (
-                        <form onSubmit={handleResetPassword}>
-                            <div className="alert bg-light border text-center mb-4 p-2" style={{ fontSize: '13px' }}>
-                                Mã xác nhận đã được gửi đến <strong>{email}</strong>
-                            </div>
+      toast.success(
+        response?.message ||
+          "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.",
+      );
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        "Mã OTP không chính xác hoặc đã hết hạn.";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                            <div className="mb-3">
-                                <label className="form-label fw-bold text-secondary" style={{ fontSize: '14px' }}>Mã OTP (6 số)</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-light border-end-0">
-                                        <Key size={18} className="text-muted" />
-                                    </span>
-                                    <input 
-                                        type="text" 
-                                        maxLength="6"
-                                        className="form-control form-control-lg bg-light border-start-0 ps-0 text-center fw-bold text-primary tracking-widest" 
-                                        placeholder="------"
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value)}
-                                        required 
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F4F4F4] px-4 font-sans text-slate-800">
+      <div className="w-full max-w-105 p-8 md:p-10">
+        {/* BƯỚC 1: NHẬP EMAIL */}
+        {step === 1 && (
+          <div className="text-center animate-fade-in-up">
+            <h1 className="text-4xl md:text-5xl text-black mb-3 font-medium">
+              Quên mật khẩu
+            </h1>
+            <p className="text-sm text-gray-500 mb-10">
+              Nhập email để nhận mã xác thực
+            </p>
 
-                            <div className="mb-4">
-                                <label className="form-label fw-bold text-secondary" style={{ fontSize: '14px' }}>Mật khẩu mới</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-light border-end-0">
-                                        <Lock size={18} className="text-muted" />
-                                    </span>
-                                    <input 
-                                        type="password" 
-                                        className="form-control form-control-lg bg-light border-start-0 ps-0" 
-                                        placeholder="Ít nhất 6 ký tự"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        required 
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
-                            
-                            <button 
-                                type="submit" 
-                                className="btn w-100 fw-bold text-white mb-3 py-2" 
-                                style={{ backgroundColor: '#003399', fontSize: '15px' }}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? <span className="spinner-border spinner-border-sm"></span> : 'Xác nhận đổi mật khẩu'}
-                            </button>
-                        </form>
-                    )}
+            <form onSubmit={handleRequestOTP} className="text-left">
+              <div className="mb-8">
+                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
+                  ĐỊA CHỈ EMAIL
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ten_email@domain.com"
+                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors"
+                />
+              </div>
 
-                    <div className="text-center mt-3">
-                        <Link to="/login" className="text-decoration-none text-muted fw-medium d-inline-flex align-items-center gap-1 hover-primary">
-                            <ArrowLeft size={16} /> Quay lại trang đăng nhập
-                        </Link>
-                    </div>
-                </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white rounded-full py-3.5 text-xs font-semibold tracking-wider uppercase transition-all hover:bg-gray-800 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed mb-8"
+              >
+                {isLoading ? "Đang xử lý..." : "Gửi yêu cầu"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* BƯỚC 2: NHẬP OTP & ĐỔI MẬT KHẨU */}
+        {step === 2 && (
+          <div className="text-center animate-fade-in-up">
+            <div className="mx-auto w-12 h-12 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center mb-6">
+              <LockKeyhole size={20} />
             </div>
+            <h1 className="text-3xl md:text-4xl text-black mb-3 font-medium">
+              Đặt lại mật khẩu
+            </h1>
+            <p className="text-sm text-gray-500 mb-10 px-4">
+              Vui lòng nhập mã xác thực và mật khẩu mới của bạn.
+            </p>
+
+            <form onSubmit={handleResetPassword} className="text-left">
+              <div className="mb-5 relative">
+                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
+                  MÃ OTP
+                </label>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Nhập mã 6 chữ số"
+                  maxLength={6}
+                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors"
+                />
+                <div className="absolute right-4 top-8.5 text-gray-400">
+                  <ShieldCheck size={18} />
+                </div>
+              </div>
+
+              <div className="mb-5 relative">
+                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
+                  MẬT KHẨU MỚI
+                </label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-8.5 text-gray-400 hover:text-black transition-colors bg-transparent border-0 outline-none"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="mb-8 relative">
+                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
+                  XÁC NHẬN MẬT KHẨU
+                </label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors pr-10"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white rounded-full py-3.5 text-xs font-semibold tracking-wider uppercase transition-all hover:bg-gray-800 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed mb-8"
+              >
+                {isLoading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* NÚT QUAY LẠI CHUNG CHO CẢ 2 BƯỚC */}
+        <div className="text-center mt-2">
+          <Link
+            to="/login"
+            className="text-[10px] uppercase tracking-widest font-semibold text-gray-500 hover:text-black transition-colors relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-px after:bg-gray-300 hover:after:bg-black no-underline"
+          >
+            QUAY LẠI ĐĂNG NHẬP
+          </Link>
         </div>
-    );
+      </div>
+
+      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
+    </div>
+  );
 };
 
 export default ForgotPassword;
