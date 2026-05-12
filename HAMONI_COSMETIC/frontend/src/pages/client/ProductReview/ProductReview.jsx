@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { createReview, checkReviewHistory } from '../../../services/productreviewApi';
 import { ToastContainer, toast } from 'react-toastify';
 
-const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiDonHang, alreadyReviewed = false }) => {
+const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiDonHang, alreadyReviewed = false, onReviewSuccess = null }) => {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
@@ -174,6 +174,9 @@ const ProductReview = ({ MaSP, MaDH, MaND, productName, productImage, trangThaiD
       if (response.success || response.data?.success || response.status === 201) {
         toast.success("Đánh giá thành công! Cảm ơn bạn.");
         setFormStatus('success');
+        if (onReviewSuccess) {
+          onReviewSuccess();
+        }
       } else {
         toast.error(response.message || "Có lỗi xảy ra");
       }

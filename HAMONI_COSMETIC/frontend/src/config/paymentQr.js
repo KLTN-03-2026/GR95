@@ -26,7 +26,9 @@ export const buildVietQrImageUrl = ({
   amount,
   transferCode,
 }) => {
-  const hasValidBankConfig = Boolean(bankBin && accountNumber);
+  const normalizedBankBin = String(bankBin ?? '').replace(/\D/g, '');
+  const normalizedAccountNumber = String(accountNumber ?? '').replace(/\D/g, '');
+  const hasValidBankConfig = Boolean(normalizedBankBin && normalizedAccountNumber);
   if (!hasValidBankConfig) {
     return {
       hasValidBankConfig: false,
@@ -43,6 +45,6 @@ export const buildVietQrImageUrl = ({
 
   return {
     hasValidBankConfig: true,
-    qrImageUrl: `https://img.vietqr.io/image/${bankBin}-${accountNumber}-print.png?${qrQuery.toString()}`,
+    qrImageUrl: `https://img.vietqr.io/image/${normalizedBankBin}-${normalizedAccountNumber}-print.png?${qrQuery.toString()}`,
   };
 };
