@@ -151,9 +151,13 @@
 
 /* --- BẢNG TỒN KHO --- */
 .dashboard-body {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 25px;
+}
+
+.full-width {
+    width: 100%;
 }
 
 .section-white {
@@ -288,10 +292,30 @@
     flex-direction: column;
 }
 
+.log-container-full {
+    background: linear-gradient(180deg, #f8f5ea 0%, #f3f1e5 100%);
+    padding: 25px;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border: 1px solid #ece5d4;
+    box-shadow: 0 10px 30px rgba(98, 88, 58, 0.08);
+}
+
 .log-container h3 {
     margin-top: 0;
     font-size: 16px;
     color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.log-container-full h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #222;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -375,7 +399,6 @@
 }
 
 .log-list {
-    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -396,15 +419,22 @@
 }
 
 .log-item {
-    background: white;
-    padding: 15px;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 16px 18px;
     border-radius: 18px;
     display: flex;
     align-items: flex-start;
     gap: 15px;
     position: relative;
     z-index: 2;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    border: 1px solid #f2ebdb;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.log-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.06);
 }
 
 .log-icon {
@@ -452,7 +482,7 @@
 }
 
 .log-empty-state {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.9);
     border: 1px dashed #d9d1bf;
     color: #7a745f;
     border-radius: 16px;
@@ -572,36 +602,6 @@
     cursor: not-allowed;
 }
 
-/* --- THANH CUỘN NHẬT KÝ (Scrollbar) --- */
-.log-list.scrollable {
-    max-height: 450px; /* Giới hạn chiều cao hiển thị khoảng 5 item */
-    overflow-y: auto;
-    padding-right: 8px; /* Tránh thanh cuộn đè lên nội dung */
-}
-
-/* Tùy chỉnh giao diện thanh cuộn mượt hơn */
-.log-list.scrollable::-webkit-scrollbar {
-    width: 6px;
-}
-
-.log-list.scrollable::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.05);
-    border-radius: 10px;
-}
-
-.log-list.scrollable::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 10px;
-}
-
-.log-list.scrollable::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-olive);
-}
-
-/* Đảm bảo timeline không bị lỗi khi cuộn */
-.log-list.scrollable::before {
-    left: 17px; /* Căn chỉnh lại đường line dọc nếu cần */
-}
 .spin-icon {
     display: inline-block;
     animation: spin 1.2s linear infinite;
@@ -612,6 +612,42 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.warehouse-toast-container {
+    width: 360px;
+}
+
+.warehouse-toast {
+    border-radius: 14px;
+    border: 1px solid rgba(116, 102, 69, 0.2);
+    box-shadow: 0 10px 24px rgba(53, 45, 30, 0.2);
+    backdrop-filter: blur(6px);
+    color: #2f2a20;
+    background: linear-gradient(135deg, #fffef9 0%, #f8f2e2 100%);
+}
+
+.warehouse-toast-body {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.warehouse-toast-progress {
+    background: linear-gradient(90deg, #8a7b55 0%, #5b5a41 100%);
+    height: 4px;
+}
+
+.warehouse-toast.warehouse-toast-error {
+    border-color: #f3c5c0;
+    background: linear-gradient(135deg, #fff7f6 0%, #fdeae8 100%);
+    color: #8f241c;
+}
+
+.warehouse-toast.warehouse-toast-warning {
+    border-color: #f3dfbc;
+    background: linear-gradient(135deg, #fffaf0 0%, #fcefd9 100%);
+    color: #855700;
 }
 .spin-icon {
     display: inline-block;

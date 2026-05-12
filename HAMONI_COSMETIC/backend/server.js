@@ -77,6 +77,12 @@ app.use("/api/ai-config", aiConfigRoutes);
 app.use("/api/admin/chats", adminChatRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/product-reviews", productreviewRoutes);
+const orderhistoryRoutes = require("./src/routes/OrderhistoryRoutes");
+const orderDetailsRoutes = require("./src/routes/OrderDetailsRoutes");
+const { startCassoCron } = require("./src/config/cassoService");
+
+app.use("/api/orderhistory", orderhistoryRoutes);
+app.use("/api/orderdetails", orderDetailsRoutes);
 
 // Route mặc định (Root)
 app.get("/", (req, res) => {
@@ -95,4 +101,6 @@ server.listen(PORT, () => {
     `🚀 Server Backend Hamoni đang chạy tại: http://localhost:${PORT}`,
   );
   console.log("=================================");
+  // Start polling Casso transactions for online payment confirmations.
+  startCassoCron();
 });

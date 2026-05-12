@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import warehouseApi from "../../../services/warehouseApi";
 import "./WarehouseLog.css";
+
+
 
 const normalizeText = (value) =>
     String(value || '')
@@ -64,19 +68,7 @@ const WarehouseLog = () => {
     const [loai, setLoai] = useState("");
     const [ghiChu, setGhiChu] = useState("");
     const [loading, setLoading] = useState(false);
-    const [notification, setNotification] = useState(null);
     const [activePickerIndex, setActivePickerIndex] = useState(null);
-
-    // ===== NOTIFICATION =====
-    const showSuccess = (msg) => {
-        setNotification({ type: "success", message: msg });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    const showError = (msg) => {
-        setNotification({ type: "error", message: msg });
-        setTimeout(() => setNotification(null), 3000);
-    };
 
     // ===== LOAD DATA =====
     useEffect(() => {
@@ -155,24 +147,37 @@ const WarehouseLog = () => {
 
     // ===== SUBMIT =====
     const handleSubmit = async () => {
-        if (!loai) return showError("Chưa chọn loại nghiệp vụ");
-        if (items.length === 0) return showError("Chưa có sản phẩm");
+        if (!loai) {
+            toast.error("❌ Chưa chọn loại nghiệp vụ", { style: { backgroundColor: '#f44336' } });
+            return;
+        }
+        if (items.length === 0) {
+            toast.error("❌ Chưa có sản phẩm", { style: { backgroundColor: '#f44336' } });
+            return;
+        }
 
         for (let i of items) {
             if (!i.MaBienThe || i.SoLuong <= 0) {
-                return showError("Dữ liệu sản phẩm không hợp lệ");
+                toast.error("❌ Dữ liệu sản phẩm không hợp lệ", { style: { backgroundColor: '#f44336' } });
+                return;
             }
 
             if (type === "inbound") {
                 const product = getProductByVariantId(i.MaBienThe);
                 const priceValidation = getPriceValidation(i, product);
                 if (priceValidation.level === "error") {
-                    return showError("Giá nhập không hợp lệ: có sản phẩm đang cao hơn giá bán");
+                    toast.error("❌ Giá nhập không hợp lệ: có sản phẩm đang cao hơn giá bán", {
+                        style: { backgroundColor: '#f44336' }
+                    });
+                    return;
                 }
             }
 
             if (type === "outbound" && i.SoLuong > i.stock) {
-                return showError("Không đủ tồn kho");
+                toast.error("❌ Không đủ tồn kho", {
+                    style: { backgroundColor: '#f44336' }
+                });
+                return;
             }
         }
 
@@ -191,11 +196,17 @@ const WarehouseLog = () => {
 
             if (type === "inbound") {
                 await warehouseApi.createInbound(payload);
+                toast.success("✅ Nhập kho thành công!", {
+                    autoClose: 3000,
+                    style: { backgroundColor: '#4caf50', color: 'white' }
+                });
             } else {
                 await warehouseApi.createOutbound(payload);
+                toast.success("✅ Xuất kho thành công!", {
+                    autoClose: 3000,
+                    style: { backgroundColor: '#4caf50', color: 'white' }
+                });
             }
-
-            showSuccess("Thao tác kho thành công!");
 
             setTimeout(() => {
                 navigate("/admin/warehouse");
@@ -203,7 +214,9 @@ const WarehouseLog = () => {
 
         } catch (err) {
             console.error(err);
-            showError("Có lỗi xảy ra!");
+            toast.error("❌ Có lỗi xảy ra! Vui lòng thử lại", {
+                style: { backgroundColor: '#f44336', color: 'white' }
+            });
         } finally {
             setLoading(false);
         }
@@ -211,14 +224,18 @@ const WarehouseLog = () => {
 
     return (
         <div className="log-page-container">
-
-            {/* ===== NOTIFICATION ===== */}
-            {notification && (
-                <div className={`alert-banner ${notification.type}`}>
-                    <span>{notification.type === "success" ? "✔️" : "⚠️"}</span>
-                    {notification.message}
-                </div>
-            )}
+            {/* ===== TOAST NOTIFICATIONS ===== */}
+            <ToastContainer 
+                position="bottom-right" 
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={true}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
 
             <h1>{type === "inbound" ? "NHẬP KHO" : "XUẤT KHO"}</h1>
 

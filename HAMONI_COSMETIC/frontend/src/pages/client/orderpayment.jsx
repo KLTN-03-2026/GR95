@@ -1,15 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, ChevronDown, X } from 'lucide-react';
-import orderApi from '../../../services/orderApi';
-import axiosClient from '../../../services/axiosClient';
-import { PRODUCT_PLACEHOLDER_IMAGE } from '../../../config/imageLinks';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Truck, CreditCard, Ticket, MessageSquare, ChevronLeft, X } from 'lucide-react';
+import orderApi from '../../services/orderApi';
+import { PRODUCT_PLACEHOLDER_IMAGE } from '../../config/imageLinks';
 import OrderNotification, { OnlinePaymentModal } from './ordernotification';
 import './orderpayment.css'; // Import file CSS riêng
 
 const OrderPayment = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [voucherCode, setVoucherCode] = useState('');
   const [checkoutData, setCheckoutData] = useState(null);
@@ -17,19 +15,10 @@ const OrderPayment = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [errorToastTick, setErrorToastTick] = useState(0);
-  const [noticeToastTick, setNoticeToastTick] = useState(0);
-  const [confirmingOnlinePayment] = useState(false);
+  const [confirmingOnlinePayment, setConfirmingOnlinePayment] = useState(false);
   const [showOnlinePaymentModal, setShowOnlinePaymentModal] = useState(false);
   const [onlinePaymentInfo, setOnlinePaymentInfo] = useState(null);
   const [onlinePaymentSuccess, setOnlinePaymentSuccess] = useState(null);
-  const [selectedVariantIds, setSelectedVariantIds] = useState([]);
-  const [continueShoppingProductId, setContinueShoppingProductId] = useState(null);
-  const [toasts, setToasts] = useState([]);
-  const [voucherOptions, setVoucherOptions] = useState([]);
-  const [loadingVouchers, setLoadingVouchers] = useState(false);
-  const [showVoucherList, setShowVoucherList] = useState(false);
-  const voucherPickerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     recipientName: '',
@@ -43,71 +32,6 @@ const OrderPayment = () => {
   });
 
   const formatCurrency = (amount) => `${new Intl.NumberFormat('vi-VN').format(Number(amount) || 0)}đ`;
-  
-  const isValidGmailAddress = (value) => {
-    const email = String(value || '').trim();
-    return /^[^\s@]+@gmail\.com$/i.test(email);
-  };
-
-  const showToast = useCallback((message, type = 'success') => {
-    if (!message) return;
-
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
-
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 3000);
-  }, []);
-
-  const pushError = useCallback((message) => {
-    const normalized = String(message || '').trim();
-    setError(normalized);
-    if (normalized) {
-      setErrorToastTick((prev) => prev + 1);
-    }
-  }, []);
-
-  const pushNotice = useCallback((message) => {
-    const normalized = String(message || '').trim();
-    setNotice(normalized);
-    if (normalized) {
-      setNoticeToastTick((prev) => prev + 1);
-    }
-  }, []);
-
-  const getVoucherBenefitText = (voucher) => {
-    const percentDiscount = Number(voucher?.PhanTramGiam);
-    const fixedDiscount = Number(voucher?.SoTienGiam);
-    const maxDiscount = Number(voucher?.GiamToiDa);
-
-    if (Number.isFinite(percentDiscount) && percentDiscount > 0) {
-      return maxDiscount > 0
-        ? `Giảm ${percentDiscount}% (tối đa ${formatCurrency(maxDiscount)})`
-        : `Giảm ${percentDiscount}%`;
-    }
-
-    if (Number.isFinite(fixedDiscount) && fixedDiscount > 0) {
-      return `Giảm ${formatCurrency(fixedDiscount)}`;
-    }
-
-    return 'Ưu đãi đặc biệt';
-  };
-
-  const fetchVoucherOptions = useCallback(async () => {
-    if (loadingVouchers) return;
-
-    setLoadingVouchers(true);
-    try {
-      const response = await axiosClient.get('vouchers');
-      const rawVouchers = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
-      setVoucherOptions(rawVouchers);
-    } catch {
-      pushError('Không thể tải danh sách voucher lúc này.');
-    } finally {
-      setLoadingVouchers(false);
-    }
-  }, [loadingVouchers, pushError]);
 
   const splitAddress = (fullAddress) => {
     const raw = String(fullAddress || '').trim();
@@ -165,57 +89,35 @@ const OrderPayment = () => {
     return `VNP${ts.slice(-10)}`;
   };
 
-  const loadCheckoutPreview = useCallback(async (nextVoucherCode = '', nextSelectedVariantIds = []) => {
+  const loadCheckoutPreview = async (nextVoucherCode = '') => {
     setLoadingCheckout(true);
     setError('');
     setNotice('');
 
     try {
-      const trimmedVoucherCode = nextVoucherCode?.trim() || '';
       const payload = {};
-      if (trimmedVoucherCode) {
-        payload.voucherCode = trimmedVoucherCode;
-      }
-      if (Array.isArray(nextSelectedVariantIds) && nextSelectedVariantIds.length > 0) {
-        payload.selectedVariantIds = nextSelectedVariantIds;
+      if (nextVoucherCode?.trim()) {
+        payload.voucherCode = nextVoucherCode.trim();
       }
 
       const response = await orderApi.getCheckoutPreview(payload);
       const data = response.data ?? response;
 
       setCheckoutData(data);
-      setVoucherCode(data?.maVoucher || trimmedVoucherCode);
+      setVoucherCode(data?.maVoucher || nextVoucherCode.trim());
     } catch (err) {
       const apiMessage = err?.response?.data?.message;
-      pushError(apiMessage || 'Không thể tải dữ liệu thanh toán');
-
-      // Nếu mã giảm giá không hợp lệ, giữ nguyên giỏ hàng bằng cách tải lại preview không kèm voucher.
-      if (nextVoucherCode?.trim()) {
-        try {
-          const fallbackPayload = {};
-          if (Array.isArray(nextSelectedVariantIds) && nextSelectedVariantIds.length > 0) {
-            fallbackPayload.selectedVariantIds = nextSelectedVariantIds;
-          }
-
-          const fallbackResponse = await orderApi.getCheckoutPreview(fallbackPayload);
-          const fallbackData = fallbackResponse?.data ?? fallbackResponse;
-          setCheckoutData(fallbackData);
-          setVoucherCode('');
-        } catch {
-          setCheckoutData(null);
-        }
-      } else {
-        setCheckoutData(null);
-      }
+      setError(apiMessage || 'Không thể tải dữ liệu thanh toán');
+      setCheckoutData(null);
     } finally {
       setLoadingCheckout(false);
     }
-  }, [pushError]);
+  };
 
   const loadCheckoutProfile = useCallback(async () => {
     try {
       const response = await orderApi.getCheckoutProfile();
-      const profile = response?.data?.data ?? response?.data ?? response;
+      const profile = response?.data ?? response;
       const addressParts = splitAddress(profile?.address);
 
       setFormData((prev) => ({
@@ -238,7 +140,7 @@ const OrderPayment = () => {
     const userRaw = localStorage.getItem('user');
 
     if (!token) {
-      pushError('Vui lòng đăng nhập để tiếp tục thanh toán.');
+      setError('Vui lòng đăng nhập để tiếp tục thanh toán.');
       return;
     }
 
@@ -255,113 +157,17 @@ const OrderPayment = () => {
       }
     }
 
-    const fromState = Array.isArray(location.state?.selectedVariantIds) ? location.state.selectedVariantIds : [];
-    let fromSession = [];
-
-    try {
-      const raw = sessionStorage.getItem('checkoutSelectedVariantIds');
-      const parsed = raw ? JSON.parse(raw) : [];
-      fromSession = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      fromSession = [];
-    }
-
-    const normalizedSelected = [...new Set([...fromState, ...fromSession]
-      .map((id) => Number(id))
-      .filter((id) => Number.isInteger(id) && id > 0))];
-
-    const lastProductPageId = sessionStorage.getItem('lastProductPageId');
-
-    setSelectedVariantIds(normalizedSelected);
-    setContinueShoppingProductId(lastProductPageId || null);
     loadCheckoutProfile();
-    loadCheckoutPreview('', normalizedSelected);
-  }, [loadCheckoutProfile, loadCheckoutPreview, location.state, pushError]);
-
-  useEffect(() => {
-    if (error) {
-      showToast(error, 'error');
-    }
-  }, [error, errorToastTick, showToast]);
-
-  useEffect(() => {
-    if (notice) {
-      showToast(notice, 'success');
-    }
-  }, [notice, noticeToastTick, showToast]);
-
-  useEffect(() => {
-    if (showVoucherList && voucherOptions.length === 0) {
-      fetchVoucherOptions();
-    }
-  }, [fetchVoucherOptions, showVoucherList, voucherOptions.length]);
-
-  useEffect(() => {
-    if (!showVoucherList) return;
-
-    const handleClickOutside = (event) => {
-      if (voucherPickerRef.current && !voucherPickerRef.current.contains(event.target)) {
-        setShowVoucherList(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showVoucherList]);
-
-  // Auto-polling để kiểm tra thanh toán từ Casso mỗi 3 giây
-  useEffect(() => {
-    if (!showOnlinePaymentModal || !onlinePaymentInfo) return;
-
-    let pollInterval;
-
-    const pollPaymentStatus = async () => {
-      try {
-        const statusResponse = await orderApi.getOnlinePaymentStatus(onlinePaymentInfo.orderId);
-        const statusData = statusResponse?.data?.data || statusResponse?.data || statusResponse;
-        
-        if (statusData?.paymentStatus === 'DaThanhToan') {
-          const paidAt = statusData?.paidAt ? new Date(statusData.paidAt) : new Date();
-          setOnlinePaymentSuccess({
-            ...onlinePaymentInfo,
-            paidAt,
-            paymentMethodLabel: 'Ví điện tử VNPAY'
-          });
-          setShowOnlinePaymentModal(false);
-          setOnlinePaymentInfo(null);
-          setNotice('');
-          setVoucherCode('');
-          setCheckoutData({
-            items: [],
-            tongTien: 0,
-            phiShip: 0,
-            tienGiamGia: 0,
-            thanhTien: 0,
-            maVoucher: null
-          });
-          sessionStorage.removeItem('checkoutSelectedVariantIds');
-        }
-      } catch {
-        // Tiếp tục polling nếu có lỗi
-      }
-    };
-
-    pollInterval = setInterval(pollPaymentStatus, 3000);
-
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, [showOnlinePaymentModal, onlinePaymentInfo]);
+    loadCheckoutPreview('');
+  }, [loadCheckoutProfile]);
 
   const canPlaceOrder = useMemo(() => {
     const isValidPhone = /^\d{10}$/.test(formData.recipientPhone.trim());
-    const isValidEmail = isValidGmailAddress(formData.recipientEmail);
 
     return Boolean(
       checkoutData?.items?.length &&
       formData.recipientName.trim() &&
       isValidPhone &&
-      isValidEmail &&
       formData.city.trim() &&
       formData.district.trim() &&
       formData.ward.trim() &&
@@ -371,34 +177,12 @@ const OrderPayment = () => {
     );
   }, [checkoutData?.items?.length, formData, loadingCheckout, placingOrder]);
 
-  const availableVouchers = useMemo(() => {
-    const now = new Date();
-    const subtotal = Number(checkoutData?.tongTien || 0);
-
-    return voucherOptions
-      .filter((voucher) => {
-        const status = String(voucher?.TrangThai || '').toLowerCase();
-        const remaining = Number(voucher?.SoLuong || 0) - Number(voucher?.SoLuongDaDung || 0);
-        const minimumOrder = Number(voucher?.DonTaiThieu || 0);
-        const startAt = voucher?.NgayBatDau ? new Date(voucher.NgayBatDau) : null;
-        const endAt = voucher?.NgayKetThuc ? new Date(voucher.NgayKetThuc) : null;
-
-        const isActive = status === 'kichhoat';
-        const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt);
-
-        return isActive && remaining > 0 && isInDateRange && subtotal >= minimumOrder;
-      })
-      .sort((a, b) => Number(b?.PhanTramGiam || b?.SoTienGiam || 0) - Number(a?.PhanTramGiam || a?.SoTienGiam || 0));
-  }, [checkoutData?.tongTien, voucherOptions]);
-
   const getValidationMessage = () => {
     if (loadingCheckout) return 'Đang tải giỏ hàng, vui lòng đợi trong giây lát.';
     if (!checkoutData?.items?.length) return 'Giỏ hàng trống, chưa thể đặt hàng.';
     if (!formData.recipientName.trim()) return 'Vui lòng nhập họ và tên người nhận.';
     if (!formData.recipientPhone.trim()) return 'Vui lòng nhập số điện thoại người nhận.';
     if (!/^\d{10}$/.test(formData.recipientPhone.trim())) return 'Số điện thoại phải gồm đúng 10 chữ số.';
-    if (!formData.recipientEmail.trim()) return 'Vui lòng nhập email người nhận.';
-    if (!isValidGmailAddress(formData.recipientEmail)) return 'Email phải có đuôi @gmail.com.';
     if (!formData.city.trim()) return 'Vui lòng chọn hoặc nhập Tỉnh / Thành phố.';
     if (!formData.district.trim()) return 'Vui lòng chọn hoặc nhập Quận / Huyện.';
     if (!formData.ward.trim()) return 'Vui lòng chọn hoặc nhập Phường / Xã.';
@@ -410,24 +194,18 @@ const OrderPayment = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSelectVoucher = async (code) => {
-    const normalizedCode = String(code || '').trim().toUpperCase();
-    if (!normalizedCode) return;
-
-    setVoucherCode(normalizedCode);
-    setShowVoucherList(false);
-    await loadCheckoutPreview(normalizedCode, selectedVariantIds);
+  const handleApplyVoucher = async () => {
+    await loadCheckoutPreview(voucherCode);
   };
 
   const handleClearVoucher = async () => {
     setVoucherCode('');
-    setShowVoucherList(false);
-    await loadCheckoutPreview('', selectedVariantIds);
+    await loadCheckoutPreview('');
   };
 
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder) {
-      pushError(getValidationMessage() || 'Vui lòng nhập đủ thông tin nhận hàng trước khi xác nhận thanh toán.');
+      setError(getValidationMessage() || 'Vui lòng nhập đủ thông tin nhận hàng trước khi xác nhận thanh toán.');
       return;
     }
 
@@ -435,15 +213,12 @@ const OrderPayment = () => {
     setError('');
     setNotice('');
 
-    const nextProductId = checkoutData?.items?.[0]?.maSP || continueShoppingProductId || sessionStorage.getItem('lastProductPageId') || null;
-
     try {
       const payload = {
         ...formData,
         shippingAddress: `${formData.streetAddress.trim()}, ${formData.ward.trim()}, ${formData.district.trim()}, ${formData.city.trim()}`,
         paymentMethod,
-        voucherCode: checkoutData?.maVoucher || null,
-        selectedVariantIds
+        voucherCode: checkoutData?.maVoucher || null
       };
 
       const response = await orderApi.placeOrder(payload);
@@ -473,11 +248,9 @@ const OrderPayment = () => {
           thanhTien: 0,
           maVoucher: null
         });
-        setContinueShoppingProductId(nextProductId ? String(nextProductId) : null);
         return;
       }
 
-      setContinueShoppingProductId(nextProductId ? String(nextProductId) : null);
       setOnlinePaymentInfo({
         orderId,
         totalAmount,
@@ -486,9 +259,55 @@ const OrderPayment = () => {
       setShowOnlinePaymentModal(true);
     } catch (err) {
       const apiMessage = err?.response?.data?.message;
-      pushError(apiMessage || err.message || 'Đặt hàng thất bại, vui lòng thử lại.');
+      setError(apiMessage || err.message || 'Đặt hàng thất bại, vui lòng thử lại.');
     } finally {
       setPlacingOrder(false);
+    }
+  };
+
+  const handleConfirmOnlinePayment = async () => {
+    if (!onlinePaymentInfo) return;
+
+    setConfirmingOnlinePayment(true);
+    setError('');
+    setNotice('Đang kiểm tra trạng thái thanh toán...');
+
+    try {
+      await orderApi.confirmOnlinePayment({
+        orderId: onlinePaymentInfo.orderId,
+        transactionCode: onlinePaymentInfo.transactionCode
+      });
+
+      const statusResponse = await orderApi.getOnlinePaymentStatus(onlinePaymentInfo.orderId);
+      const statusData = statusResponse?.data?.data || statusResponse?.data || statusResponse;
+      if (statusData?.paymentStatus !== 'DaThanhToan') {
+        throw new Error('Thanh toán chưa được xác nhận thành công. Vui lòng thử lại sau ít phút.');
+      }
+
+      const paidAt = statusData?.paidAt ? new Date(statusData.paidAt) : new Date();
+
+      setOnlinePaymentSuccess({
+        ...onlinePaymentInfo,
+        paidAt,
+        paymentMethodLabel: 'Ví điện tử VNPAY'
+      });
+      setShowOnlinePaymentModal(false);
+      setOnlinePaymentInfo(null);
+      setNotice('');
+      setVoucherCode('');
+      setCheckoutData({
+        items: [],
+        tongTien: 0,
+        phiShip: 0,
+        tienGiamGia: 0,
+        thanhTien: 0,
+        maVoucher: null
+      });
+    } catch (err) {
+      const apiMessage = err?.response?.data?.message;
+      setError(apiMessage || 'Không thể xác nhận thanh toán online. Vui lòng thử lại.');
+    } finally {
+      setConfirmingOnlinePayment(false);
     }
   };
 
@@ -498,48 +317,12 @@ const OrderPayment = () => {
     setShowOnlinePaymentModal(false);
     setOnlinePaymentInfo(null);
     if (isOrderDeleted) {
-      pushNotice('Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.');
+      setNotice('Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.');
       return;
     }
 
-    pushNotice('Bạn đã đóng màn hình quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
+    setNotice('Bạn đã đóng màn hình quét mã. Đơn vẫn ở trạng thái chờ thanh toán, giỏ hàng chưa bị trừ.');
   };
-
-  const handleRequestCancelOnlinePayment = useCallback(async () => {
-    console.log('[OrderPayment] handleRequestCancelOnlinePayment called - confirmingOnlinePayment:', confirmingOnlinePayment, 'onlinePaymentInfo:', onlinePaymentInfo);
-    
-    if (confirmingOnlinePayment || !onlinePaymentInfo) {
-      console.log('[OrderPayment] Early return - confirmingOnlinePayment or no onlinePaymentInfo');
-      return;
-    }
-
-    try {
-      console.log('[OrderPayment] Starting cancel request for orderId:', onlinePaymentInfo.orderId);
-      setError('');
-      setNotice('');
-      pushNotice('Đang hủy đơn hàng...');
-
-      const response = await orderApi.cancelUnpaidOrder({
-        orderId: onlinePaymentInfo.orderId
-      });
-      console.log('[OrderPayment] Cancel API response:', response);
-
-      const deletedOrderCount = Number(response?.data?.deleted?.donHang || 0);
-      if (deletedOrderCount !== 1) {
-        throw new Error('API hủy không xóa được đơn hàng trong bảng DonHang.');
-      }
-
-      setShowOnlinePaymentModal(false);
-      setOnlinePaymentInfo(null);
-      pushNotice('Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.');
-
-      await loadCheckoutPreview(voucherCode, selectedVariantIds);
-    } catch (error) {
-      const errorMessage = error?.response?.data?.message || error.message || 'Lỗi hủy đơn';
-      console.error('[OrderPayment] cancel request failed', error);
-      pushError(errorMessage);
-    }
-  }, [confirmingOnlinePayment, onlinePaymentInfo, pushNotice, pushError, loadCheckoutPreview, voucherCode, selectedVariantIds]);
 
   const items = checkoutData?.items || [];
 
@@ -552,30 +335,14 @@ const OrderPayment = () => {
         paidAt={onlinePaymentSuccess.paidAt}
         paymentMethodLabel={onlinePaymentSuccess.paymentMethodLabel}
         totalAmount={onlinePaymentSuccess.totalAmount}
-        onViewOrder={() => navigate(`/order/${onlinePaymentSuccess.orderId}`)}
-        onContinueShopping={() => {
-          if (continueShoppingProductId) {
-            navigate(`/product/${continueShoppingProductId}`);
-            return;
-          }
-
-          navigate('/cart');
-        }}
+        onViewOrder={() => navigate('/')}
+        onContinueShopping={() => navigate('/')}
       />
     );
   }
 
   return (
     <div className="checkout-container">
-      <div className="payment-toast-container" aria-live="polite" aria-atomic="true">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={`payment-toast payment-toast-${toast.type}`}>
-            <span className="payment-toast-icon" aria-hidden="true">{toast.type === 'error' ? '!' : '✓'}</span>
-            <span>{toast.message}</span>
-          </div>
-        ))}
-      </div>
-
       <div className="checkout-wrapper">
         <button className="back-button" onClick={() => navigate(-1)}>
           <ChevronLeft size={16} /> Quay lại giỏ hàng
@@ -620,8 +387,6 @@ const OrderPayment = () => {
                     type="email"
                     placeholder="example@gmail.com"
                     value={formData.recipientEmail}
-                    pattern="^[^\s@]+@gmail\.com$"
-                    title="Email phải có đuôi @gmail.com"
                     onChange={(e) => handleInputChange('recipientEmail', e.target.value)}
                   />
                 </div>
@@ -711,6 +476,10 @@ const OrderPayment = () => {
           <div className="summary-column">
             <div className="summary-card">
               <h2 className="summary-title">Tóm tắt đơn hàng</h2>
+
+              {loadingCheckout && <div className="checkout-message">Đang tải giỏ hàng...</div>}
+              {!loadingCheckout && error && <div className="checkout-message error">{error}</div>}
+              {!loadingCheckout && notice && <div className="checkout-message success">{notice}</div>}
               
               <div className="product-list">
                 {items.map((item) => (
@@ -733,52 +502,26 @@ const OrderPayment = () => {
 
               <div className="coupon-section">
                 <p className="coupon-label"><Ticket size={14} /> Mã giảm giá</p>
-                <div className="voucher-picker" ref={voucherPickerRef}>
-                  <button
-                    type="button"
-                    className="voucher-picker-toggle"
-                    onClick={() => setShowVoucherList((prev) => !prev)}
-                    disabled={loadingCheckout || placingOrder}
-                  >
-                    <span>{voucherCode ? `Đã chọn: ${voucherCode}` : 'Nhấn để chọn voucher'}</span>
-                    <ChevronDown size={16} className={showVoucherList ? 'voucher-chevron open' : 'voucher-chevron'} />
-                  </button>
-
-                  {voucherCode.trim() && (
-                    <button
-                      type="button"
-                      className="coupon-clear-button"
-                      onClick={handleClearVoucher}
-                      aria-label="Xóa mã giảm giá"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-
-                  {showVoucherList && (
-                    <div className="voucher-picker-list">
-                      {loadingVouchers && <div className="voucher-picker-empty">Đang tải voucher...</div>}
-                      {!loadingVouchers && availableVouchers.length === 0 && (
-                        <div className="voucher-picker-empty">Không có voucher phù hợp với đơn hàng hiện tại.</div>
-                      )}
-                      {!loadingVouchers && availableVouchers.map((voucher) => (
-                        <button
-                          key={voucher.MaVoucher}
-                          type="button"
-                          className={`voucher-option ${voucherCode === voucher.MaVoucher ? 'active' : ''}`}
-                          onClick={() => handleSelectVoucher(voucher.MaVoucher)}
-                        >
-                          <div className="voucher-option-top">
-                            <span className="voucher-code">{voucher.MaVoucher}</span>
-                            <span className="voucher-benefit">{getVoucherBenefitText(voucher)}</span>
-                          </div>
-                          <div className="voucher-option-bottom">
-                            Đơn tối thiểu {formatCurrency(voucher.DonTaiThieu || 0)}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="coupon-input-wrapper">
+                  <div className="coupon-input-shell">
+                    <input
+                      type="text"
+                      placeholder="Nhập mã ưu đãi..."
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    />
+                    {voucherCode.trim() && (
+                      <button
+                        type="button"
+                        className="coupon-clear-button"
+                        onClick={handleClearVoucher}
+                        aria-label="Xóa mã giảm giá"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <button onClick={handleApplyVoucher} disabled={loadingCheckout || placingOrder}>ÁP DỤNG</button>
                 </div>
               </div>
 
@@ -817,17 +560,14 @@ const OrderPayment = () => {
       </div>
 
       {showOnlinePaymentModal && onlinePaymentInfo && (
-        <>
-          {console.log('[OrderPayment] Rendering OnlinePaymentModal - orderId:', onlinePaymentInfo.orderId, 'handleRequestCancelOnlinePayment:', typeof handleRequestCancelOnlinePayment)}
-          <OnlinePaymentModal
-            orderId={onlinePaymentInfo.orderId}
-            totalAmount={onlinePaymentInfo.totalAmount}
-            confirming={confirmingOnlinePayment}
-            onCancel={handleCloseOnlinePayment}
-            onRequestCancel={handleRequestCancelOnlinePayment}
+        <OnlinePaymentModal
+          orderId={onlinePaymentInfo.orderId}
+          totalAmount={onlinePaymentInfo.totalAmount}
+          confirming={confirmingOnlinePayment}
+          onCancel={handleCloseOnlinePayment}
+          onConfirm={handleConfirmOnlinePayment}
           formatCurrency={formatCurrency}
         />
-        </>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { buildVietQrImageUrl } from '../../../config/paymentQr';
+import { buildVietQrImageUrl } from '../../config/paymentQr';
+import orderApi from '../../services/orderApi';
 import './ordernotification.css';
 
 const paymentBankName = import.meta.env.VITE_PAYMENT_BANK_NAME || 'MoMo';
@@ -34,13 +35,11 @@ const OrderNotification = ({
           </div>
           <h2>{isCod ? 'Đặt hàng thành công!' : 'Thanh toán thành công!'}</h2>
         </div>
-
         <p className="payment-success-subtitle">
           {isCod
             ? 'Bạn sẽ thanh toán khi nhận hàng. Đơn hàng của bạn đã được ghi nhận thành công.'
             : 'Cảm ơn bạn đã tin tưởng. Đơn hàng của bạn đã được ghi nhận thành công.'}
         </p>
-
         <div className="payment-success-meta-grid">
           <div className="meta-box">
             <span>{isCod ? 'Mã giao dịch' : 'Mã giao dịch (VNPAY)'}</span>
@@ -76,48 +75,61 @@ export const OnlinePaymentModal = ({
   orderId,
   totalAmount,
   onCancel,
-  onRequestCancel,
+  onConfirm,
   confirming = false,
   formatCurrency,
 }) => {
-  console.log('[OnlinePaymentModal] RENDER - orderId:', orderId, 'confirming:', confirming, 'onRequestCancel:', typeof onRequestCancel);
-  const cancelHandledRef = useRef(false);
-  
-  const handleCancelClick = async (event) => {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
+  const [isCanceling, setIsCanceling] = React.useState(false);
 
-    if (cancelHandledRef.current) {
+  const handleCancelClick = async () => {
+    if (isCanceling || confirming) return;
+
+    console.log('[LegacyOrderPayment] cancel click', { orderId, confirming, isCanceling });
+
+    if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này? Hành động không thể hoàn tác.')) {
+      console.log('[LegacyOrderPayment] cancel aborted by confirm dialog', { orderId });
       return;
     }
 
-    cancelHandledRef.current = true;
-    console.log('[OrderNotification] Button clicked - confirming:', confirming, 'onRequestCancel type:', typeof onRequestCancel);
-    
-    if (confirming) {
-      console.log('[OrderNotification] Already confirming, returning early');
-      cancelHandledRef.current = false;
-      return;
-    }
+    try {
+      setIsCanceling(true);
+      console.log('[LegacyOrderPayment] calling cancelUnpaidOrder', { orderId });
+      const response = await orderApi.cancelUnpaidOrder({ orderId });
 
-    if (typeof onRequestCancel === 'function') {
-      console.log('[OrderNotification] Calling onRequestCancel callback');
-      await onRequestCancel();
-      cancelHandledRef.current = false;
-      return;
-    }
+      console.log('[LegacyOrderPayment] cancel API response', response);
 
-    console.log('[OrderNotification] Using fallback onCancel');
-    if (onCancel) {
-      onCancel(false);
+      const deletedOrderCount = Number(response?.data?.deleted?.donHang || 0);
+      if (deletedOrderCount !== 1) {
+        throw new Error('API hủy không xóa được đơn hàng trong bảng DonHang.');
+      }
+
+      try {
+        await orderApi.getOnlinePaymentStatus(orderId);
+        throw new Error('Hệ thống chưa xóa đơn hàng khỏi cơ sở dữ liệu. Vui lòng kiểm tra backend đang chạy bản mới nhất.');
+      } catch (statusError) {
+        const statusCode = statusError?.response?.status;
+        if (statusCode === 404) {
+          // OK: đơn đã xóa nên endpoint status trả 404.
+        } else {
+          console.warn('[LegacyOrderPayment] status verification failed', statusCode, statusError?.message);
+          throw statusError;
+        }
+      }
+
+      alert('Đã hủy đơn hàng thành công');
+      if (onCancel) {
+        onCancel(true);
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Lỗi hủy đơn';
+      console.error('Lỗi hủy đơn:', error);
+      alert(errorMessage);
+    } finally {
+      setIsCanceling(false);
     }
-    cancelHandledRef.current = false;
   };
 
   const transferCode = `HM-${orderId}`;
-
   const { hasValidBankConfig, qrImageUrl } = buildVietQrImageUrl({
     bankBin: paymentBankBin,
     accountNumber: paymentAccountNumber,
@@ -125,15 +137,11 @@ export const OnlinePaymentModal = ({
     amount: totalAmount,
     transferCode,
   });
-
   return (
-    <div className="payment-modal-overlay">
+    <div className="payment-modal-overlay" onClick={handleCancelClick}>
       <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
         <h3>Quét mã để thanh toán</h3>
-
-        <p className="payment-modal-subtitle">
-          Vui lòng dùng mã QR bên dưới để thanh toán đơn hàng.
-        </p>
+        <p className="payment-modal-subtitle">Vui lòng dùng mã QR bên dưới để thanh toán đơn hàng.</p>
 
         <div className="payment-qr-section">
           <div className="payment-qr-box" aria-label="Mã QR thanh toán">
@@ -142,7 +150,6 @@ export const OnlinePaymentModal = ({
               <span className="qr-corner qr-tr" />
               <span className="qr-corner qr-bl" />
               <span className="qr-corner qr-br" />
-
               {hasValidBankConfig ? (
                 <img
                   className="payment-qr-image"
@@ -152,35 +159,29 @@ export const OnlinePaymentModal = ({
                 />
               ) : (
                 <p className="payment-qr-fallback">
-                  Thiếu cấu hình ngân hàng để tạo QR.
+                  Thiếu cấu hình ngân hàng để tạo QR. Vui lòng kiểm tra VITE_PAYMENT_BANK_BIN và VITE_PAYMENT_ACCOUNT_NUMBER.
                 </p>
               )}
             </div>
-
             <p>Mã QR thanh toán</p>
           </div>
-
           <div className="payment-detail-list">
             <div className="payment-detail-row">
               <span>Ngân hàng</span>
               <strong>{paymentBankName}</strong>
             </div>
-
             <div className="payment-detail-row">
               <span>TK</span>
               <strong>{paymentAccountNumber}</strong>
             </div>
-
             <div className="payment-detail-row">
               <span>Tên TK</span>
               <strong>{paymentAccountName}</strong>
             </div>
-
             <div className="payment-detail-row">
               <span>Mã đơn</span>
               <strong>#HM-{orderId}</strong>
             </div>
-
             <div className="payment-detail-row total">
               <span>Số tiền</span>
               <strong>{formatCurrency(totalAmount)}</strong>
@@ -189,30 +190,12 @@ export const OnlinePaymentModal = ({
         </div>
 
         <div className="payment-modal-actions">
-          {console.log('[OnlinePaymentModal] About to render button, confirming:', confirming)}
-          <button
-            className="btn-cancel"
-            type="button"
-            onPointerDown={handleCancelClick}
-            onClick={handleCancelClick}
-            disabled={confirming}
-          >
-            Hủy đơn hàng
+          <button className="btn-cancel" onClick={handleCancelClick} disabled={confirming || isCanceling}>
+            {isCanceling ? 'Đang hủy...' : 'Hủy'}
           </button>
-
-          <p
-            className="payment-waiting-text"
-            style={{
-              marginTop: '12px',
-              textAlign: 'center',
-              color: '#666',
-              fontSize: '14px'
-            }}
-          >
-            {confirming
-              ? 'Đang kiểm tra thanh toán...'
-              : 'Đang chờ xác nhận thanh toán...'}
-          </p>
+          <button className="btn-confirm" onClick={onConfirm} disabled={confirming}>
+            {confirming ? 'ĐANG XÁC NHẬN...' : 'Tôi đã thanh toán'}
+          </button>
         </div>
       </div>
     </div>

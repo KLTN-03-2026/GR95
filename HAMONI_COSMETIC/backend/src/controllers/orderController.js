@@ -167,9 +167,21 @@ console.log(`Check: ${totalItems} items / ${limitNum} per page = ${totalPages} p
             SELECT dh.MaDH as id, dh.NgayDat as ngayTao,
                    dh.TrangThai as trangThai,
                    dh.ThanhTien as tongTien,
-                   nd.HoTen as khachHang
+                   COALESCE(dh.DaHoanTien, 0) AS daHoanTien,
+                   nd.HoTen as khachHang,
+                   tt.PhuongThuc as phuongThucThanhToan,
+                   tt.TrangThai as trangThaiThanhToan
             FROM DonHang dh
             LEFT JOIN NguoiDung nd ON dh.MaND = nd.MaND
+            LEFT JOIN (
+                SELECT t.MaDH, t.PhuongThuc, t.TrangThai
+                FROM ThanhToan t
+                INNER JOIN (
+                    SELECT MaDH, MAX(MaThanhToan) AS latestPaymentId
+                    FROM ThanhToan
+                    GROUP BY MaDH
+                ) latest ON latest.latestPaymentId = t.MaThanhToan
+            ) tt ON tt.MaDH = dh.MaDH
             ${whereClause}
             ORDER BY dh.NgayDat DESC
             LIMIT ? OFFSET ?
@@ -229,6 +241,14 @@ exports.getOrderDetail = async (req, res) => {
             ORDER BY NgayTao ASC
         `, [id]);
 
+        const [[payment]] = await db.execute(`
+            SELECT PhuongThuc, TrangThai, NgayThanhToan
+            FROM ThanhToan
+            WHERE MaDH = ?
+            ORDER BY MaThanhToan DESC
+            LIMIT 1
+        `, [id]);
+
         const isPrinted = logs.some(l => l.TrangThaiMoi === 'DaInHoaDon');
 
         // Mapping lại dữ liệu trả về cho chuẩn với React
@@ -236,17 +256,22 @@ exports.getOrderDetail = async (req, res) => {
             id: order.MaDH,
             ngayTao: order.NgayDat,
             trangThai: order.TrangThai,
+            daHoanTien: !!order.DaHoanTien,
             khachHang: {
                 hoTen: order.HoTen,
                 soDienThoai: order.SoDienThoai,
                 email: order.Email
             },
             diaChiGiaoHang: order.ThongTinGiaoHang,
+            ghiChu: order.GhiChu,
             tamTinh: Number(order.TongTien),
             giamGia: Number(order.TienGiamGia || 0),
             phiShip: Number(order.PhiShip || 0),
             tongTien: Number(order.ThanhTien),
             daInHoaDon: isPrinted,
+            phuongThucThanhToan: payment?.PhuongThuc || null,
+            trangThaiThanhToan: payment?.TrangThai || null,
+            ngayThanhToan: payment?.NgayThanhToan || null,
             chiTiet: items, // Trong items này đã có TenSP (viết hoa T và SP)
             lichSu: logs.map(l => ({
                 moTa: `${l.TrangThaiCu || "Khởi tạo"} → ${l.TrangThaiMoi}`,
@@ -267,12 +292,19 @@ exports.updateOrderStatus = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const { newStatus } = req.body;
+        const { newStatus, daHoanTien } = req.body;
+
+        // Ensure column exists (safe to run multiple times; ignore error if already exists)
+        try {
+            await conn.query(`ALTER TABLE DonHang ADD COLUMN DaHoanTien TINYINT(1) DEFAULT 0`);
+        } catch (err) {
+            // ignore - most likely column already exists
+        }
 
         await conn.beginTransaction();
 
         const [[old]] = await conn.execute(
-            `SELECT TrangThai, MaND FROM DonHang WHERE MaDH = ?`,
+            `SELECT TrangThai, COALESCE(DaHoanTien, 0) AS DaHoanTien FROM DonHang WHERE MaDH = ?`,
             [id]
         );
 
@@ -281,7 +313,8 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(404).json({ message: "Không tìm thấy" });
         }
 
-        if (old.TrangThai === newStatus) {
+        // If status didn't change and no refund flag provided, nothing to do
+        if (old.TrangThai === newStatus && typeof daHoanTien === 'undefined') {
             await conn.rollback();
             return res.json({ message: "OK" });
         }
@@ -309,15 +342,24 @@ exports.updateOrderStatus = async (req, res) => {
             }
         }
 
-        await conn.execute(
-            `UPDATE DonHang SET TrangThai = ? WHERE MaDH = ?`,
-            [newStatus, id]
-        );
+        if (typeof daHoanTien !== 'undefined') {
+            await conn.execute(
+                `UPDATE DonHang SET TrangThai = ?, DaHoanTien = ? WHERE MaDH = ?`,
+                [newStatus, daHoanTien ? 1 : 0, id]
+            );
+        } else {
+            await conn.execute(
+                `UPDATE DonHang SET TrangThai = ? WHERE MaDH = ?`,
+                [newStatus, id]
+            );
+        }
 
-        await conn.execute(`
-            INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
-            VALUES (?, ?, ?, NOW())
-        `, [id, old.TrangThai, newStatus]);
+        if (old.TrangThai !== newStatus) {
+            await conn.execute(`
+                INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, NgayTao)
+                VALUES (?, ?, ?, NOW())
+            `, [id, old.TrangThai, newStatus]);
+        }
 
         const io = req.app.get('io');
         await createNotification({
@@ -475,5 +517,36 @@ exports.getOrderLogs = async (req, res) => {
     } catch (err) {
         console.error("🔥 ERROR getOrderLogs:", err);
         res.status(500).json({ message: "Lỗi server" });
+    }
+};
+
+// ================= GET REFUND ALERTS =================
+exports.getRefundAlerts = async (req, res) => {
+    try {
+        const [rows] = await db.execute(`
+            SELECT dh.MaDH as id
+            FROM DonHang dh
+            LEFT JOIN (
+                SELECT t.MaDH, t.PhuongThuc, t.TrangThai
+                FROM ThanhToan t
+                INNER JOIN (
+                    SELECT MaDH, MAX(MaThanhToan) AS latestPaymentId
+                    FROM ThanhToan
+                    GROUP BY MaDH
+                ) latest ON latest.latestPaymentId = t.MaThanhToan
+            ) tt ON tt.MaDH = dh.MaDH
+            WHERE dh.TrangThai = 'DaHuy'
+              AND COALESCE(dh.DaHoanTien, 0) = 0
+              AND tt.PhuongThuc IN ('VNPAY','THANHTOANTHEOSO','CHUYENKHOAN','BANK_TRANSFER')
+              AND tt.TrangThai = 'DATHANHTOAN'
+            ORDER BY dh.NgayDat DESC
+            LIMIT 100
+        `);
+
+        const ids = rows.map(r => r.id);
+        res.json({ count: ids.length, ids });
+    } catch (err) {
+        console.error('ERROR getRefundAlerts:', err);
+        res.status(500).json({ message: 'Lỗi server' });
     }
 };

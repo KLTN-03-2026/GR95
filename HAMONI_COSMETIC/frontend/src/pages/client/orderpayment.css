@@ -11,7 +11,7 @@
   background-color: var(--bg-color);
   min-height: 100vh;
   padding: 40px 20px;
-  font-family: inherit;
+  font-family: 'Inter', sans-serif;
 }
 
 .checkout-wrapper {
@@ -212,71 +212,23 @@
   margin-bottom: 30px;
 }
 
-.payment-toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 460px;
+.checkout-message {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3f5f6;
+  color: #1a1a1a;
+  font-size: 13px;
 }
 
-.payment-toast {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
-  animation: paymentToastIn 0.22s ease-out;
-  line-height: 1.45;
-}
-
-.payment-toast-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 800;
-  flex: 0 0 auto;
-}
-
-.payment-toast-success {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-
-.payment-toast-success .payment-toast-icon {
-  background: #1b5e20;
-  color: #fff;
-}
-
-.payment-toast-error {
+.checkout-message.error {
   background: #ffebee;
   color: #b71c1c;
 }
 
-.payment-toast-error .payment-toast-icon {
-  background: #b71c1c;
-  color: #fff;
-}
-
-@keyframes paymentToastIn {
-  from {
-    transform: translateX(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.checkout-message.success {
+  background: #e8f5e9;
+  color: #1b5e20;
 }
 
 .product-item {
@@ -284,31 +236,6 @@
   gap: 15px;
   align-items: center;
   margin-bottom: 20px;
-}
-
-.product-list {
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 6px;
-  margin-right: -6px;
-}
-
-.product-list::-webkit-scrollbar {
-  width: 8px;
-}
-
-.product-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 999px;
-}
-
-.product-list::-webkit-scrollbar-thumb {
-  background: #c9c9c9;
-  border-radius: 999px;
-}
-
-.product-list::-webkit-scrollbar-thumb:hover {
-  background: #b5b5b5;
 }
 
 .product-img-wrapper {
@@ -358,109 +285,27 @@
   margin-bottom: 10px;
 }
 
-.voucher-picker {
-  position: relative;
-}
-
-.voucher-picker-toggle {
-  width: 100%;
-  border: 1px solid #ececec;
-  background: #fff;
-  border-radius: 10px;
-  padding: 10px 38px 10px 12px;
-  text-align: left;
-  font-size: 13px;
-  color: #2b2b2b;
+.coupon-input-wrapper {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-}
-
-.voucher-picker-toggle:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.voucher-chevron {
-  transition: transform 0.2s ease;
-}
-
-.voucher-chevron.open {
-  transform: rotate(180deg);
-}
-
-.voucher-picker-list {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 8px);
-  background: #fff;
-  border: 1px solid #ececec;
-  border-radius: 12px;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
-  z-index: 8;
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.voucher-picker-empty {
-  padding: 12px;
-  font-size: 12px;
-  color: #777;
-  text-align: center;
-}
-
-.voucher-option {
-  width: 100%;
-  border: none;
-  background: #fff;
-  text-align: left;
-  padding: 10px 12px;
-  border-bottom: 1px solid #f3f3f3;
-  cursor: pointer;
-}
-
-.voucher-option:last-child {
-  border-bottom: none;
-}
-
-.voucher-option:hover {
-  background: #fafafa;
-}
-
-.voucher-option.active {
-  background: #fff3f3;
-}
-
-.voucher-option-top {
-  display: flex;
-  justify-content: space-between;
   gap: 10px;
-  align-items: center;
 }
 
-.voucher-code {
-  font-size: 12px;
-  font-weight: 800;
-  color: #d32f2f;
+.coupon-input-shell {
+  position: relative;
+  flex: 1;
 }
 
-.voucher-benefit {
-  font-size: 11px;
-  color: #333;
-  font-weight: 600;
-}
-
-.voucher-option-bottom {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #7a7a7a;
+.coupon-input-wrapper input {
+  width: 100%;
+  padding: 8px;
+  padding-right: 36px;
+  border-radius: 8px;
+  border: 1px solid #eee;
 }
 
 .coupon-clear-button {
   position: absolute;
-  right: 34px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   width: 22px;
@@ -478,6 +323,16 @@
 
 .coupon-clear-button:hover {
   background: #d9d9d9;
+}
+
+.coupon-input-wrapper button {
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 /* Prices */
@@ -529,16 +384,4 @@
   opacity: 0.65;
   cursor: not-allowed;
   transform: none;
-}
-
-@media (max-width: 768px) {
-  .payment-toast-container {
-    right: 12px;
-    left: 12px;
-    max-width: none;
-  }
-
-  .product-list {
-    max-height: 260px;
-  }
 }
