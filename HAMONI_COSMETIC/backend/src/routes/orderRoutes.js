@@ -11,6 +11,9 @@ router.get('/', orderController.getOrders);
 // 🔥 detail
 router.get('/:id', orderController.getOrderDetail);
 
+// Alerts: transfer-paid canceled orders not refunded
+router.get('/alerts', orderController.getRefundAlerts);
+
 router.put('/:id/status', orderController.updateOrderStatus);
 router.put('/:id/cancel', orderController.cancelOrder);
 router.put('/:id/print', orderController.markOrderPrinted);

@@ -21,3 +21,17 @@ export const createReview = async (formData) => {
     throw error;
   }
 };
+
+// ĐÃ THÊM: Hàm gọi API kiểm tra lịch sử đánh giá (để không bị khóa form oan)
+export const checkReviewHistory = async (MaDH, MaSP, MaND) => {
+  try {
+    // Lưu ý: Đường dẫn '/product-reviews/check-history' có thể cần đổi lại nếu route BE của bạn tên khác
+    const response = await axiosClient.get('/product-reviews/check-history', {
+      params: { MaDH, MaSP, MaND }
+    });
+    return response;
+  } catch (error) {
+    console.error("Lỗi khi check lịch sử đánh giá:", error);
+    throw error;
+  }
+};

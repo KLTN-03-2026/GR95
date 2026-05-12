@@ -512,7 +512,7 @@ const ClientLayout = () => {
                         />
                       </Link>
                       <Link
-                        to="/orders"
+                        to="/orderhistory"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="group relative flex items-center gap-3 p-3 rounded-2xl overflow-hidden no-underline bg-white"
                       >

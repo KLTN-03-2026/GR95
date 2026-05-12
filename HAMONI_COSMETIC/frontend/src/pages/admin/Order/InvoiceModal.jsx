@@ -13,6 +13,7 @@ const InvoiceModal = forwardRef(({ order, onClose, onPrint }, ref) => {
     : new Date().toLocaleDateString('vi-VN');
 
   const items = Array.isArray(order.chiTiet) ? order.chiTiet : [];
+  const invoiceNote = String(order.ghiChu || order.GhiChu || order.note || '').trim();
 
   return (
     <div className="invoice-modal-overlay">
@@ -32,6 +33,7 @@ const InvoiceModal = forwardRef(({ order, onClose, onPrint }, ref) => {
              <div className="meta-col">
                 <p><strong>Khách hàng:</strong> {order.khachHang?.hoTen}</p>
                 <p><strong>Địa chỉ:</strong> {order.diaChiGiaoHang}</p>
+               {invoiceNote && <p className="invoice-note"><strong>Ghi chú:</strong> {invoiceNote}</p>}
              </div>
              <div className="meta-col right">
                 <p><strong>Mã đơn:</strong> #{order.id}</p>

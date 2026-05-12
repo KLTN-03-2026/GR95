@@ -85,6 +85,14 @@
     margin: 4px 0;
 }
 
+.invoice-note {
+    margin-top: 6px;
+    color: #555;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 /* ===== TABLE ===== */
 .invoice-table {
     width: 100%;

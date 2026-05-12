@@ -97,3 +97,44 @@ textarea {
     0 0 0 0.5px rgba(0,0,0,0.05), 
     0 4px 30px rgba(0,0,0,0.08);
 }
+
+/* ==================================================== */
+/* 7. REACT TOASTIFY OVERRIDES                          */
+/* ==================================================== */
+.Toastify__toast-container {
+  width: 100%;
+  max-width: 600px;
+  padding: 0;
+}
+
+.Toastify__toast {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  min-height: auto !important;
+}
+
+.Toastify__toast--info {
+  background-color: #e3f2fd !important;
+  color: #0d47a1 !important;
+  border-left: 4px solid #0d47a1 !important;
+  padding: 0 !important;
+}
+
+.Toastify__toast--success {
+  background-color: #e8f5e9 !important;
+  color: #2e7d32 !important;
+}
+
+.Toastify__toast--error {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+}
+
+.Toastify__close-button {
+  color: inherit !important;
+  opacity: 0.7 !important;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1 !important;
+}
