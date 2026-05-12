@@ -8,7 +8,7 @@ const getEmployees = async (req, res) => {
         const { search, status } = req.query;
         
         // Bỏ PhongBan khỏi lệnh SELECT
-        let query = "SELECT MaND, HoTen, Email, SoDienThoai, TrangThai, MaQuyen FROM NguoiDung WHERE MaQuyen != 'CUST'";
+        let query = "SELECT MaND, HoTen, Email, SoDienThoai, TrangThai, MaQuyen, AvatarUrl FROM NguoiDung WHERE MaQuyen != 'CUST'";
         let queryParams = [];
 
         if (search) {

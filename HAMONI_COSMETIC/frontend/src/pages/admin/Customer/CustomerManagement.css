@@ -123,6 +123,14 @@
     color: #1a1a1a;
 }
 
+.customer-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.customer-table tbody tr:hover {
+    background-color: #faf8f2;
+}
+
 /* AVATAR */
 .avatar {
     width: 40px;
@@ -155,27 +163,6 @@
 .status-banned { 
     color: #e74c3c !important; /* Chỉ giữ lại màu chữ đỏ */
     background: transparent !important; /* Ép bỏ màu nền bị rò rỉ */
-}
-
-/* HÀNH ĐỘNG */
-.icon-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #888;
-    margin-right: 15px;
-    transition: color 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-delete:hover {
-    color: #E74C3C;
-}
-
-.btn-view:hover {
-    color: #7D8471;
 }
 
 /* PHÂN TRANG */

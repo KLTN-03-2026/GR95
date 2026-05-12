@@ -8,6 +8,9 @@ const OrderLogsPage = () => {
     const navigate = useNavigate();
     const [orderData, setOrderData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const customerAvatar = orderData?.khachHang?.avatarUrl;
+    const customerName = orderData?.khachHang?.hoTen || 'Khách hàng';
+    const avatarFallbackUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=635F40`;
 
     const fetchData = useCallback(async () => {
         if (!id) return;
@@ -59,9 +62,15 @@ const OrderLogsPage = () => {
                     <div className="order-id">#ORD-{orderData.id}</div>
                     
                     <div className="user-profile">
-                        <div className="avatar-circle"></div>
+                        <div className="avatar-circle">
+                            <img
+                                src={customerAvatar || avatarFallbackUrl}
+                                alt={customerName}
+                                className="avatar-image"
+                            />
+                        </div>
                         <div className="user-meta">
-                            <div className="user-name">{orderData.khachHang?.hoTen || 'Khách hàng'}</div>
+                            <div className="user-name">{customerName}</div>
                             <div className="user-email">{orderData.khachHang?.email}</div>
                         </div>
                         <span className="status-badge">● {orderData.trangThai}</span>

@@ -5,6 +5,7 @@ const detailController = require('../controllers/customerDetailController');
 router.get('/', customerController.getCustomers); 
 router.get('/export', customerController.exportExcel);
 router.get('/detail-analytics/:id', detailController.getDetailAnalytics);
+router.put('/:id/status', customerController.updateCustomerStatus);
 router.delete('/:id', customerController.deleteCustomer);
 router.get('/:id', customerController.getCustomerById); 
 module.exports = router;

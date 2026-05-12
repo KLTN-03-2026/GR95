@@ -173,6 +173,52 @@
     color: #222;
 }
 
+/* Header row with compact search on the right */
+.section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* QUAN TRỌNG */
+    gap: 12px;
+}
+
+.inventory-search-compact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inventory-search-compact input {
+    width: 220px;
+    padding: 8px 34px 8px 12px;
+    font-size: 13px;
+    border-radius: 10px;
+    border: 1px solid #e2ddcf;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.inventory-search-compact .log-search-clear {
+    position: relative;
+    right: 0;
+    top: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee7d8;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .inventory-search-compact input {
+        width: 160px;
+    }
+}
+
 .inventory-table {
     width: 100%;
     border-collapse: collapse;
@@ -367,6 +413,93 @@
     margin-bottom: 10px;
 }
 
+/* Log compact search shares inventory compact styles */
+.log-search-compact input {
+    width: 260px;
+    padding: 8px 34px 8px 12px;
+    font-size: 13px;
+    border-radius: 10px;
+    border: 1px solid #e2ddcf;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.log-search-compact .log-search-clear {
+    position: relative;
+    right: 0;
+    top: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee7d8;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Ensure log table rows align horizontally and center vertically */
+.log-table td {
+    vertical-align: middle;
+    padding: 12px 8px;
+}
+
+.log-product-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.log-product-name { font-weight: 700; }
+.log-qty-chip { font-size: 12px; padding: 6px 8px; border-radius: 8px; }
+
+@media (max-width: 900px) {
+    .log-search-compact input { width: 160px; }
+}
+
+/* Inventory search box (reuses log search visual style) */
+.inventory-search-box {
+    position: relative;
+    margin: 8px 0 10px;
+}
+
+.inventory-search-box input {
+    width: 100%;
+    border: 1px solid #e2ddcf;
+    border-radius: 12px;
+    padding: 12px 38px 12px 14px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+}
+
+.inventory-search-box input:focus {
+    border-color: #b8b09a;
+    box-shadow: 0 0 0 3px rgba(184, 176, 154, 0.18);
+}
+
+.inventory-search-box .log-search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: #eee7d8;
+    color: #6c6453;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.inventory-search-box .log-search-clear:hover {
+    background: #e2dac7;
+}
+
 .out-of-stock-alerts {
     margin-bottom: 12px;
     border-radius: 14px;
@@ -398,87 +531,100 @@
     font-weight: 600;
 }
 
-.log-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    position: relative;
-    padding-left: 5px;
+.log-table-wrapper {
+    overflow-x: auto;
 }
 
-/* Hiệu ứng Timeline kết nối dọc */
-.log-list::before {
-    content: '';
-    position: absolute;
-    left: 17px;
-    top: 20px;
-    bottom: 20px;
-    width: 1px;
-    background-color: #ddd;
-    z-index: 1;
-}
-
-.log-item {
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
     background: rgba(255, 255, 255, 0.96);
-    padding: 16px 18px;
-    border-radius: 18px;
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    position: relative;
-    z-index: 2;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     border: 1px solid #f2ebdb;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    border-radius: 16px;
+    overflow: hidden;
 }
 
-.log-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+.log-table th:first-child,
+.log-table td:first-child {
+    width: 45%;
 }
 
-.log-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 14px;
-    flex-shrink: 0;
+.log-table th:nth-child(2),
+.log-table td:nth-child(2) {
+    width: 18%;
 }
 
-.log-icon.plus {
-    background: #e8f5e9;
-    color: var(--status-green);
+.log-table th:nth-child(3),
+.log-table td:nth-child(3) {
+    width: 37%;
 }
 
-.log-icon.minus {
-    background: #fdecea;
-    color: var(--status-red);
+.log-table thead th {
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: #7a745f;
+    background: #faf8ef;
+    border-bottom: 1px solid #efe7d7;
 }
 
-.log-content-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.log-main-text {
+.log-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f4eedf;
+    vertical-align: top;
     font-size: 13px;
     color: #333;
 }
 
-.log-sub-text {
-    font-size: 11px;
-    color: #888;
+.log-table tbody tr:hover {
+    background: #fffdf7;
 }
 
-.log-time {
-    font-size: 10px;
-    color: #aaa;
-    margin-top: 4px;
+.log-qty-chip,
+.log-status-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.log-qty-chip.plus {
+    background: #e8f5e9;
+    color: var(--status-green);
+}
+
+.log-qty-chip.minus {
+    background: #fdecea;
+    color: var(--status-red);
+}
+
+.log-product-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.log-product-name {
+    font-weight: 600;
+    color: #333;
+    line-height: 1.4;
+}
+
+.log-status-chip.in {
+    background: #eef6ff;
+    color: #2b6cb0;
+}
+
+.log-status-chip.out {
+    background: #fff3e0;
+    color: #b76e00;
+}
+
+.log-note-cell {
+    color: #666;
+    line-height: 1.5;
 }
 
 .log-empty-state {
@@ -657,4 +803,36 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+.section-header-row h3 {
+    margin: 0;
+}
+/* FIX LỆCH HEADER + SEARCH */
+.section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+/* XÓA margin mặc định gây lệch */
+.section-header-row h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    height: 34px;
+}
+
+/* Căn giữa search */
+.inventory-search-compact,
+.log-search-compact {
+    display: flex;
+    align-items: center;
+}
+
+/* Đồng bộ chiều cao input */
+.inventory-search-compact input,
+.log-search-compact input {
+    height: 34px;
+    line-height: 34px;
 }

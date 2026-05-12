@@ -81,12 +81,12 @@
 .recipient-field{ background:#fafafa; border:1px solid var(--border); border-radius:12px; padding:12px 14px }
 .field-label{ font-size:12px; color:#6b7280; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px }
 .field-value{ font-size:15px; font-weight:700; color:#111827; line-height:1.35 }
-.recipient-lines{ display:flex; flex-direction:column; gap:8px; padding-top:2px }
+.recipient-lines{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; padding-top:0; margin-top:12px }
 .recipient-address{ color:#374151; line-height:1.4; margin-top:8px }
-.addr-label{ display:inline-block; width:78px; color:#6b7280; font-weight:700 }
+.addr-label{ display:inline-block; min-width:60px; color:#6b7280; font-weight:700 }
 .addr-val{ color:#111827; font-weight:500 }
-.recipient-lines .address-line{ padding:4px 0 }
-.recipient-lines .address-line:first-child{ padding-top:0 }
+.recipient-lines .address-line{ padding:8px 12px; background:#fafafa; border:1px solid var(--border); border-radius:8px; display:flex; gap:6px; align-items:flex-start }
+.recipient-lines .address-line:first-child{ padding:8px 12px }
 
 .product-list{ display:flex; flex-direction:column; gap:0.75rem }
 .product-card{ display:flex; gap:0.75rem; align-items:center }
@@ -140,6 +140,7 @@
   .order-grid{ grid-template-columns: 1fr; }
   .order-actions{ margin-top: 8px }
   .recipient-grid{ grid-template-columns: 1fr }
+  .recipient-lines{ grid-template-columns: 1fr }
 }
 
 /* Progress bar styles to match mock */
@@ -233,22 +234,51 @@
   transform: scale(0.95);
 }
 
+.btn-review-product.disabled {
+  background: #c0c0c0;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.btn-review-product.disabled:hover {
+  background: #c0c0c0;
+  transform: none;
+}
+
+.btn-review-product[disabled] {
+  background: #c0c0c0;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.btn-review-product[disabled]:hover {
+  background: #c0c0c0;
+  transform: none;
+}
+
 .btn-cancel-order{
   width:100%;
   margin-top:16px;
-  padding:10px 16px;
-  background:#f44336;
+  padding:12px 16px;
+  background:#10b981;
   color:#fff;
   border:none;
-  border-radius:4px;
+  border-radius:8px;
   font-size:14px;
   font-weight:600;
   cursor:pointer;
-  transition:background-color 0.3s;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-cancel-order:hover{
-  background:#d32f2f;
+  background:#059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
 }
 
 .order-details-toast-container{
@@ -272,85 +302,123 @@
 /* Refund Toast Notification */
 .refund-toast-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  min-width: 280px;
-  max-width: 450px;
-  padding: 16px;
-  text-align: center;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 300px;
+  max-width: 480px;
+  padding: 20px;
+  text-align: left;
   box-sizing: border-box;
 }
 
 .refund-toast-icon {
-  font-size: 28px;
-  color: #0d47a1;
+  display: none;
 }
 
 .refund-toast-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  flex: 1;
 }
 
 .refund-toast-title {
   font-weight: 700;
   font-size: 16px;
-  color: #0d47a1;
+  color: #047857;
+  line-height: 1.4;
 }
 
 .refund-toast-message {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #1565c0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #059669;
   word-break: break-word;
   overflow-wrap: break-word;
   white-space: normal;
   max-width: 100%;
+  font-weight: 500;
 }
 
 .refund-toast {
-  background-color: #e3f2fd !important;
-  border-left: 4px solid #0d47a1 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  max-width: 470px !important;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.15) !important;
+  max-width: 500px !important;
   padding: 0 !important;
-  border-radius: 8px !important;
-  margin: 20px auto !important;
+  border-radius: 12px !important;
+  margin: 16px auto !important;
+  animation: slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Override React Toastify default info toast styling */
 .Toastify__toast--info {
-  background-color: #e3f2fd !important;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
   padding: 0 !important;
-  border-left: 4px solid #0d47a1 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  border-radius: 8px !important;
-  max-width: 470px !important;
-  margin: 20px auto !important;
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.15) !important;
+  border-radius: 12px !important;
+  max-width: 500px !important;
+  margin: 16px auto !important;
+  animation: slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+
+.Toastify__toast-close-button {
+  color: #059669 !important;
+  opacity: 0.7 !important;
+  cursor: pointer !important;
+  z-index: 10000 !important;
+}
+
+.Toastify__toast-close-button:hover {
+  opacity: 1 !important;
 }
 
 .Toastify__toast {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
+.Toastify__toast-icon {
+  display: none !important;
+}
+
 @media (max-width: 600px) {
   .refund-toast-container {
     min-width: 280px;
-    max-width: 320px;
-    padding: 12px;
-  }
-
-  .refund-toast-icon {
-    font-size: 24px;
+    max-width: 340px;
+    padding: 16px;
+    gap: 12px;
   }
 
   .refund-toast-title {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .refund-toast-message {
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .refund-toast {
+    max-width: 360px !important;
+    margin: 12px auto !important;
+  }
+
+  .Toastify__toast--info {
+    max-width: 360px !important;
+    margin: 12px auto !important;
   }
 }
 
@@ -366,16 +434,17 @@
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  backdrop-filter: blur(4px);
 }
 
 .cancel-confirm-modal {
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   max-width: 400px;
   width: 90%;
   overflow: hidden;
-  animation: slideUp 0.3s ease;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideUp {
@@ -390,19 +459,35 @@
 }
 
 .cancel-confirm-header {
-  padding: 20px;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 24px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-bottom: none;
+  position: relative;
+}
+
+.cancel-confirm-header::before {
+  display: none !important;
 }
 
 .cancel-confirm-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: #047857;
+}
+
+.cancel-confirm-header h3::before {
+  display: none !important;
+}
+
+/* Hide any icon elements in modal header */
+.cancel-confirm-header [class*="icon"],
+.cancel-confirm-modal [class*="Icon"] {
+  display: none !important;
 }
 
 .cancel-confirm-body {
-  padding: 20px;
+  padding: 24px;
   text-align: center;
 }
 
@@ -410,24 +495,26 @@
   margin: 0 0 12px 0;
   font-size: 15px;
   color: #374151;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .cancel-confirm-warning {
-  color: #d94639;
+  color: #059669;
   font-weight: 600;
+  font-size: 14px;
 }
 
 .cancel-confirm-footer {
-  padding: 16px 20px;
+  padding: 16px 24px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: flex-end;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid #f0fdf4;
+  background: #fafafa;
 }
 
 .btn-cancel-no {
-  padding: 10px 20px;
+  padding: 10px 18px;
   border: 1px solid #d1d5db;
   background: #fff;
   color: #374151;
@@ -435,27 +522,31 @@
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-cancel-no:hover {
   background: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 .btn-cancel-yes {
-  padding: 10px 20px;
+  padding: 10px 18px;
   border: none;
-  background: #d94639;
+  background: #10b981;
   color: #fff;
   border-radius: 8px;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-cancel-yes:hover {
-  background: #b91c1c;
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
 }
 
 .btn-cancel-yes:active {
@@ -468,15 +559,25 @@
   }
 
   .cancel-confirm-header {
-    padding: 16px;
+    padding: 20px;
   }
 
   .cancel-confirm-body {
-    padding: 16px;
+    padding: 20px;
   }
 
   .cancel-confirm-body p {
     font-size: 14px;
+  }
+
+  .cancel-confirm-footer {
+    padding: 12px 20px;
+  }
+
+  .btn-cancel-no,
+  .btn-cancel-yes {
+    padding: 9px 16px;
+    font-size: 13px;
   }
 
   .cancel-confirm-footer {
@@ -490,23 +591,6 @@
   }
 }
 
-.btn-cancel-order {
-  width: 100%;
-  margin-top: 16px;
-  padding: 10px 16px;
-  background-color: #f44336;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-cancel-order:hover {
-  background-color: #d32f2f;
-}
 .btn-review-back {
   position: absolute;
   top: 10px;

@@ -18,7 +18,12 @@ exports.getOrderDetail = async (req, res) => {
       SELECT ct.SoLuong as soLuong,
              ct.DonGia as giaBan,
              sp.TenSP,
-             bt.TenBienThe
+             bt.TenBienThe,
+             (SELECT ha.DuongDanAnh FROM HinhAnh ha 
+              WHERE ha.LoaiThamChieu = 'SanPham' 
+              AND ha.MaThamChieu = sp.MaSP 
+              ORDER BY ha.LaAnhChinh DESC, ha.ThuTuHienThi ASC 
+              LIMIT 1) AS DuongDanAnh
       FROM ChiTietDonHang ct
       JOIN BienTheSanPham bt ON ct.MaBienThe = bt.MaBienThe
       JOIN SanPham sp ON bt.MaSP = sp.MaSP

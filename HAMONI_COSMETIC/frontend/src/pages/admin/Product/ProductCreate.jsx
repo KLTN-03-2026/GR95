@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, UploadCloud, Trash2, Plus } from 'lucide-react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ArrowLeft, Save, UploadCloud, Trash2, Plus, CheckCircle, AlertCircle } from 'lucide-react';
 import axiosClient from '../../../services/axiosClient';
-import './ProductCreate.css'; // <-- Đã tách biệt hoàn toàn CSS
+import './ProductCreate.css'; 
 
 const ProductCreate = () => {
     const navigate = useNavigate();
@@ -20,6 +18,14 @@ const ProductCreate = () => {
     const [images, setImages] = useState([]); 
     const [variants, setVariants] = useState([]);
     const [newVariant, setNewVariant] = useState({ TenBienThe: '', Gia: '' });
+
+    // --- STATE CHO BOOTSTRAP TOAST ---
+    const [toast, setToast] = useState({ show: false, type: 'success', message: '' });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, type, message });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
 
     useEffect(() => {
         const loadCategories = async () => {
@@ -55,8 +61,9 @@ const ProductCreate = () => {
             });
             const tempId = Date.now(); 
             setImages([...images, { MaHinhAnh: tempId, DuongDanAnh: uploadRes.url }]);
+            showToast("Tải ảnh lên thành công!");
         } catch (error) {
-            toast.error("Lỗi tải ảnh lên hệ thống!");
+            showToast("Lỗi tải ảnh lên hệ thống!", "danger");
             console.error(error);
         } finally {
             setIsUploading(false);
@@ -65,24 +72,27 @@ const ProductCreate = () => {
 
     const handleDeleteImage = (imageId) => {
         setImages(images.filter(img => img.MaHinhAnh !== imageId));
+        showToast("Đã xóa ảnh tạm thời", "success");
     };
 
     const handleAddVariant = () => {
         if (!newVariant.TenBienThe || !newVariant.Gia) {
-            return toast.warning("Vui lòng nhập đầy đủ tên phân loại và giá bán!");
+            return showToast("Vui lòng nhập đầy đủ tên và giá!", "danger");
         }
         const tempId = Date.now();
         setVariants([...variants, { MaBienThe: tempId, ...newVariant }]);
         setNewVariant({ TenBienThe: '', Gia: '' }); 
+        showToast("Đã thêm phân loại tạm thời");
     };
 
     const handleDeleteVariant = (variantId) => {
         setVariants(variants.filter(v => v.MaBienThe !== variantId));
+        showToast("Đã xóa phân loại");
     };
 
     const handleSaveNewProduct = async () => {
         if (!product.TenSP || !product.MaDM) {
-            return toast.warning("Vui lòng nhập Tên sản phẩm và chọn Danh mục!");
+            return showToast("Vui lòng nhập Tên SP và chọn Danh mục!", "danger");
         }
         setIsSaving(true);
         try {
@@ -92,10 +102,12 @@ const ProductCreate = () => {
                 variants: variants.map(v => ({ TenBienThe: v.TenBienThe, Gia: v.Gia }))
             };
             await axiosClient.post('/products', payload);
-            toast.success("Tạo sản phẩm mới thành công!");
-            navigate('/admin/products');
+            showToast("Tạo sản phẩm mới thành công!");
+            setTimeout(() => navigate('/admin/products'), 1500);
         } catch (error) {
-            toast.error("Lỗi khi lưu sản phẩm mới!");
+            // Lấy câu thông báo lỗi từ Backend gửi lên để hiển thị
+            const errorMessage = error.response?.data?.message || "Lỗi khi lưu sản phẩm mới!";
+            showToast(errorMessage, "danger");
             console.error(error);
         } finally {
             setIsSaving(false);
@@ -104,7 +116,29 @@ const ProductCreate = () => {
 
     return (
         <div className="product-create-container">
-            {/* HEADER */}
+            {/* THÔNG BÁO TOAST BOOTSTRAP */}
+            {toast.show && (
+                <div className="toast-container position-fixed top-0 end-0 p-4" style={{ zIndex: 9999 }}>
+                    <div className="toast show border-0 shadow-lg" style={{ 
+                        borderRadius: '12px', minWidth: '320px', overflow: 'hidden',
+                        backgroundColor: toast.type === 'success' ? '#aee6bd' : '#e49289',
+                        borderLeft: `6px solid ${toast.type === 'success' ? '#28a745' : '#df1a2d'}`
+                    }}>
+                        <div className="d-flex align-items-center p-3">
+                            <div className={`me-3 text-${toast.type === 'success' ? 'success' : 'danger'}`}>
+                                {toast.type === 'success' ? <CheckCircle size={28} /> : <AlertCircle size={28} />}
+                            </div>
+                            <div className="flex-grow-1">
+                                <span className="fw-bold" style={{ fontSize: '15px', color: toast.type === 'success' ? '#1e4620' : '#be291e' }}>
+                                    {toast.message}
+                                </span>
+                            </div>
+                            <button type="button" className="btn-close ms-2" onClick={() => setToast({ ...toast, show: false })}></button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="create-header">
                 <div className="d-flex align-items-center gap-3">
                     <button className="btn-back" onClick={() => navigate(-1)}>
@@ -115,7 +149,6 @@ const ProductCreate = () => {
             </div>
 
             <div className="create-layout">
-                {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
                 <div className="create-left-col">
                     <div className="create-card">
                         <h5 className="card-title">Thông tin cơ bản</h5>
@@ -157,10 +190,7 @@ const ProductCreate = () => {
                     </div>
                 </div>
 
-                {/* CỘT PHẢI: HÌNH ẢNH + BIẾN THỂ */}
                 <div className="create-right-col d-flex flex-column gap-4">
-                    
-                    {/* KHỐI 1: THƯ VIỆN ẢNH */}
                     <div className="create-card">
                         <h5 className="card-title mb-3">Thư viện ảnh</h5>
                         <div className="image-gallery-grid">
@@ -187,10 +217,8 @@ const ProductCreate = () => {
                         </div>
                     </div>
 
-                    {/* KHỐI 2: BIẾN THỂ SẢN PHẨM */}
                     <div className="create-card">
                         <h5 className="card-title mb-3">Phân loại & Giá bán</h5>
-                        
                         <div className="add-variant-compact">
                             <input 
                                 type="text" 
@@ -242,11 +270,8 @@ const ProductCreate = () => {
                             </table>
                         </div>
                     </div>
-
                 </div>
             </div>
-            
-            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };

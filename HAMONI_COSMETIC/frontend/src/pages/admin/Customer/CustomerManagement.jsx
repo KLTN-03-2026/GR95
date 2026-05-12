@@ -1,10 +1,10 @@
 // src/pages/admin/Customer/CustomerManagement.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient'; 
-import { Search, Download, Trash2, Eye } from 'lucide-react'; // Đổi sang dùng Lucide React cho đồng bộ
+import { Search, Download } from 'lucide-react'; // Đổi sang dùng Lucide React cho đồng bộ
 import './CustomerManagement.css'; 
 
 const CustomerManagement = () => {
@@ -13,17 +13,21 @@ const CustomerManagement = () => {
     const [status, setStatus] = useState('Tất cả trạng thái');
     const [search, setSearch] = useState('');
     const navigate = useNavigate();
+    const location = useLocation();
 
-    let userPermissions = [];
-    try {
-        userPermissions = JSON.parse(localStorage.getItem('userPermissions')) || [];
-    } catch {
-        userPermissions = [];
-    }
-    
-    const isAdmin = userPermissions.includes('ALL');
-    const canDelete = isAdmin || userPermissions.includes('DELETE_CUSTOMER');
     const recordsPerPage = 5;
+
+    const getInitials = (name) => {
+        if (!name) return "H";
+        const parts = name.trim().split(" ");
+        return parts[parts.length - 1].charAt(0).toUpperCase();
+    };
+
+    const getAvatarBgColor = (name) => {
+        const colors = ['#e67e22', '#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#e74c3c'];
+        const index = name ? name.charCodeAt(0) % colors.length : 0;
+        return colors[index];
+    };
 
     const loadCustomers = useCallback(async () => {
         try {
@@ -34,6 +38,7 @@ const CustomerManagement = () => {
             setCurrentPage(1);
         } catch (err) {
             console.error("Lỗi tải danh sách khách hàng:", err);
+            toast.error("Không thể tải danh sách khách hàng!");
             setCustomers([]); 
         }
     }, [search, status]);
@@ -45,17 +50,28 @@ const CustomerManagement = () => {
         initFetch();
     }, [loadCustomers]);
 
-    const handleDelete = async (id) => {
-        if (!canDelete) return toast.warning("Bạn không có quyền thực hiện thao tác này!");
-        if (window.confirm("Bạn có chắc chắn muốn xóa khách hàng này không?")) {
+    // Reload dữ liệu khi quay lại trang quản lý (detection pathname change)
+    useEffect(() => {
+        // Chỉ gọi khi component mount hoặc quay lại trang này
+        const handleReload = async () => {
             try {
-                await axiosClient.delete(`/customers/${id}`);
-                toast.success("Xóa thành công!");
-                loadCustomers();
-            } catch {
-                toast.error("Xóa thất bại!");
+                const res = await axiosClient.get(`/customers`, {
+                    params: { search, status }
+                });
+                setCustomers(res); 
+                setCurrentPage(1);
+            } catch (err) {
+                console.error("Lỗi tải danh sách khách hàng:", err);
             }
+        };
+        
+        if (location.pathname === '/admin/customer') {
+            handleReload();
         }
+    }, [location.pathname, search, status]);
+
+    const handleGoToDetail = (id) => {
+        navigate(`/admin/customer-detail/${id}`);
     };
 
     // HÀM XUẤT EXCEL CHUẨN BẢO MẬT (Dùng axiosClient để tự động kèm Token)
@@ -117,16 +133,29 @@ const CustomerManagement = () => {
                             <th>TÊN KHÁCH HÀNG</th>
                             <th>LIÊN HỆ</th>
                             <th>TRẠNG THÁI</th>
-                            <th>HÀNH ĐỘNG</th>
                         </tr>
                     </thead>
                     <tbody>
                         {currentRecords.length > 0 ? currentRecords.map((item) => (
-                            <tr key={item.MaND}>
+                            <tr
+                                key={item.MaND}
+                                onClick={() => handleGoToDetail(item.MaND)}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 <td style={{ color: '#888' }}>#HM-{item.MaND}</td>
                                 <td>
                                     <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div className="avatar">{item.HoTen?.charAt(0).toUpperCase() || 'U'}</div>
+                                        {item.Avatar ? (
+                                            <div className="avatar" style={{
+                                                backgroundImage: `url(${item.Avatar})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: 'center'
+                                            }}></div>
+                                        ) : (
+                                            <div className="avatar" style={{ backgroundColor: getAvatarBgColor(item.HoTen) }}>
+                                                {getInitials(item.HoTen)}
+                                            </div>
+                                        )}
                                         <span style={{ fontWeight: '600' }}>{item.HoTen}</span>
                                     </div>
                                 </td>
@@ -135,24 +164,14 @@ const CustomerManagement = () => {
                                     <div style={{ fontSize: '12px', color: '#999' }}>{item.SoDienThoai}</div>
                                 </td>
                                 <td>
-                                    <span className={`status-badge ${item.TrangThai === 'Bị chặn' || item.TrangThai === 0 ? 'status-banned' : 'status-active'}`}>
-                                        ● {item.TrangThai === 1 || item.TrangThai === 'Hoạt động' ? 'Hoạt động' : 'Bị chặn'}
+                                    <span className={`status-badge ${item.TrangThai === 1 ? 'status-active' : 'status-banned'}`}>
+                                        ● {item.TrangThai === 1 ? 'Hoạt động' : 'Bị chặn'}
                                     </span>
-                                </td>
-                                <td>
-                                    {canDelete && (
-                                        <button className="icon-btn btn-delete" title="Xóa" onClick={() => handleDelete(item.MaND)}>
-                                            <Trash2 size={18} />
-                                        </button>
-                                    )}
-                                    <button className="icon-btn btn-view" title="Xem chi tiết" onClick={() => navigate(`/admin/customer-detail/${item.MaND}`)}>
-                                        <Eye size={18} />
-                                    </button>
                                 </td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#7f8c8d' }}>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: '#7f8c8d' }}>
                                     Không tìm thấy dữ liệu khách hàng
                                 </td>
                             </tr>

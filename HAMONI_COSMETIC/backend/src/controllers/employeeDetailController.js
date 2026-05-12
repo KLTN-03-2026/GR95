@@ -5,7 +5,7 @@ const getEmployeeById = async (req, res) => {
     try {
         const { id } = req.params;
         const [rows] = await db.execute(
-            "SELECT MaND, HoTen, Email, SoDienThoai, TrangThai, MaQuyen FROM NguoiDung WHERE MaND = ? AND MaQuyen != 'CUST'",
+            "SELECT MaND, HoTen, Email, SoDienThoai, TrangThai, MaQuyen, AvatarUrl FROM NguoiDung WHERE MaND = ? AND MaQuyen != 'CUST'",
             [id]
         );
         if (rows.length === 0) return res.status(404).json({ message: "Không tìm thấy" });
@@ -20,10 +20,10 @@ const getEmployeeById = async (req, res) => {
 const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
-        const { HoTen, Email, SoDienThoai, MaQuyen, TrangThai } = req.body;
+        const { HoTen, Email, SoDienThoai, MaQuyen, TrangThai, AvatarUrl } = req.body;
         await db.execute(
-            "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, MaQuyen = ?, TrangThai = ? WHERE MaND = ?",
-            [HoTen, Email, SoDienThoai, MaQuyen, Number(TrangThai), id]
+            "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, MaQuyen = ?, TrangThai = ?, AvatarUrl = ? WHERE MaND = ?",
+            [HoTen, Email, SoDienThoai, MaQuyen, Number(TrangThai), AvatarUrl || null, id]
         );
         res.status(200).json({ message: "Cập nhật thành công" });
     } catch (error) {

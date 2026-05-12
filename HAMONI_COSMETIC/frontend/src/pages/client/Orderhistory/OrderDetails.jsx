@@ -15,6 +15,7 @@ export default function OrderDetails() {
   const [error, setError] = useState(null)
   const [reviewingProduct, setReviewingProduct] = useState(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [reviewedProducts, setReviewedProducts] = useState(new Set())
   const mountedRef = useRef(true)
   const productIdCacheRef = useRef(new Map())
 
@@ -100,6 +101,11 @@ export default function OrderDetails() {
     setReviewingProduct(null)
   }
 
+  const handleReviewSuccess = (productId) => {
+    setReviewedProducts(prev => new Set([...prev, productId]))
+    setReviewingProduct(null)
+  }
+
   const handleCancelOrder = async () => {
     if (!order?.id) {
       return
@@ -118,7 +124,6 @@ export default function OrderDetails() {
         if (response?.data?.hasCassoPayment) {
           toast.info(
             <div className="refund-toast-container">
-              <div className="refund-toast-icon">ℹ️</div>
               <div className="refund-toast-content">
                 <div className="refund-toast-title">Đơn hàng đã được hủy thành công!</div>
                 <div className="refund-toast-message">
@@ -133,7 +138,8 @@ export default function OrderDetails() {
               autoClose: false,
               closeButton: true,
               pauseOnHover: false,
-              className: 'refund-toast'
+              className: 'refund-toast',
+              closeOnClick: true
             }
           )
         } else {
@@ -207,6 +213,7 @@ export default function OrderDetails() {
           productName={reviewingProduct.tenSP}
           productImage={reviewingProduct.DuongDanAnh}
           trangThaiDonHang={reviewingProduct.trangThaiDonHang}
+          onReviewSuccess={() => handleReviewSuccess(reviewingProduct.MaSP)}
         />
       </div>
     )
@@ -291,7 +298,9 @@ export default function OrderDetails() {
           <div className="order-status-inline">Trạng thái đơn hàng: <span>{order.trangThai || 'Chờ xác nhận'}</span></div>
         </div>
 
-        <button onClick={() => navigate(-1)} className="btn-plain">Quay lại</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => navigate(-1)} className="btn-plain">Quay lại</button>
+        </div>
       </div>
 
       {isCompleted && (
@@ -329,7 +338,10 @@ export default function OrderDetails() {
 
           <h3 className="section-title section-gap">Sản phẩm</h3>
           <div className="product-list">
-            {items.map((it, i) => (
+            {items.map((it, i) => {
+              const productMaSP = it.MaSP || it.maSP || it.id || it.productId || it.MaSanPham
+              const isReviewed = reviewedProducts.has(productMaSP)
+              return (
               <div key={i} className="product-card">
                 <img src={it.DuongDanAnh || it.image || '/placeholder.png'} alt={it.TenSP || it.tenSP || it.tenSanPham || ''} className="product-img" />
                 <div className="product-info">
@@ -339,15 +351,17 @@ export default function OrderDetails() {
                 <div className="product-price">{formatCurrency(it.giaBan || it.DonGia || 0)}</div>
                 {isCompleted && (
                   <button 
-                    className="btn-review-product"
-                    onClick={() => handleReviewProduct(it)}
-                    title="Đánh giá sản phẩm"
+                    className={`btn-review-product ${isReviewed ? 'disabled' : ''}`}
+                    onClick={() => !isReviewed && handleReviewProduct(it)}
+                    title={isReviewed ? 'Đã đánh giá' : 'Đánh giá sản phẩm'}
+                    disabled={isReviewed}
                   >
-                    ⭐ Đánh giá
+                    {isReviewed ? '✓ Đã đánh giá' : '⭐ Đánh giá'}
                   </button>
                 )}
               </div>
-            ))}
+            )
+            })}
           </div>
         </div>
 
@@ -396,6 +410,7 @@ export default function OrderDetails() {
           )}
         </div>
       </div>
+
     </div>
   )
 }

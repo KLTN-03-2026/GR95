@@ -213,7 +213,7 @@ exports.getOrderDetail = async (req, res) => {
 
         // 1. Lấy thông tin đơn hàng và khách hàng
         const [[order]] = await db.execute(`
-            SELECT dh.*, nd.HoTen, nd.SoDienThoai, nd.Email
+            SELECT dh.*, nd.HoTen, nd.SoDienThoai, nd.Email, nd.AvatarUrl
             FROM DonHang dh
             LEFT JOIN NguoiDung nd ON dh.MaND = nd.MaND
             WHERE dh.MaDH = ?
@@ -221,12 +221,19 @@ exports.getOrderDetail = async (req, res) => {
 
         if (!order) return res.status(404).json({ message: "Không tìm thấy" });
 
-        // 2. Lấy chi tiết sản phẩm (Lưu ý Alias: TenSP, TenBienThe)
+        // 2. Lấy chi tiết sản phẩm kèm ảnh chính (hoặc ảnh đầu tiên nếu không có ảnh chính)
         const [items] = await db.execute(`
             SELECT ct.SoLuong as soLuong, 
                    ct.DonGia as giaBan,
                    sp.TenSP, 
-                   bt.TenBienThe
+                   sp.MaSP,
+                   bt.TenBienThe,
+                   COALESCE(
+                       (SELECT DuongDanAnh FROM HinhAnh 
+                        WHERE LoaiThamChieu = 'SanPham' AND MaThamChieu = sp.MaSP 
+                        ORDER BY LaAnhChinh DESC, ThuTuHienThi ASC LIMIT 1),
+                       NULL
+                   ) as hinhAnh
             FROM ChiTietDonHang ct
             JOIN BienTheSanPham bt ON ct.MaBienThe = bt.MaBienThe
             JOIN SanPham sp ON bt.MaSP = sp.MaSP
@@ -260,7 +267,8 @@ exports.getOrderDetail = async (req, res) => {
             khachHang: {
                 hoTen: order.HoTen,
                 soDienThoai: order.SoDienThoai,
-                email: order.Email
+                email: order.Email,
+                avatarUrl: order.AvatarUrl || null
             },
             diaChiGiaoHang: order.ThongTinGiaoHang,
             ghiChu: order.GhiChu,

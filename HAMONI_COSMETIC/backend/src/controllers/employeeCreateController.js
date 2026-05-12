@@ -3,7 +3,7 @@ const db = require('../config/db');
 
 const createEmployee = async (req, res) => {
     try {
-        const { HoTen, Email, SoDienThoai, MatKhau, MaQuyen } = req.body;
+        const { HoTen, Email, SoDienThoai, MatKhau, MaQuyen, AvatarUrl } = req.body;
 
         // 1. Validation Backend: Kiểm tra rỗng
         if (!HoTen || !Email || !SoDienThoai || !MatKhau || !MaQuyen) {
@@ -19,8 +19,8 @@ const createEmployee = async (req, res) => {
         // 3. LƯU TRỰC TIẾP MẬT KHẨU GỐC (Tạm thời bỏ bcrypt)
         // Mặc định TrangThai = 1: Đang hoạt động
         await db.execute(
-            "INSERT INTO NguoiDung (HoTen, Email, SoDienThoai, MatKhau, MaQuyen, TrangThai) VALUES (?, ?, ?, ?, ?, 1)",
-            [HoTen, Email, SoDienThoai, MatKhau, MaQuyen]
+            "INSERT INTO NguoiDung (HoTen, Email, SoDienThoai, MatKhau, MaQuyen, AvatarUrl, TrangThai) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            [HoTen, Email, SoDienThoai, MatKhau, MaQuyen, AvatarUrl || null]
         );
 
         res.status(201).json({ message: "Thêm nhân viên mới thành công!" });

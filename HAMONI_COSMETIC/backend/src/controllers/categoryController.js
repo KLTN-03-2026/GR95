@@ -5,7 +5,7 @@ const ExcelJS = require('exceljs');
 exports.getAllCategories = async (req, res) => {
   try {
     const { search } = req.query;
-    let sql = 'SELECT * FROM DANHMUC'; 
+    let sql = 'SELECT MaDM, TenDM, DuongDanAnh FROM DANHMUC'; 
     let params = [];
 
     if (search) {
@@ -35,11 +35,11 @@ exports.deleteCategory = async (req, res) => {
 // THÊM DANH MỤC
 exports.createCategory = async (req, res) => {
   try {
-    const { MaDM, TenDM } = req.body; 
+    const { MaDM, TenDM, DuongDanAnh } = req.body; 
     
     
-    const sql = 'INSERT INTO DANHMUC (MaDM, TenDM) VALUES (?, ?)';
-    await db.execute(sql, [MaDM, TenDM]); 
+    const sql = 'INSERT INTO DANHMUC (MaDM, TenDM, DuongDanAnh) VALUES (?, ?, ?)';
+    await db.execute(sql, [MaDM, TenDM, DuongDanAnh || null]); 
     
     res.status(201).json({ message: "Thêm thành công" });
   } catch (error) {
@@ -52,10 +52,10 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { TenDM } = req.body; 
+    const { TenDM, DuongDanAnh } = req.body; 
 
-    const sql = 'UPDATE DANHMUC SET TenDM = ? WHERE MaDM = ?';
-    await db.execute(sql, [TenDM, id]);
+    const sql = 'UPDATE DANHMUC SET TenDM = ?, DuongDanAnh = ? WHERE MaDM = ?';
+    await db.execute(sql, [TenDM, DuongDanAnh || null, id]);
 
     res.json({ message: "Cập nhật thành công" });
   } catch (error) {
@@ -67,7 +67,7 @@ exports.updateCategory = async (req, res) => {
 // XUẤT FILE EXCEL
 exports.exportCategoryExcel = async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT MaDM, TenDM FROM DANHMUC');
+    const [rows] = await db.execute('SELECT MaDM, TenDM, DuongDanAnh FROM DANHMUC');
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Danh_Muc_San_Pham');
@@ -75,7 +75,8 @@ exports.exportCategoryExcel = async (req, res) => {
     // Tạo cột cho file Excel
     worksheet.columns = [
       { header: 'Mã Danh Mục', key: 'MaDM', width: 15 },
-      { header: 'Tên Danh Mục', key: 'TenDM', width: 30 }
+      { header: 'Tên Danh Mục', key: 'TenDM', width: 30 },
+      { header: 'Ảnh Danh Mục', key: 'DuongDanAnh', width: 50 }
     ];
 
     // Đổ style cho header (Tô màu vàng cho đẹp)
