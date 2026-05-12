@@ -415,36 +415,17 @@ const getSuggestedProducts = async (req, res) => {
 const updateProductInfo = async (req, res) => {
     const { id } = req.params;
     const { TenSP, MaDM, MoTa, ThanhPhan, CachSuDung, LoaiDaPhuHop } = req.body;
-
-    if (!TenSP || !String(TenSP).trim()) {
-        return res.status(400).json({ message: "Tên sản phẩm không được để trống!" });
-    }
-
-    if (!MaDM || !String(MaDM).trim()) {
-        return res.status(400).json({ message: "Vui lòng chọn danh mục cho sản phẩm!" });
-    }
-
     try {
-        const [productRows] = await db.execute('SELECT 1 FROM SanPham WHERE MaSP = ?', [id]);
-        if (productRows.length === 0) {
-            return res.status(404).json({ message: "Không tìm thấy sản phẩm để cập nhật!" });
-        }
-
-        const [categoryRows] = await db.execute('SELECT 1 FROM DanhMuc WHERE MaDM = ?', [MaDM]);
-        if (categoryRows.length === 0) {
-            return res.status(400).json({ message: "Danh mục không hợp lệ!" });
-        }
-
         await db.execute(
             `UPDATE SanPham 
              SET TenSP = ?, MaDM = ?, MoTa = ?, ThanhPhan = ?, CachSuDung = ?, LoaiDaPhuHop = ? 
              WHERE MaSP = ?`,
-            [String(TenSP).trim(), MaDM, MoTa || null, ThanhPhan || null, CachSuDung || null, LoaiDaPhuHop || null, id]
+            [TenSP, MaDM, MoTa, ThanhPhan, CachSuDung, LoaiDaPhuHop, id]
         );
         res.status(200).json({ message: "Cập nhật thông tin thành công!" });
     } catch (error) {
         console.error("Lỗi cập nhật sản phẩm:", error);
-        res.status(500).json({ message: "Lỗi Server khi cập nhật sản phẩm!" });
+        res.status(500).json({ message: "Lỗi Server!" });
     }
 };
 
@@ -503,46 +484,7 @@ const deleteProductVariant = async (req, res) => {
         res.status(500).json({ message: "Lỗi Server!" });
     }
 };
-// ==========================================
-// 4.1 CẬP NHẬT BIẾN THỂ (SỬA TÊN / GIÁ)
-// ==========================================
-const updateProductVariant = async (req, res) => {
-    const { variantId } = req.params; // Lấy ID từ URL
-    const { TenBienThe, Gia } = req.body; // Lấy dữ liệu từ Frontend gửi lên
 
-    if (!TenBienThe || !String(TenBienThe).trim()) {
-        return res.status(400).json({ message: "Tên phân loại không được để trống!" });
-    }
-
-    if (Gia === undefined || Gia === null || Gia === '') {
-        return res.status(400).json({ message: "Giá bán không được để trống!" });
-    }
-
-    const parsedGia = Number(Gia);
-    if (Number.isNaN(parsedGia) || parsedGia < 0) {
-        return res.status(400).json({ message: "Giá bán không hợp lệ!" });
-    }
-
-    const [variantRows] = await db.execute('SELECT 1 FROM BienTheSanPham WHERE MaBienThe = ?', [variantId]);
-    if (variantRows.length === 0) {
-        return res.status(404).json({ message: "Không tìm thấy biến thể để cập nhật!" });
-    }
-
-    if (!Gia && Gia !== 0) {
-        return res.status(400).json({ message: "Vui lòng nhập đầy đủ tên phân loại và giá!" });
-    }
-
-    try {
-        await db.execute(
-            `UPDATE BienTheSanPham SET TenBienThe = ?, Gia = ? WHERE MaBienThe = ?`,
-            [String(TenBienThe).trim(), parsedGia, variantId]
-        );
-        res.status(200).json({ message: "Cập nhật biến thể thành công!" });
-    } catch (error) {
-        console.error("Lỗi cập nhật biến thể:", error);
-        res.status(500).json({ message: "Lỗi Server khi cập nhật biến thể!" });
-    }
-};
 // ==========================================
 // 5. XÓA SẢN PHẨM
 // ==========================================
@@ -582,6 +524,26 @@ const deleteProduct = async (req, res) => {
         );
 
         await conn.execute(
+            `DELETE FROM GioHang
+             WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
+            [id]
+        );
+
+        await conn.execute(
+            `DELETE FROM ChiTietPhieuNhapKho
+             WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
+            [id]
+        );
+
+        await conn.execute(
+            `DELETE FROM DanhGia_PhanHoi
+             WHERE MaDG IN (SELECT MaDG FROM DanhGia WHERE MaSP = ?)`,
+            [id]
+        );
+
+        await conn.execute('DELETE FROM DanhGia WHERE MaSP = ?', [id]);
+
+        await conn.execute(
             `DELETE FROM TonKho
              WHERE MaBienThe IN (SELECT MaBienThe FROM BienTheSanPham WHERE MaSP = ?)`,
             [id]
@@ -607,6 +569,19 @@ const deleteProduct = async (req, res) => {
     } catch (error) {
         await conn.rollback();
         console.error('Lỗi xóa sản phẩm:', error);
+
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            return res.status(500).json({
+                message: 'Lỗi cấu trúc dữ liệu: thiếu bảng liên quan khi xóa sản phẩm.'
+            });
+        }
+
+        if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.code === 'ER_ROW_IS_REFERENCED') {
+            return res.status(409).json({
+                message: 'Không thể xóa vì sản phẩm vẫn còn dữ liệu ràng buộc ở bảng khác.'
+            });
+        }
+
         return res.status(500).json({ message: 'Lỗi server khi xóa sản phẩm!' });
     } finally {
         conn.release();
@@ -625,6 +600,5 @@ module.exports = {
     deleteProductImage,
     addProductVariant,
     deleteProductVariant,
-    updateProductVariant,
     deleteProduct
 };

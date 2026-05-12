@@ -7,7 +7,7 @@ import productApi from '../../../services/productApi';
 import shoppingCartApi from '../../../services/shoppingCartApi';
 import { useStore } from '../../../store/useStore';
 import './ProductDetailView.css';
-import { CheckCircle2, MessageCircleMore, ShoppingBag, ShoppingCart, Star, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, MessageCircleMore, ShoppingBag, ShoppingCart, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PRODUCT_FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=800&fit=crop';
@@ -15,7 +15,7 @@ const PRODUCT_FALLBACK_IMAGE =
 const ProductDetailView = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
-    
+  
   // Lấy hàm cập nhật giỏ hàng từ store
   const { syncCartFromBackend } = useStore();
 
@@ -34,20 +34,6 @@ const ProductDetailView = () => {
   const [selectedReviewStars, setSelectedReviewStars] = useState(0);
   const [selectedReviewHasMedia, setSelectedReviewHasMedia] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [reviewReplyEligibility, setReviewReplyEligibility] = useState({
-    canReply: false,
-    hasReviewed: false,
-    hasCompletedPurchase: false
-  });
-  const [reviewReplyInputByReview, setReviewReplyInputByReview] = useState({});
-  const [submittingReplyReviewId, setSubmittingReplyReviewId] = useState(null);
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [expandedRepliesByReview, setExpandedRepliesByReview] = useState({});
-  const [currentReviewPage, setCurrentReviewPage] = useState(1);
-
-  const REVIEWS_PER_PAGE = 5;
-
-  const currentUserId = useMemo(() => getLoggedInUserId(), []);
 
   const popupTimerRef = useRef(null);
 
@@ -57,8 +43,6 @@ const ProductDetailView = () => {
     }
     return product.images;
   }, [product]);
-
-  const thumbnailContainerRef = useRef(null);
 
   const variantOptions = useMemo(() => {
     if (!product?.variants || product.variants.length === 0) return [];
@@ -144,49 +128,6 @@ const ProductDetailView = () => {
     [reviewCountsByStars, reviews.length]
   );
 
-  const descriptionTextLength = useMemo(() => {
-    if (!product) return 0;
-    return [product.description, product.ingredients, product.usage, product.brand, product.origin]
-      .filter(Boolean)
-      .join(' ')
-      .length;
-  }, [product]);
-
-  const canToggleDescription = descriptionTextLength > 300;
-
-  const totalReviewPages = Math.max(1, Math.ceil(filteredReviews.length / REVIEWS_PER_PAGE));
-  const safeCurrentReviewPage = Math.min(currentReviewPage, totalReviewPages);
-
-  const paginatedReviews = useMemo(() => {
-    const start = (safeCurrentReviewPage - 1) * REVIEWS_PER_PAGE;
-    return filteredReviews.slice(start, start + REVIEWS_PER_PAGE);
-  }, [filteredReviews, safeCurrentReviewPage]);
-
-  const reviewPaginationItems = useMemo(() => {
-    if (totalReviewPages <= 7) {
-      return Array.from({ length: totalReviewPages }, (_, index) => index + 1);
-    }
-
-    const items = [1];
-
-    if (safeCurrentReviewPage > 3) {
-      items.push('ellipsis-left');
-    }
-
-    const midStart = Math.max(2, safeCurrentReviewPage - 1);
-    const midEnd = Math.min(totalReviewPages - 1, safeCurrentReviewPage + 1);
-    for (let page = midStart; page <= midEnd; page += 1) {
-      items.push(page);
-    }
-
-    if (safeCurrentReviewPage < totalReviewPages - 2) {
-      items.push('ellipsis-right');
-    }
-
-    items.push(totalReviewPages);
-    return items;
-  }, [safeCurrentReviewPage, totalReviewPages]);
-
   const handleToggleReviewMedia = () => {
     setSelectedReviewHasMedia((prev) => {
       const nextValue = !prev;
@@ -196,16 +137,6 @@ const ProductDetailView = () => {
       return nextValue;
     });
   };
-
-  const hasVisibleReplyableReview = useMemo(() => {
-    if (!reviewReplyEligibility.canReply) return false;
-
-    return filteredReviews.some((review) => {
-      const isOwner = Number(review.customerId || 0) === currentUserId;
-      const hasShopReply = Array.isArray(review.replies) && review.replies.some((reply) => reply.isShopReply);
-      return isOwner && hasShopReply;
-    });
-  }, [currentUserId, filteredReviews, reviewReplyEligibility.canReply]);
 
   useEffect(() => {
     return () => {
@@ -264,10 +195,9 @@ const handlePrevImage = (e) => {
         });
 
         try {
-          const reviewsRes = await productApi.getProductReviews(productId, { limit: 50 });
+          const reviewsRes = await productApi.getProductReviews(productId, { limit: 4 });
           const mappedReviews = (reviewsRes || []).map((item) => ({
             id: item.MaDG,
-            customerId: Number(item.MaND || 0),
             customerName: item.HoTen || 'Khách hàng',
             rating: Number(item.SoSao || 0),
             comment: item.BinhLuan || '',
@@ -277,10 +207,7 @@ const handlePrevImage = (e) => {
             replies: Array.isArray(item.replies)
               ? item.replies.map((reply) => ({
                   id: reply.MaPH,
-                  authorId: Number(reply.MaND || 0),
-                  authorRole: reply.MaQuyen || 'CUST',
-                  customerName: reply.HoTen || 'Người dùng',
-                  isShopReply: reply.MaQuyen !== 'CUST',
+                  customerName: reply.HoTen || 'Shop',
                   comment: reply.NoiDung || '',
                   date: formatDate(reply.NgayTao)
                 }))
@@ -293,42 +220,13 @@ const handlePrevImage = (e) => {
           setReviews([]);
         }
 
-        if (currentUserId > 0) {
-          try {
-            const eligibility = await productApi.getReviewReplyEligibility(productId);
-            setReviewReplyEligibility({
-              canReply: Boolean(eligibility?.canReply),
-              hasReviewed: Boolean(eligibility?.hasReviewed),
-              hasCompletedPurchase: Boolean(eligibility?.hasCompletedPurchase)
-            });
-          } catch (eligibilityError) {
-            console.warn('Không tải được quyền phản hồi đánh giá:', eligibilityError);
-            setReviewReplyEligibility({
-              canReply: false,
-              hasReviewed: false,
-              hasCompletedPurchase: false
-            });
-          }
-        } else {
-          setReviewReplyEligibility({
-            canReply: false,
-            hasReviewed: false,
-            hasCompletedPurchase: false
-          });
-        }
-
         try {
           const suggestedRes = await productApi.getSuggestedProducts(productId, { limit: 4 });
           const mappedSuggested = (suggestedRes || []).map((item) => ({
             id: item.MaSP,
             name: item.TenSP || 'Sản phẩm',
             price: Number(item.GiaBan || 0),
-            oldPrice: item.GiaGoc !== undefined && item.GiaGoc !== null ? Number(item.GiaGoc) : null,
             rating: Number(item.SoSaoTB || 0),
-            reviews: Number(item.LuotDanhGia || 0),
-            stock: Number(item.SoLuongTon || 0),
-            brand: item.ThuongHieu || item.TenTH || 'HAMONI',
-            category: item.TenDM || item.DanhMuc || 'Gợi ý',
             image: item.AnhChinh || PRODUCT_FALLBACK_IMAGE
           }));
           setSuggestedProducts(mappedSuggested);
@@ -356,32 +254,7 @@ const handlePrevImage = (e) => {
     };
 
     loadProductData();
-  }, [productId, currentUserId]);
-
-  // Scroll the active thumbnail into view when selectedImageIndex changes
-  useEffect(() => {
-    try {
-      const container = thumbnailContainerRef.current;
-      if (!container) return;
-      const active = container.querySelectorAll('.thumbnail')[selectedImageIndex];
-      if (active && typeof active.scrollIntoView === 'function') {
-        active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }
-    } catch {
-      // ignore
-    }
-  }, [selectedImageIndex]);
-
-  useEffect(() => {
-    setIsDescriptionExpanded(false);
-    setExpandedRepliesByReview({});
-    setCurrentReviewPage(1);
   }, [productId]);
-
-  useEffect(() => {
-    setExpandedRepliesByReview({});
-    setCurrentReviewPage(1);
-  }, [selectedReviewStars, selectedReviewHasMedia]);
 
   const handleQuantityChange = (step) => {
     if (!product) return;
@@ -556,65 +429,6 @@ const handlePrevImage = (e) => {
     }
   };
 
-  const handleReviewReplyInputChange = (reviewId, value) => {
-    setReviewReplyInputByReview((prev) => ({
-      ...prev,
-      [reviewId]: value
-    }));
-  };
-
-  
-  
-  const handleSubmitReviewReply = async (reviewId) => {
-    const content = String(reviewReplyInputByReview?.[reviewId] || '').trim();
-    if (!content) {
-      toast.warning('Vui lòng nhập nội dung phản hồi.');
-      return;
-    }
-
-    try {
-      setSubmittingReplyReviewId(reviewId);
-      const response = await productApi.postReplyToReview(reviewId, content);
-      const createdReply = response?.reply;
-
-      if (!createdReply) {
-        toast.success('Đã gửi phản hồi.');
-        setReviewReplyInputByReview((prev) => ({ ...prev, [reviewId]: '' }));
-        return;
-      }
-
-      setReviews((prevReviews) =>
-        prevReviews.map((review) => {
-          if (review.id !== reviewId) return review;
-
-          const nextReply = {
-            id: createdReply.MaPH,
-            authorId: Number(createdReply.MaND || currentUserId || 0),
-            authorRole: createdReply.MaQuyen || 'CUST',
-            customerName: createdReply.HoTen || 'Bạn',
-            isShopReply: createdReply.MaQuyen !== 'CUST',
-            comment: createdReply.NoiDung || content,
-            date: formatDate(createdReply.NgayTao)
-          };
-
-          return {
-            ...review,
-            replies: [...(review.replies || []), nextReply]
-          };
-        })
-      );
-
-      setReviewReplyInputByReview((prev) => ({ ...prev, [reviewId]: '' }));
-      toast.success('Đã gửi phản hồi cho shop.');
-    } catch (error) {
-      const message = error?.response?.data?.message || 'Không thể gửi phản hồi, vui lòng thử lại.';
-      toast.error(message);
-    } finally {
-      setSubmittingReplyReviewId(null);
-    }
-  };
- 
-
   if (loading) {
     return (
       <div className="loading-container">
@@ -647,20 +461,21 @@ const handlePrevImage = (e) => {
               <img src={images[selectedImageIndex]} alt={product.name} />
             </div>
 
-            <div className="thumbnail-container" ref={thumbnailContainerRef}>
+            <div className="thumbnail-container">
               {images.map((image, index) => (
                 <button
                   key={`${image}-${index}`}
                   type="button"
                   className={`thumbnail ${selectedImageIndex === index ? 'active' : ''}`}
                   onMouseEnter={() => {
-                    setSelectedImageIndex(index);
-                  }}
-                  onClick={() => {
-                    setSelectedImageIndex(index);
-                    setShowImageModal(true);
-                  }}
-                  style={{ cursor: 'pointer' }}
+        setSelectedImageIndex(index); // 1. Nhảy đến đúng ảnh đó
+        
+      }} 
+      onClick={() => {
+      setSelectedImageIndex(index); // Đảm bảo Popup mở đúng ảnh này
+      setShowImageModal(true);
+    }}
+      style={{ cursor: 'pointer' }}
                 >
                   <img src={image} alt={`${product.name} ${index + 1}`} />
                 </button>
@@ -792,60 +607,39 @@ const handlePrevImage = (e) => {
                 Mua ngay
               </button>
             </div>
+
+            <div className="product-details">
+              <div className="product-description">
+                
+                <div className="product-description__body">
+                  <div className="product-description__section">
+                    <p className="product-description__section-title">Mô tả sản phẩm</p>
+                    <p className="product-description__lead">{product.description}</p>
+                  </div>
+
+                  <div className="product-description__section">
+                    <p className="product-description__section-title">Thành phần</p>
+                    <p className="product-description__lead">{product.ingredients}</p>
+                  </div>
+
+                  <div className="product-description__section">
+                    <p className="product-description__section-title">Hướng dẫn sử dụng</p>
+                    <p className="product-description__lead">{product.usage}</p>
+                  </div>
+
+                  <div className="product-description__section">
+                    <p className="product-description__section-title">Thương hiệu</p>
+                    <p className="product-description__lead">{product.brand}</p>
+                  </div>
+
+                  <div className="product-description__section">
+                    <p className="product-description__section-title">Xuất xứ</p>
+                    <p className="product-description__lead">{product.origin}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="product-details">
-        <div className="product-description">
-          <div className={`product-description__body ${!isDescriptionExpanded && canToggleDescription ? 'is-collapsed' : ''}`}>
-            <div className="product-description__section">
-              <p className="product-description__section-title">MÔ TẢ SẢN PHẨM</p>
-              <p className="product-description__lead">{product.description}</p>
-            </div>
-
-            <div className="product-description__section">
-              <p className="product-description__section-title">THÀNH PHẦN</p>
-              <p className="product-description__lead">{product.ingredients}</p>
-            </div>
-
-            <div className="product-description__section">
-              <p className="product-description__section-title">HƯỚNG DẪN SỬ DỤNG</p>
-              <p className="product-description__lead">{product.usage}</p>
-            </div>
-
-            <div className="product-description__section">
-              <p className="product-description__section-title">THƯƠNG HIỆU</p>
-              <p className="product-description__lead">{product.brand}</p>
-            </div>
-
-            <div className="product-description__section">
-              <p className="product-description__section-title">XUẤT XỨ</p>
-              <p className="product-description__lead">{product.origin}</p>
-            </div>
-          </div>
-
-          {canToggleDescription && (
-            <div className="section-toggle-wrap">
-              <button
-                type="button"
-                className="section-toggle-btn"
-                onClick={() => setIsDescriptionExpanded((prev) => !prev)}
-              >
-                {isDescriptionExpanded ? (
-                  <>
-                    Thu gọn mô tả
-                    <ChevronUp size={16} />
-                  </>
-                ) : (
-                  <>
-                    Xem thêm mô tả
-                    <ChevronDown size={16} />
-                  </>
-                )}
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -860,9 +654,12 @@ const handlePrevImage = (e) => {
               <p className="section-banner-subtitle">Phản hồi thực tế từ những người đã trải nghiệm.</p>
             </div>
           </div>
+          
         </div>
 
         <div className="reviews-panel" id="all-reviews">
+          
+
           {reviews.length === 0 ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600">Chưa có đánh giá nào.</div>
           ) : (
@@ -906,19 +703,13 @@ const handlePrevImage = (e) => {
               </div>
 
               <div className="reviews-list">
-                {reviewReplyEligibility.canReply && !hasVisibleReplyableReview && (
-                  <div className="customer-reply-hint">
-                    Bạn chỉ có thể phản hồi trong đúng đánh giá của mình sau khi shop đã trả lời. Hãy đổi bộ lọc hoặc kéo xuống để tìm bài của bạn.
-                  </div>
-                )}
-
                 {filteredReviews.length === 0 && (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600">
                     Không có đánh giá nào ở mức sao này.
                   </div>
                 )}
 
-                {paginatedReviews.map((review) => (
+                {filteredReviews.map((review) => (
                   <article key={review.id} className="review-card">
                     <div className="review-header">
                       <div className="reviewer-avatar" aria-hidden="true">
@@ -931,162 +722,23 @@ const handlePrevImage = (e) => {
                           <span className="review-date">{review.date}</span>
                         </div>
                         <p className="review-text mb-0">{review.comment}</p>
-                        {review.media?.length > 0 && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '8px',
-                              marginTop: '10px'
-                            }}
-                          >
-                            {review.media.map((mediaUrl, index) => {
-                              const isVideo = /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(mediaUrl);
-                              const mediaStyle = {
-                                width: '84px',
-                                height: '84px',
-                                objectFit: 'cover',
-                                borderRadius: '10px',
-                                border: '1px solid #e5e7eb',
-                                backgroundColor: '#fff'
-                              };
-
-                              return isVideo ? (
-                                <video
-                                  key={`${review.id}-media-${index}`}
-                                  src={mediaUrl}
-                                  controls
-                                  style={mediaStyle}
-                                />
-                              ) : (
-                                <img
-                                  key={`${review.id}-media-${index}`}
-                                  src={mediaUrl}
-                                  alt={`Đánh giá ${index + 1}`}
-                                  style={mediaStyle}
-                                  loading="lazy"
-                                />
-                              );
-                            })}
-                          </div>
-                        )}
                         {review.replies?.length > 0 && (
                           <div className="review-replies">
-                            {(expandedRepliesByReview[review.id] ? review.replies : review.replies.slice(0, 2)).map((reply) => {
-                              const isCurrentUserReply = reply.authorId === currentUserId;
-                              const replyLabel = reply.isShopReply
-                                ? 'Phản hồi từ shop'
-                                : isCurrentUserReply
-                                ? 'Phản hồi của bạn'
-                                : `Phản hồi từ ${reply.customerName}`;
-
-                              return (
-                                <div key={reply.id} className="review-reply">
-                                  <div className="review-reply-header">
-                                    <span className={`review-reply-badge ${reply.isShopReply || isCurrentUserReply ? '' : 'review-reply-badge--customer'}`}>
-                                      {replyLabel}
-                                    </span>
-                                    <span className="review-reply-date">{reply.date}</span>
-                                  </div>
-                                  <p className="review-reply-text mb-0">{reply.comment}</p>
+                            {review.replies.map((reply) => (
+                              <div key={reply.id} className="review-reply">
+                                <div className="review-reply-header">
+                                  <span className="review-reply-badge">Phản hồi từ shop</span>
+                                  <span className="review-reply-date">{reply.date}</span>
                                 </div>
-                              );
-                            })}
-
-                            {review.replies.length > 2 && (
-                              <button
-                                type="button"
-                                className="review-replies-toggle"
-                                onClick={() =>
-                                  setExpandedRepliesByReview((prev) => ({
-                                    ...prev,
-                                    [review.id]: !prev[review.id]
-                                  }))
-                                }
-                              >
-                                {expandedRepliesByReview[review.id]
-                                  ? 'Thu gọn phản hồi'
-                                  : `Xem thêm ${review.replies.length - 2} phản hồi`}
-                              </button>
-                            )}
+                                <p className="review-reply-text mb-0">{reply.comment}</p>
+                              </div>
+                            ))}
                           </div>
                         )}
-
-                        {reviewReplyEligibility.canReply &&
-                          review.customerId === currentUserId &&
-                          Array.isArray(review.replies) &&
-                          review.replies.some((reply) => reply.isShopReply) && (
-                            <div className="customer-reply-compose">
-                              <textarea
-                                className="customer-reply-input"
-                                rows={2}
-                                placeholder="Viết phản hồi tiếp theo cho shop..."
-                                value={reviewReplyInputByReview?.[review.id] || ''}
-                                onChange={(event) => handleReviewReplyInputChange(review.id, event.target.value)}
-                                disabled={submittingReplyReviewId === review.id}
-                              />
-                              <div className="customer-reply-actions">
-                                <button
-                                  type="button"
-                                  className="customer-reply-submit"
-                                  onClick={() => handleSubmitReviewReply(review.id)}
-                                  disabled={
-                                    submittingReplyReviewId === review.id ||
-                                    !String(reviewReplyInputByReview?.[review.id] || '').trim()
-                                  }
-                                >
-                                  {submittingReplyReviewId === review.id ? 'Đang gửi...' : 'Gửi phản hồi'}
-                                </button>
-                              </div>
-                            </div>
-                          )}
                       </div>
                     </div>
                   </article>
                 ))}
-
-                {filteredReviews.length > 0 && (
-                  <div className="review-pagination">
-                    <button
-                      type="button"
-                      className="review-page-nav"
-                      disabled={safeCurrentReviewPage === 1}
-                      onClick={() => setCurrentReviewPage((prev) => Math.max(1, prev - 1))}
-                    >
-                      ‹
-                    </button>
-
-                    {reviewPaginationItems.map((item) => {
-                      if (typeof item !== 'number') {
-                        return (
-                          <span key={item} className="review-page-ellipsis">
-                            ...
-                          </span>
-                        );
-                      }
-
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          className={`review-page-btn ${safeCurrentReviewPage === item ? 'active' : ''}`}
-                          onClick={() => setCurrentReviewPage(item)}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
-
-                    <button
-                      type="button"
-                      className="review-page-nav"
-                      disabled={safeCurrentReviewPage === totalReviewPages}
-                      onClick={() => setCurrentReviewPage((prev) => Math.min(totalReviewPages, prev + 1))}
-                    >
-                      ›
-                    </button>
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -1111,11 +763,17 @@ const handlePrevImage = (e) => {
         ) : (
           <div className="products-grid products-grid--featured" id="suggested-products">
             {suggestedProducts.map((item) => (
-              <SuggestedProductCard
+              <article
                 key={item.id}
-                product={item}
+                className="product-card"
                 onClick={() => navigate(`/product/${item.id}`)}
-              />
+              >
+                <div className="product-image">
+                  <img src={item.image} alt={item.name} />
+                </div>
+                <p className="product-name">{item.name}</p>
+                <p className="product-price">{formatVnd(item.price)}đ</p>
+              </article>
             ))}
           </div>
         )}
@@ -1211,111 +869,14 @@ const handlePrevImage = (e) => {
   );
 };
 
-const SuggestedProductCard = ({ product, onClick }) => {
-  const displayPrice = Number(product.price) || 0;
-  const displayOldPrice = Number(product.oldPrice) || null;
-  const hasAnyVariantInStock = Number(product.stock ?? 0) > 0;
-  const discountPercent = displayOldPrice && displayOldPrice > displayPrice
-    ? Math.round(((displayOldPrice - displayPrice) / displayOldPrice) * 100)
-    : 0;
-
-  return (
-    <article
-      className="group bg-white rounded-2xl p-3 border border-rose-100/50 hover:border-rose-200 hover:shadow-[0_12px_30px_rgba(191,124,124,0.12)] transition-all duration-300 flex flex-col h-full relative overflow-hidden"
-      onClick={onClick}
-    >
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start pointer-events-none">
-        {discountPercent > 0 && (
-          <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shadow-lg shadow-rose-500/30">
-            -{discountPercent}%
-          </span>
-        )}
-      </div>
-
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 bg-slate-50 flex items-center justify-center cursor-pointer">
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
-      </div>
-
-      <div className="mt-auto flex flex-col flex-1 px-1">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-rose-500 truncate pr-2">{product.category || ''}</span>
-        </div>
-
-        <p className="font-bold text-slate-800 text-[15px] leading-relaxed line-clamp-2 mb-2 group-hover:text-rose-600 transition-colors cursor-pointer">
-          {product.name}
-        </p>
-
-        <div className="flex items-center gap-1 text-[11px] text-slate-500 mb-2">
-          <Star size={10} className="fill-amber-400 text-amber-400" />
-          <span className="font-bold text-slate-700">{Number(product.rating || 0).toFixed(1)}</span>
-          <span>({Number(product.reviews || 0)})</span>
-        </div>
-
-        <div className="mt-auto pt-2.5 border-t border-slate-100">
-          <div className="flex items-end justify-between">
-            <div className="flex flex-col">
-              <span className="text-base font-black text-rose-600 leading-none">{formatVnd(displayPrice)}đ</span>
-              {displayOldPrice > displayPrice && (
-                <span className="text-[10px] font-medium text-slate-400 line-through mt-1.5 leading-none">{formatVnd(displayOldPrice)}đ</span>
-              )}
-            </div>
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${hasAnyVariantInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-              {hasAnyVariantInStock ? 'Còn hàng' : 'Hết hàng'}
-            </span>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-};
-
 function renderStars(rating = 0, options = {}) {
-  const { activeColor = '#facc15', inactiveColor = '#fde68a' } = options;
-  const fullStars = Math.floor(rating);
-  const fraction = Math.max(0, Math.min(1, rating - fullStars));
-
-  return Array.from({ length: 5 }, (_, index) => {
-    // fully filled star
-    if (index < fullStars) {
-      return (
-        <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
-          <Star size={20} fill={activeColor} color={activeColor} strokeWidth={2} />
-        </span>
-      );
-    }
-
-    // partially filled star for fractional part
-    if (index === fullStars && fraction > 0) {
-      const percent = Math.round(fraction * 100);
-      return (
-        <span
-          key={index}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            position: 'relative',
-            width: 20,
-            height: 20,
-            overflow: 'hidden'
-          }}
-        >
-          <div style={{ position: 'absolute', left: 0, top: 0 }}>
-            <Star size={20} fill="none" color={inactiveColor} strokeWidth={2} />
-          </div>
-          <div style={{ position: 'absolute', left: 0, top: 0, width: `${percent}%`, overflow: 'hidden' }}>
-            <Star size={20} fill={activeColor} color={activeColor} strokeWidth={2} />
-          </div>
-        </span>
-      );
-    }
-
-    // empty star
-    return (
-      <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
-        <Star size={20} fill="none" color={inactiveColor} strokeWidth={2} />
-      </span>
-    );
-  });
+  const { activeColor = '#f59e0b', inactiveColor = '#d1d5db' } = options;
+  const filled = Math.round(rating);
+  return Array.from({ length: 5 }, (_, index) => (
+    <span key={index} style={{ color: index < filled ? activeColor : inactiveColor }}>
+      ★
+    </span>
+  ));
 }
 
 function formatDate(dateValue) {
@@ -1342,41 +903,11 @@ function extractReviewMedia(review = {}) {
     review.DuongDanAnh
   ];
 
-  return candidates.flatMap((item) => normalizeReviewMediaItems(item));
-}
-
-function normalizeReviewMediaItems(item) {
-  if (!item) return [];
-
-  if (Array.isArray(item)) {
-    return item.flatMap((entry) => normalizeReviewMediaItems(entry));
-  }
-
-  if (typeof item === 'string') {
-    const trimmed = item.trim();
-    if (!trimmed) return [];
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return parsed.flatMap((entry) => normalizeReviewMediaItems(entry));
-      }
-      if (parsed && typeof parsed === 'object') {
-        return normalizeReviewMediaItems(parsed);
-      }
-    } catch {
-      // Chuỗi là một URL đơn lẻ, giữ nguyên.
-    }
-
-    return [trimmed];
-  }
-
-  if (typeof item === 'object') {
-    const mediaUrl = item.url || item.src || item.DuongDanAnh || item.path || item.fileUrl;
-    return mediaUrl ? [String(mediaUrl)] : [];
-  }
-
-  return [String(item)].filter(Boolean);
+  return candidates.flatMap((item) => {
+    if (!item) return [];
+    if (Array.isArray(item)) return item.filter(Boolean);
+    return [item];
+  });
 }
 
 function hasReviewMedia(review = {}) {
@@ -1442,18 +973,6 @@ function detectVariantType(variants = []) {
 
   if (weightHits > 0 && weightHits >= colorHits) return 'weight';
   return 'color';
-}
-
-function getLoggedInUserId() {
-  try {
-    const userRaw = localStorage.getItem('user');
-    if (!userRaw) return 0;
-    const user = JSON.parse(userRaw);
-    const id = Number(user?.id || user?.maND || user?.MaND || 0);
-    return Number.isInteger(id) && id > 0 ? id : 0;
-  } catch {
-    return 0;
-  }
 }
 
 export default ProductDetailView;

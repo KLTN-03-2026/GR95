@@ -1,10 +1,8 @@
 // src/pages/admin/category/CategoryManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, Edit2, Trash2, Box, CheckCircle, Download } from 'lucide-react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { Search, UserPlus, Box, CheckCircle, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { categoryApi } from '../../../services/categoryApi';
-import CategoryForm from './CategoryForm'; // Import Modal vào
+import CategoryForm from './CategoryForm';
 import './Category.css';
 
 const CategoryManagement = () => {
@@ -16,11 +14,15 @@ const CategoryManagement = () => {
     const [editingId, setEditingId] = useState(null); 
     const [currentCat, setCurrentCat] = useState(null);
 
+    // --- PHẦN THÊM MỚI: State cho phân trang ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5; // Số dòng trên mỗi trang
+
     const loadData = async () => {
         try {
             const res = await categoryApi.getAll(search);
-            console.log("Dữ liệu API trả về:", res); // Thêm dòng này để dễ debug
             setCategories(res);
+            setCurrentPage(1); // Reset về trang 1 khi tìm kiếm
         } catch (error) {
             console.error("Lỗi tải dữ liệu:", error); 
         }
@@ -28,24 +30,28 @@ const CategoryManagement = () => {
 
     useEffect(() => {
         let isActive = true;
-
         const fetchCategories = async () => {
             try {
                 const res = await categoryApi.getAll(search);
                 if (isActive) {
                     setCategories(res);
+                    setCurrentPage(1);
                 }
             } catch (err) {
                 console.error("Lỗi tải dữ liệu:", err);
             }
         };
-
         fetchCategories();
-
-        return () => {
-            isActive = false;
-        };
+        return () => { isActive = false; };
     }, [search]);
+
+    // --- LOGIC PHÂN TRANG ---
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = Array.isArray(categories) ? categories.slice(indexOfFirstItem, indexOfLastItem) : [];
+    const totalPages = Math.ceil((categories?.length || 0) / itemsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     const handleOpenAdd = () => {
         setEditingId(null);
@@ -55,25 +61,13 @@ const CategoryManagement = () => {
 
     const handleOpenEdit = (cat) => {
         setEditingId(cat.MaDM);
-        setCurrentCat({ MaDM: cat.MaDM, TenDM: cat.TenDM });
+        setCurrentCat(cat);
         setIsModalOpen(true);
     };
 
     const handleSuccess = () => {
         setIsModalOpen(false);
-        loadData(); // Tải lại bảng sau khi thêm/sửa thành công
-    };
-
-    const handleDelete = async (id) => {
-        if (window.confirm(`Xác nhận xóa danh mục: ${id}?`)) {
-            try {
-                await categoryApi.delete(id);
-                loadData(); 
-            } catch (error) {
-                console.error("Không thể xóa danh mục này:", error);
-                toast.error("Không thể xóa danh mục này!");
-            }
-        }
+        loadData();
     };
 
     return (
@@ -81,11 +75,11 @@ const CategoryManagement = () => {
             <div className="category-wrapper">
                 <h2 className="page-title">QUẢN LÝ DANH MỤC SẢN PHẨM</h2>
 
+                {/* Thống kê */}
                 <div className="category-stats-container">
                     <div className="category-stat-card">
                         <div className="category-stat-info">
                             <p className="category-stat-label">Tổng danh mục</p>
-                            {/* Đã thêm ?.length || 0 */}
                             <span className="category-stat-number text-italic">{categories?.length || 0}</span>
                         </div>
                         <div className="category-stat-icon blue"><Box size={20} /></div>
@@ -93,13 +87,13 @@ const CategoryManagement = () => {
                     <div className="category-stat-card">
                         <div className="category-stat-info">
                             <p className="category-stat-label">Đang hoạt động</p>
-                            {/* Đã thêm ?.length || 0 */}
                             <span className="category-stat-number text-italic category-text-green">{categories?.length || 0}</span>
                         </div>
                         <div className="category-stat-icon green"><CheckCircle size={20} /></div>
                     </div>
                 </div>
 
+                {/* Thanh công cụ */}
                 <div className="toolbar">
                     <button className="btn-add" onClick={handleOpenAdd}>
                         <UserPlus size={18} /> THÊM DANH MỤC MỚI
@@ -122,32 +116,41 @@ const CategoryManagement = () => {
                     </div>
                 </div>
                 
+                {/* Bảng dữ liệu */}
                 <div className="table-wrapper">
                     <table className="custom-table">
                         <thead>
                             <tr>
                                 <th>Mã danh mục</th>
+                                <th>Hình ảnh</th>
                                 <th>Tên danh mục</th>
-                                <th className="text-right">Hành động</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Đã thêm kiểm tra mảng an toàn trước khi .map() */}
-                            {Array.isArray(categories) && categories.length > 0 ? (
-                                categories.map((cat) => (
-                                    <tr key={cat.MaDM}>
+                            {currentItems.length > 0 ? (
+                                currentItems.map((cat) => (
+                                    <tr
+                                        key={cat.MaDM}
+                                        className="category-row clickable-row"
+                                        onClick={() => handleOpenEdit(cat)}
+                                    >
                                         <td className="col-id">{cat.MaDM}</td>
-                                        <td className="col-name">{cat.TenDM}</td>
-                                        <td className="col-actions">
-                                            <Edit2 size={16} className="icon-edit" onClick={() => handleOpenEdit(cat)} style={{cursor: 'pointer', marginRight: '10px'}}/>
-                                            <Trash2 size={16} className="icon-delete" onClick={() => handleDelete(cat.MaDM)} style={{cursor: 'pointer'}}/>
+                                        <td>
+                                            <div className="category-thumb">
+                                                {cat.DuongDanAnh ? (
+                                                    <img src={cat.DuongDanAnh} alt={cat.TenDM} />
+                                                ) : (
+                                                    <span>Chưa có ảnh</span>
+                                                )}
+                                            </div>
                                         </td>
+                                        <td className="col-name">{cat.TenDM}</td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="3" style={{ textAlign: 'center', padding: '30px', color: '#7f8c8d' }}>
-                                        Chưa có dữ liệu danh mục nào để hiển thị.
+                                    <td colSpan="3" style={{ textAlign: 'center', padding: '30px' }}>
+                                        Chưa có dữ liệu danh mục.
                                     </td>
                                 </tr>
                             )}
@@ -155,7 +158,37 @@ const CategoryManagement = () => {
                     </table>
                 </div>
 
-                {/* Nhúng component Modal vào đây */}
+                {/* --- PHẦN THÊM MỚI: Giao diện phân trang (image_9f3b7b.png) --- */}
+                {totalPages > 1 && (
+                    <div className="pagination-container">
+                        <button 
+                            className="pagi-btn" 
+                            disabled={currentPage === 1}
+                            onClick={() => paginate(currentPage - 1)}
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+
+                        {[...Array(totalPages)].map((_, index) => (
+                            <button
+                                key={index + 1}
+                                onClick={() => paginate(index + 1)}
+                                className={`pagi-number ${currentPage === index + 1 ? 'active' : ''}`}
+                            >
+                                {index + 1}
+                            </button>
+                        ))}
+
+                        <button 
+                            className="pagi-btn" 
+                            disabled={currentPage === totalPages}
+                            onClick={() => paginate(currentPage + 1)}
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+                )}
+
                 <CategoryForm 
                     isOpen={isModalOpen} 
                     onClose={() => setIsModalOpen(false)} 
@@ -163,9 +196,6 @@ const CategoryManagement = () => {
                     initialData={currentCat}
                     onSuccess={handleSuccess}
                 />
-
-                <ToastContainer position="top-right" autoClose={3000} theme="colored" />
-
             </div>
         </div>
     );

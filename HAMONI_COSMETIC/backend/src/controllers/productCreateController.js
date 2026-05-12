@@ -14,6 +14,17 @@ const createProduct = async (req, res) => {
     const connection = await db.getConnection();
 
     try {
+        // KIỂM TRA TRÙNG TÊN SẢN PHẨM TRƯỚC KHI TẠO
+        const [existingProduct] = await connection.execute(
+            `SELECT MaSP FROM SanPham WHERE TenSP = ?`,
+            [productInfo.TenSP.trim()]
+        );
+
+        if (existingProduct.length > 0) {
+            connection.release(); // Trả lại connection nếu return sớm
+            return res.status(400).json({ message: "Tên sản phẩm này đã tồn tại. Vui lòng đặt tên khác!" });
+        }
+
         // BẮT ĐẦU TRANSACTION
         await connection.beginTransaction();
 
@@ -25,7 +36,7 @@ const createProduct = async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
                 productInfo.MaDM, 
-                productInfo.TenSP, 
+                productInfo.TenSP.trim(), // Trim khoảng trắng thừa để an toàn
                 productInfo.MoTa || null, 
                 productInfo.ThanhPhan || null, 
                 productInfo.CachSuDung || null, 
