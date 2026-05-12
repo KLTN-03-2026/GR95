@@ -4,9 +4,9 @@ exports.getDetailAnalytics = async (req, res) => {
     try {
         // 1. Lấy thông tin khách hàng 
         const [customer] = await db.execute(
-            'SELECT HoTen, SoDienThoai, Email, DiaChi, TrangThai FROM NguoiDung WHERE MaND = ?', 
-            [id]
-        );
+    'SELECT HoTen, SoDienThoai, Email, DiaChi, TrangThai, AvatarUrl AS Avatar FROM NguoiDung WHERE MaND = ?', 
+    [id]
+);
         if (customer.length === 0) {
             return res.status(404).json({ message: "Không tìm thấy người dùng" });
         }

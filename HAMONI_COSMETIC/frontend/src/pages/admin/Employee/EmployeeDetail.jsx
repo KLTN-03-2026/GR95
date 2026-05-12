@@ -2,26 +2,36 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosClient from '../../../services/axiosClient';
-import { ArrowLeft, Save, User, Mail, Phone, ShieldCheck, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, User, Mail, Phone, ShieldCheck, CheckCircle, AlertCircle, ImageOff } from 'lucide-react';
 import './EmployeeDetail.css';
 
 const EmployeeDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        HoTen: '', Email: '', SoDienThoai: '', MaQuyen: '', TrangThai: 1
+        HoTen: '', Email: '', SoDienThoai: '', MaQuyen: '', TrangThai: 1, AvatarUrl: ''
     });
     
     const [loading, setLoading] = useState(true);
     const [alertConfig, setAlertConfig] = useState({ show: false, type: '', message: '' });
+    const [avatarError, setAvatarError] = useState(false); // ← THÊM: theo dõi lỗi ảnh
 
     useEffect(() => {
         const fetchEmployee = async () => {
             try {
                 const res = await axiosClient.get(`/employees/${id}`);
-                setFormData(res);
+                const data = res.data || res;
+                setFormData({
+                    HoTen: data.HoTen || '',
+                    Email: data.Email || '',
+                    SoDienThoai: data.SoDienThoai || '',
+                    MaQuyen: data.MaQuyen || '',
+                    TrangThai: data.TrangThai || 1,
+                    AvatarUrl: data.AvatarUrl || ''
+                });
+                setAvatarError(false); // reset lỗi khi load data mới
                 setLoading(false);
-            } catch  {
+            } catch {
                 setAlertConfig({ show: true, type: 'danger', message: "Không tìm thấy dữ liệu Employee!" });
                 setLoading(false);
             }
@@ -31,13 +41,14 @@ const EmployeeDetail = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        // Reset lỗi avatar khi người dùng nhập URL mới
+        if (name === 'AvatarUrl') setAvatarError(false);
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleUpdate = async (e) => {
         e.preventDefault();
-        setAlertConfig({ show: false, type: '', message: '' }); 
-        
+        setAlertConfig({ show: false, type: '', message: '' });
         try {
             await axiosClient.put(`/employees/${id}`, formData);
             setAlertConfig({ show: true, type: 'success', message: "Cập nhật thông tin Employee thành công!" });
@@ -45,6 +56,40 @@ const EmployeeDetail = () => {
         } catch {
             setAlertConfig({ show: true, type: 'danger', message: "Lỗi! Không thể cập nhật dữ liệu. Vui lòng thử lại." });
         }
+    };
+
+    // ← THÊM: component avatar tái sử dụng, xử lý cả lỗi load ảnh
+    const AvatarDisplay = ({ size = 120, fontSize = 48 }) => {
+        const hasValidUrl = formData.AvatarUrl && formData.AvatarUrl.trim() !== '' && !avatarError;
+
+        if (hasValidUrl) {
+            return (
+                <img
+                    src={formData.AvatarUrl}
+                    alt={formData.HoTen}
+                    className="avatar-large mx-auto mb-4"
+                    style={{
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        objectFit: 'cover',
+                        borderRadius: '50%',
+                        border: '3px solid #e9efff',
+                        boxShadow: '0 8px 20px rgba(0, 51, 153, 0.15)'
+                    }}
+                    onError={() => setAvatarError(true)} // ← fallback khi link lỗi
+                />
+            );
+        }
+
+        // Fallback: chữ cái đầu hoặc icon nếu chưa có tên
+        return (
+            <div
+                className="avatar-large mx-auto mb-4"
+                style={{ width: `${size}px`, height: `${size}px`, fontSize: `${fontSize}px` }}
+            >
+                {formData.HoTen?.charAt(0).toUpperCase() || <ImageOff size={40} />}
+            </div>
+        );
     };
 
     if (loading) {
@@ -59,7 +104,6 @@ const EmployeeDetail = () => {
 
     return (
         <div className="admin-container">
-            {/* Header / Nút Quay lại */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <button className="btn-back-detail" onClick={() => navigate('/admin/employee')}>
                     <ArrowLeft size={20} /> Quay lại danh sách
@@ -67,7 +111,6 @@ const EmployeeDetail = () => {
                 <h1 className="title mb-0">HỒ SƠ NHÂN VIÊN</h1>
             </div>
 
-            {/* THÔNG BÁO ALERT */}
             {alertConfig.show && (
                 <div className={`alert alert-${alertConfig.type} d-flex align-items-center shadow-sm mb-4`} role="alert">
                     {alertConfig.type === 'success' ? <CheckCircle className="me-2" size={20} /> : <AlertCircle className="me-2" size={20} />}
@@ -76,13 +119,14 @@ const EmployeeDetail = () => {
             )}
 
             <div className="row g-4">
-                {/* CỘT TRÁI: THẺ PROFILE NGẮN GỌN */}
+                {/* CỘT TRÁI: THẺ PROFILE */}
                 <div className="col-xl-4 col-lg-5">
                     <div className="card shadow-sm border-0 rounded-4 h-100 profile-summary-card">
                         <div className="card-body text-center p-5">
-                            <div className="avatar-large mx-auto mb-4">
-                                {formData.HoTen?.charAt(0).toUpperCase() || 'E'}
-                            </div>
+                            
+                            {/* ← SỬA: dùng component AvatarDisplay */}
+                            <AvatarDisplay size={120} fontSize={48} />
+
                             <h3 className="fw-bold text-dark mb-1">{formData.HoTen}</h3>
                             <p className="text-muted mb-4">Mã số: <strong>NV-{id}</strong></p>
                             
@@ -108,7 +152,7 @@ const EmployeeDetail = () => {
                     </div>
                 </div>
 
-                {/* CỘT PHẢI: FORM CHỈNH SỬA CHI TIẾT */}
+                {/* CỘT PHẢI: FORM */}
                 <div className="col-xl-8 col-lg-7">
                     <div className="card shadow-sm border-0 rounded-4 h-100">
                         <div className="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 px-md-5">
@@ -149,21 +193,53 @@ const EmployeeDetail = () => {
                                         </select>
                                     </div>
 
-                                    {/* Khu vực Radio Bootstrap cho Trạng thái */}
+                                    {/* ← SỬA: ô nhập URL avatar có preview live */}
+                                    <div className="col-12">
+                                        <label className="form-label text-secondary fw-semibold d-flex align-items-center gap-2">
+                                            Avatar (URL ảnh)
+                                        </label>
+                                        <div className="d-flex align-items-center gap-3">
+                                            {/* Preview nhỏ ngay cạnh ô input */}
+                                            <div className="avatar-preview-small flex-shrink-0">
+                                                {formData.AvatarUrl && !avatarError ? (
+                                                    <img
+                                                        src={formData.AvatarUrl}
+                                                        alt="preview"
+                                                        className="avatar-preview-img"
+                                                        onError={() => setAvatarError(true)}
+                                                    />
+                                                ) : (
+                                                    <div className="avatar-preview-fallback">
+                                                        {formData.HoTen?.charAt(0).toUpperCase() || '?'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                className="form-control form-control-lg bg-light"
+                                                name="AvatarUrl"
+                                                placeholder="https://example.com/avatar.jpg"
+                                                value={formData.AvatarUrl || ''}
+                                                onChange={handleInputChange}
+                                            />
+                                        </div>
+                                        <small className="text-muted mt-1 d-block">
+                                            {avatarError
+                                                ? '⚠️ Link ảnh không hợp lệ hoặc không load được. Vui lòng kiểm tra lại.'
+                                                : 'Dán đường link ảnh avatar — xem preview ngay bên trái'}
+                                        </small>
+                                    </div>
+
                                     <div className="col-12 mt-4">
                                         <label className="form-label text-secondary fw-semibold mb-3">Trạng thái tài khoản</label>
                                         <div className="d-flex gap-4 p-3 bg-light rounded-3 border">
                                             <div className="form-check">
                                                 <input className="form-check-input" type="radio" name="TrangThai" id="active" value="1" checked={String(formData.TrangThai) === '1'} onChange={handleInputChange} />
-                                                <label className="form-check-label text-success fw-bold" htmlFor="active">
-                                                    Đang hoạt động
-                                                </label>
+                                                <label className="form-check-label text-success fw-bold" htmlFor="active">Đang hoạt động</label>
                                             </div>
                                             <div className="form-check">
                                                 <input className="form-check-input" type="radio" name="TrangThai" id="inactive" value="0" checked={String(formData.TrangThai) === '0'} onChange={handleInputChange} />
-                                                <label className="form-check-label text-secondary fw-bold" htmlFor="inactive">
-                                                    Ngoại tuyến (Bị khóa)
-                                                </label>
+                                                <label className="form-check-label text-secondary fw-bold" htmlFor="inactive">Ngoại tuyến (Bị khóa)</label>
                                             </div>
                                         </div>
                                     </div>
@@ -171,7 +247,6 @@ const EmployeeDetail = () => {
 
                                 <hr className="my-5 text-muted opacity-25" />
 
-                                {/* Các nút bấm */}
                                 <div className="d-flex justify-content-end gap-3">
                                     <button type="button" className="btn btn-light border px-4 py-2 fw-semibold btn-cancel-custom" onClick={() => navigate('/admin/employee')}>
                                         Hủy bỏ

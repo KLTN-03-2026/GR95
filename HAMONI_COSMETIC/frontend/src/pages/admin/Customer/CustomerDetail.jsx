@@ -89,9 +89,17 @@ const CustomerDetail = () => {
 
                 {/* Thông tin khách hàng */}
                 <div className="info-card profile-info-card">
-                    <div className="avatar-box" style={{ backgroundColor: getAvatarBgColor(fullName) }}>
-                        {getInitials(fullName)}
-                    </div>
+                    {data.customerInfo?.Avatar ? (
+                        <div className="avatar-box" style={{
+                            backgroundImage: `url(${data.customerInfo.Avatar})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                        }}></div>
+                    ) : (
+                        <div className="avatar-box" style={{ backgroundColor: getAvatarBgColor(fullName) }}>
+                            {getInitials(fullName)}
+                        </div>
+                    )}
                     <div className="profile-details-grid">
                         <div className="detail-item">
                             <label>HỌ VÀ TÊN</label>

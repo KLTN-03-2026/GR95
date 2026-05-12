@@ -13,29 +13,56 @@ const OrderDetailModal = () => {
     const [loading, setLoading] = useState(true);
     const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
     const [status, setStatus] = useState(""); 
-const [isPrinted, setIsPrinted] = useState(false);
-    const [refundStatus, setRefundStatus] = useState('notRefunded'); // 'refunded' or 'notRefunded'
+    const [isPrinted, setIsPrinted] = useState(false);
+    const [refundStatus, setRefundStatus] = useState('notRefunded');
+
     const showSuccess = (msg) => toast.success(msg, { position: 'top-right', autoClose: 3000 });
     const showWarning = (msg) => toast.warning(msg, { position: 'top-right', autoClose: 8000, closeOnClick: true });
     const showError = (msg) => toast.error(msg, { position: 'top-right', autoClose: 5000 });
-// Nếu muốn có TẤT CẢ các quyền (quyền cao nhất)
-const userPermissions = ['ALL']; 
-const isAdmin = userPermissions.includes('ALL');
-const canUpdate = isAdmin || userPermissions.includes('UPDATE_ORDER');
-const canCancel = isAdmin || userPermissions.includes('CANCEL_ORDER'); // Giờ sẽ là True
-const canPrint = isAdmin || userPermissions.includes('PRINT_ORDER');
-const canViewLog = isAdmin || userPermissions.includes('VIEW_ORDER_LOG'); // Giờ sẽ là True
-const disableCancel = order?.trangThai === "HoanThanh" || order?.trangThai === "DaHuy";
-const disableUpdate = order?.trangThai === "HoanThanh";
-const canPrintInvoice = order?.trangThai === 'DaXacNhan' || order?.daInHoaDon;
-// determine if refund state changed compared to backend
-const originalRefundState = !!(order?.daHoanTien || order?.isRefunded || order?.refunded || order?.hoanTien);
-const hasStatusChanged = Boolean(order?.trangThai) && (status !== order?.trangThai || originalRefundState !== (refundStatus === 'refunded'));
-const customerName = order?.khachHang?.hoTen || 'Khách hàng';
-const customerAvatar = order?.khachHang?.avatarUrl;
-const avatarFallbackUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=635F40`;
-const productPlaceholderImage =
-    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" rx="12" fill="%23f2f2f2"/%3E%3Cpath d="M24 64l15-17 13 14 9-10 15 13v9H24z" fill="%23c9c9c9"/%3E%3Ccircle cx="40" cy="39" r="7" fill="%23dbdbdb"/%3E%3C/svg%3E';
+
+    const userPermissions = ['ALL']; 
+    const isAdmin = userPermissions.includes('ALL');
+    const canUpdate = isAdmin || userPermissions.includes('UPDATE_ORDER');
+    const canCancel = isAdmin || userPermissions.includes('CANCEL_ORDER');
+    const canPrint = isAdmin || userPermissions.includes('PRINT_ORDER');
+    const canViewLog = isAdmin || userPermissions.includes('VIEW_ORDER_LOG');
+    const disableCancel = order?.trangThai === "HoanThanh" || order?.trangThai === "DaHuy";
+    const disableUpdate = order?.trangThai === "HoanThanh";
+    const canPrintInvoice = order?.trangThai === 'DaXacNhan' || order?.daInHoaDon;
+    const originalRefundState = !!(order?.daHoanTien || order?.isRefunded || order?.refunded || order?.hoanTien);
+    const hasStatusChanged = Boolean(order?.trangThai) && (status !== order?.trangThai || originalRefundState !== (refundStatus === 'refunded'));
+    const customerName = order?.khachHang?.hoTen || 'Khách hàng';
+    const customerAvatar = order?.khachHang?.avatarUrl;
+    
+    const getInitials = (name) => {
+        if (!name) return "H";
+        const parts = name.trim().split(" ");
+        return parts[parts.length - 1].charAt(0).toUpperCase();
+    };
+
+    const getAvatarBgColor = (name) => {
+        const colors = ['#e67e22', '#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#e74c3c'];
+        const index = name ? name.charCodeAt(0) % colors.length : 0;
+        return colors[index];
+    };
+    const productPlaceholderImage =
+        'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" rx="12" fill="%23f2f2f2"/%3E%3Cpath d="M24 64l15-17 13 14 9-10 15 13v9H24z" fill="%23c9c9c9"/%3E%3Ccircle cx="40" cy="39" r="7" fill="%23dbdbdb"/%3E%3C/svg%3E';
+
+    const parseShippingAddress = (raw) => {
+        if (!raw) return { ten: '', sdt: '', email: '', diaChi: '' };
+        const extract = (label) => {
+            const regex = new RegExp(`${label}:\\s*([^|]+)`);
+            const match = raw.match(regex);
+            return match ? match[1].trim() : '';
+        };
+        return {
+            ten:    extract('Tên'),
+            sdt:    extract('SĐT'),
+            email:  extract('Email'),
+            diaChi: extract('Địa chỉ'),
+        };
+    };
+
     const fetchOrderDetail = useCallback(async () => {
         try {
             setLoading(true);
@@ -48,15 +75,19 @@ const productPlaceholderImage =
         }
     }, [id]);
 
-    useEffect(() => {
-        fetchOrderDetail();
-    }, [fetchOrderDetail]);
+    useEffect(() => { fetchOrderDetail(); }, [fetchOrderDetail]);
 
     useEffect(() => {
         if (order) {
             setStatus(order.trangThai);
             setIsPrinted(!!order.daInHoaDon);
         }
+    }, [order]);
+
+    useEffect(() => {
+        if (!order) return;
+        const maybeRefund = order.daHoanTien || order.isRefunded || order.hoanTien || order.refunded;
+        setRefundStatus(maybeRefund ? 'refunded' : 'notRefunded');
     }, [order]);
 
     const formatCurrency = (amount) => {
@@ -67,76 +98,51 @@ const productPlaceholderImage =
         const method = String(data?.phuongThucThanhToan || '').toUpperCase();
         const status = String(data?.trangThaiThanhToan || '').toUpperCase();
         const transferMethods = ['VNPAY', 'THANHTOANTHEOSO', 'CHUYENKHOAN', 'BANK_TRANSFER'];
-
         return transferMethods.includes(method) && status === 'DATHANHTOAN';
     };
 
     const totalNeedCollect = isTransferPaidOrder(order) ? 0 : Number(order?.tongTien || 0);
 
-    useEffect(() => {
-        if (!order) return;
-        // initialize refund status from likely backend fields
-        const maybeRefund = order.daHoanTien || order.isRefunded || order.hoanTien || order.hoanTien === true || order.refunded;
-        setRefundStatus(maybeRefund ? 'refunded' : 'notRefunded');
-    }, [order]);
-
-    // --- 2. CẬP NHẬT HÀM UPDATE (Bỏ Alert) ---
     const handleUpdateStatus = async () => {
-    if (!hasStatusChanged) {
-        showWarning("Vui lòng chọn trạng thái mới trước khi cập nhật.");
-        return;
-    }
-
-    if (status === 'DangGiao' && !(isPrinted || order?.daInHoaDon)) {
-        showWarning("Vui lòng in hóa đơn trước khi chuyển sang trạng thái đang giao.");
-        return;
-    }
-
-    try {
-        const body = {
-            newStatus: status,
-            // include refund flag so backend can persist refund status when updating
-            daHoanTien: refundStatus === 'refunded'
-        };
-
-        await axiosClient.put(`/orders/${id}/status`, body);
-
-        // Show different toast based on status being set
-        if (status === 'DaHuy') {
-            showError("⚠️ Đơn hàng đã bị hủy!");
-        } else {
-            showSuccess("Cập nhật trạng thái đơn hàng thành công!");
+        if (!hasStatusChanged) {
+            showWarning("Vui lòng chọn trạng thái mới trước khi cập nhật.");
+            return;
         }
-        // optimistically update local order state
-        setOrder((prev) => prev ? { ...prev, trangThai: status, daHoanTien: refundStatus === 'refunded' } : prev);
-        fetchOrderDetail(); 
-    } catch (err) {
-        console.error(err);
-        showError("Lỗi cập nhật trạng thái!");
-    }
-};
+        if (status === 'DangGiao' && !(isPrinted || order?.daInHoaDon)) {
+            showWarning("Vui lòng in hóa đơn trước khi chuyển sang trạng thái đang giao.");
+            return;
+        }
+        try {
+            const body = { newStatus: status, daHoanTien: refundStatus === 'refunded' };
+            await axiosClient.put(`/orders/${id}/status`, body);
+            if (status === 'DaHuy') {
+                showError("⚠️ Đơn hàng đã bị hủy!");
+            } else {
+                showSuccess("Cập nhật trạng thái đơn hàng thành công!");
+            }
+            setOrder((prev) => prev ? { ...prev, trangThai: status, daHoanTien: refundStatus === 'refunded' } : prev);
+            fetchOrderDetail(); 
+        } catch (err) {
+            console.error(err);
+            showError("Lỗi cập nhật trạng thái!");
+        }
+    };
 
     const handleOpenInvoice = () => {
         if (order?.trangThai !== 'DaXacNhan' && !order?.daInHoaDon) {
             showWarning('Vui lòng xác nhận đơn hàng trước khi in hóa đơn.');
             return;
         }
-
         setIsInvoiceOpen(true);
     };
 
     const handleConfirmPrintInvoice = async () => {
         try {
-            // Trigger browser print while invoice modal is still open so content is present in DOM
             window.print();
-
             await axiosClient.put(`/orders/${id}/print`);
-
             setIsPrinted(true);
             setOrder((prev) => (prev ? { ...prev, daInHoaDon: true } : prev));
             await fetchOrderDetail();
-
-            // Keep modal open briefly so user can see confirmation, then close
             showSuccess("🖨️ Đã in hóa đơn!");
             setIsInvoiceOpen(false);
         } catch (err) {
@@ -144,26 +150,24 @@ const productPlaceholderImage =
             showError("Lỗi khi in hóa đơn!");
         }
     };
-    // --- 3. CẬP NHẬT HÀM HỦY (Bỏ Alert) ---
-const handleCancelOrder = async () => {
-    try {
-        await axiosClient.put(`/orders/${id}/cancel`);
-        
-        showError("🚫 Đơn hàng đã bị hủy!");
-        setTimeout(() => navigate('/admin/orders'), 1500);
 
-    } catch (err) {
-        console.error("🔥 ERROR:", err.response?.data || err.message);
-        showError("Lỗi hủy đơn hàng!");
-    }
-};
+    const handleCancelOrder = async () => {
+        try {
+            await axiosClient.put(`/orders/${id}/cancel`);
+            showError("🚫 Đơn hàng đã bị hủy!");
+            setTimeout(() => navigate('/admin/orders'), 1500);
+        } catch (err) {
+            console.error("🔥 ERROR:", err.response?.data || err.message);
+            showError("Lỗi hủy đơn hàng!");
+        }
+    };
+
     const buildTimeline = () => {
         if (!order) return [];
         const timeline = [];
         timeline.push({ label: "Đơn hàng đã đặt", time: order.ngayTao });
         const validLogs = (order.lichSu || []).filter(log => log.moTa && !log.moTa.includes("→ ChoXacNhan"));
         validLogs.sort((a, b) => new Date(a.thoiGian) - new Date(b.thoiGian));
-
         validLogs.forEach(log => {
             let displayLabel = log.moTa;
             const statusMap = {
@@ -176,9 +180,7 @@ const handleCancelOrder = async () => {
                 const newStatus = log.moTa.split("→")[1].trim();
                 displayLabel = statusMap[newStatus] || newStatus;
             }
-            if (displayLabel === "DaInHoaDon") {
-                displayLabel = "Đã in hóa đơn";
-            }
+            if (displayLabel === "DaInHoaDon") displayLabel = "Đã in hóa đơn";
             if (timeline.length === 0 || timeline[timeline.length - 1].label !== displayLabel) {
                 timeline.push({ label: displayLabel, time: log.thoiGian });
             }
@@ -188,6 +190,8 @@ const handleCancelOrder = async () => {
 
     if (loading) return <div className="loading-container">Đang tải dữ liệu đơn hàng #{id}...</div>;
     if (!order) return <div className="error-container">Không tìm thấy thông tin đơn hàng!</div>;
+
+    const shipping = parseShippingAddress(order?.diaChiGiaoHang);
 
     return (
         <div className="order-detail-container">
@@ -209,31 +213,55 @@ const handleCancelOrder = async () => {
 
             <h1 className="main-title">XỬ LÝ ĐƠN HÀNG & CẬP NHẬT TRẠNG THÁI</h1>
 
+            {/* ===== CUSTOMER INFO CARD ===== */}
             <div className="customer-info-card">
-                <div className="customer-main">
-                    <div className="avatar-circle">
-                        <img
-                            className="avatar-image"
-                            src={customerAvatar || avatarFallbackUrl}
-                            alt={customerName}
-                            onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src = avatarFallbackUrl;
-                            }}
-                        />
-                    </div>
-                    <div className="info-text">
-                        <span className="label-top">KHÁCH HÀNG THÀNH VIÊN</span>
-                        <h3>{customerName}</h3>
-                        <p>📞 {order.khachHang?.soDienThoai} | ✉️ {order.khachHang?.email}</p>
-                    </div>
+                {/* Cột 1: Avatar */}
+                <div className="col-avatar">
+                    {customerAvatar ? (
+                        <div className="avatar-box" style={{
+                            backgroundImage: `url(${customerAvatar})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '8px'
+                        }}></div>
+                    ) : (
+                        <div className="avatar-box" style={{
+                            backgroundColor: getAvatarBgColor(customerName),
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '32px',
+                            fontWeight: 'bold',
+                            color: '#fff'
+                        }}>
+                            {getInitials(customerName)}
+                        </div>
+                    )}
                 </div>
-                <div className="shipping-info">
-                    <span className="label-top">ĐỊA CHỈ GIAO HÀNG</span>
-                    <p>{order.diaChiGiaoHang}</p>
-                </div>
-            </div>
 
+                {/* Cột 2: Tên & SĐT */}
+                <div className="col-customer">
+                    <span className="label-top">KHÁCH HÀNG THÀNH VIÊN</span>
+                    <h3 className="col-value">{shipping.ten || customerName}</h3>
+                    <span className="label-top">SỐ ĐIỆN THOẠI</span>
+                    <p className="col-value">📞 {shipping.sdt || order.khachHang?.soDienThoai}</p>
+                </div>
+
+                {/* Cột 3: Địa chỉ & Email */}
+                <div className="col-address">
+                    <span className="label-top">ĐỊA CHỈ GIAO HÀNG</span>
+                    <p className="col-value">{shipping.diaChi}</p>
+                    <span className="label-top">EMAIL</span>
+                    <p className="col-value">✉️ {shipping.email || order.khachHang?.email}</p>
+                </div>
+            </div>  {/* ← đóng customer-info-card */}
+
+            {/* ===== DETAIL GRID ===== */}
             <div className="detail-grid-layout">
                 <div className="left-column">
                     <div className="products-card">
@@ -351,26 +379,25 @@ const handleCancelOrder = async () => {
                             {order.trangThai === "DaHuy" && <option value="DaHuy">Đã hủy</option>}
                         </select>
                         <div className="action-btns">
-    {canCancel && (
-        <button 
-            className="btn-white" 
-            onClick={handleCancelOrder}
-            disabled={disableCancel}
-        >
-            HỦY ĐƠN
-        </button>
-    )}
-
-    {canUpdate && (
-        <button 
-            className="btn-black" 
-            onClick={handleUpdateStatus}
-            disabled={disableUpdate || !hasStatusChanged}
-        >
-            CẬP NHẬT
-        </button>
-    )}
-</div>
+                            {canCancel && (
+                                <button 
+                                    className="btn-white" 
+                                    onClick={handleCancelOrder}
+                                    disabled={disableCancel}
+                                >
+                                    HỦY ĐƠN
+                                </button>
+                            )}
+                            {canUpdate && (
+                                <button 
+                                    className="btn-black" 
+                                    onClick={handleUpdateStatus}
+                                    disabled={disableUpdate || !hasStatusChanged}
+                                >
+                                    CẬP NHẬT
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="timeline-card">
@@ -388,7 +415,7 @@ const handleCancelOrder = async () => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>  {/* ← đóng detail-grid-layout */}
 
             {isInvoiceOpen && (
                 <InvoiceModal 

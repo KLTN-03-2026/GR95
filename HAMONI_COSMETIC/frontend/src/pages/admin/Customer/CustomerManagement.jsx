@@ -17,6 +17,18 @@ const CustomerManagement = () => {
 
     const recordsPerPage = 5;
 
+    const getInitials = (name) => {
+        if (!name) return "H";
+        const parts = name.trim().split(" ");
+        return parts[parts.length - 1].charAt(0).toUpperCase();
+    };
+
+    const getAvatarBgColor = (name) => {
+        const colors = ['#e67e22', '#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#e74c3c'];
+        const index = name ? name.charCodeAt(0) % colors.length : 0;
+        return colors[index];
+    };
+
     const loadCustomers = useCallback(async () => {
         try {
             const res = await axiosClient.get(`/customers`, {
@@ -133,7 +145,17 @@ const CustomerManagement = () => {
                                 <td style={{ color: '#888' }}>#HM-{item.MaND}</td>
                                 <td>
                                     <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div className="avatar">{item.HoTen?.charAt(0).toUpperCase() || 'U'}</div>
+                                        {item.Avatar ? (
+                                            <div className="avatar" style={{
+                                                backgroundImage: `url(${item.Avatar})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: 'center'
+                                            }}></div>
+                                        ) : (
+                                            <div className="avatar" style={{ backgroundColor: getAvatarBgColor(item.HoTen) }}>
+                                                {getInitials(item.HoTen)}
+                                            </div>
+                                        )}
                                         <span style={{ fontWeight: '600' }}>{item.HoTen}</span>
                                     </div>
                                 </td>

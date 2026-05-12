@@ -5,7 +5,7 @@ const ExcelJS = require('exceljs');
 exports.getCustomers = async (req, res) => {
     try {
         const { search, status } = req.query; 
-        let sql = 'SELECT * FROM NguoiDung WHERE MaQuyen = "CUST"';
+        let sql = 'SELECT MaND, HoTen, SoDienThoai, Email, TrangThai, AvatarUrl FROM NguoiDung WHERE MaQuyen = "CUST"';
         let params = [];
         if (search && search.trim() !== "") {
             sql += ' AND (HoTen LIKE ? OR SoDienThoai LIKE ? OR Email LIKE ? OR CAST(MaND AS CHAR) LIKE ? OR CONCAT("HM-", MaND) LIKE ?)';
@@ -17,7 +17,12 @@ exports.getCustomers = async (req, res) => {
             params.push(status === 'Hoạt động' ? 1 : 0);
         }
         const [rows] = await db.execute(sql, params);
-        res.json(rows);
+        // Map AvatarUrl thành Avatar để frontend dễ sử dụng
+        const mappedRows = rows.map(row => ({
+            ...row,
+            Avatar: row.AvatarUrl
+        }));
+        res.json(mappedRows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
