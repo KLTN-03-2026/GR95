@@ -213,7 +213,7 @@ exports.getOrderDetail = async (req, res) => {
 
         // 1. Lấy thông tin đơn hàng và khách hàng
         const [[order]] = await db.execute(`
-            SELECT dh.*, nd.HoTen, nd.SoDienThoai, nd.Email
+            SELECT dh.*, nd.HoTen, nd.SoDienThoai, nd.Email, nd.AvatarUrl
             FROM DonHang dh
             LEFT JOIN NguoiDung nd ON dh.MaND = nd.MaND
             WHERE dh.MaDH = ?
@@ -267,7 +267,8 @@ exports.getOrderDetail = async (req, res) => {
             khachHang: {
                 hoTen: order.HoTen,
                 soDienThoai: order.SoDienThoai,
-                email: order.Email
+                email: order.Email,
+                avatarUrl: order.AvatarUrl || null
             },
             diaChiGiaoHang: order.ThongTinGiaoHang,
             ghiChu: order.GhiChu,

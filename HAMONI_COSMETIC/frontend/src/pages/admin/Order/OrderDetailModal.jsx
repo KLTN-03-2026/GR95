@@ -31,6 +31,11 @@ const canPrintInvoice = order?.trangThai === 'DaXacNhan' || order?.daInHoaDon;
 // determine if refund state changed compared to backend
 const originalRefundState = !!(order?.daHoanTien || order?.isRefunded || order?.refunded || order?.hoanTien);
 const hasStatusChanged = Boolean(order?.trangThai) && (status !== order?.trangThai || originalRefundState !== (refundStatus === 'refunded'));
+const customerName = order?.khachHang?.hoTen || 'Khách hàng';
+const customerAvatar = order?.khachHang?.avatarUrl;
+const avatarFallbackUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=635F40`;
+const productPlaceholderImage =
+    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" rx="12" fill="%23f2f2f2"/%3E%3Cpath d="M24 64l15-17 13 14 9-10 15 13v9H24z" fill="%23c9c9c9"/%3E%3Ccircle cx="40" cy="39" r="7" fill="%23dbdbdb"/%3E%3C/svg%3E';
     const fetchOrderDetail = useCallback(async () => {
         try {
             setLoading(true);
@@ -207,11 +212,19 @@ const handleCancelOrder = async () => {
             <div className="customer-info-card">
                 <div className="customer-main">
                     <div className="avatar-circle">
-                        {order.khachHang?.hoTen?.charAt(0).toUpperCase() || 'T'}
+                        <img
+                            className="avatar-image"
+                            src={customerAvatar || avatarFallbackUrl}
+                            alt={customerName}
+                            onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = avatarFallbackUrl;
+                            }}
+                        />
                     </div>
                     <div className="info-text">
                         <span className="label-top">KHÁCH HÀNG THÀNH VIÊN</span>
-                        <h3>{order.khachHang?.hoTen}</h3>
+                        <h3>{customerName}</h3>
                         <p>📞 {order.khachHang?.soDienThoai} | ✉️ {order.khachHang?.email}</p>
                     </div>
                 </div>
@@ -233,9 +246,9 @@ const handleCancelOrder = async () => {
                                 <div className="product-item" key={index}>
                                     <img 
                                         className="product-thumb" 
-                                        src={item.hinhAnh || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"%3E%3Crect fill="%23f0f0f0" width="90" height="90"/%3E%3C/svg%3E'} 
+                                        src={item.hinhAnh || productPlaceholderImage} 
                                         alt={item.tenSP}
-                                        onError={(e) => { e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"%3E%3Crect fill="%23f0f0f0" width="90" height="90"/%3E%3C/svg%3E'; }}
+                                        onError={(e) => { e.currentTarget.src = productPlaceholderImage; }}
                                     />
                                     <div className="item-info">
                                         <h4>{item.tenSP || item.TenSP || item.tenSanPham || "Sản phẩm không tên"}</h4> 
