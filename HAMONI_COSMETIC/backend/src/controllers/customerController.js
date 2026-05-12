@@ -8,20 +8,16 @@ exports.getCustomers = async (req, res) => {
         let sql = 'SELECT * FROM NguoiDung WHERE MaQuyen = "CUST"';
         let params = [];
         if (search && search.trim() !== "") {
-            sql += ' AND (HoTen LIKE ? OR SoDienThoai LIKE ? OR Email LIKE ? OR MaND LIKE ?)';
+            sql += ' AND (HoTen LIKE ? OR SoDienThoai LIKE ? OR Email LIKE ? OR CAST(MaND AS CHAR) LIKE ? OR CONCAT("HM-", MaND) LIKE ?)';
             const searchVal = `%${search}%`;
-            params.push(searchVal, searchVal, searchVal, searchVal);
+            params.push(searchVal, searchVal, searchVal, searchVal, searchVal);
         }
         if (status && status !== 'Tất cả trạng thái') {
             sql += ' AND TrangThai = ?';
             params.push(status === 'Hoạt động' ? 1 : 0);
         }
         const [rows] = await db.execute(sql, params);
-        const formattedData = rows.map(customer => ({
-            ...customer,
-            TrangThai: customer.TrangThai === 1 ? 'Hoạt động' : 'Bị chặn'
-        }));
-        res.json(formattedData);
+        res.json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -34,8 +30,32 @@ exports.getCustomerById = async (req, res) => {
             return res.status(404).json({ message: "Không tìm thấy khách hàng" });
         }
         const customer = rows[0];
-        customer.TrangThai = customer.TrangThai === 1 ? 'Hoạt động' : 'Bị chặn';       
         res.json(customer);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+// 2.1 Cập nhật trạng thái khách hàng
+exports.updateCustomerStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { TrangThai } = req.body;
+
+        const statusValue = Number(TrangThai);
+        if (![0, 1].includes(statusValue)) {
+            return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+        }
+
+        const [result] = await db.execute(
+            'UPDATE NguoiDung SET TrangThai = ? WHERE MaND = ? AND MaQuyen = "CUST"',
+            [statusValue, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Không tìm thấy khách hàng để cập nhật" });
+        }
+
+        res.json({ message: "Cập nhật trạng thái thành công!" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

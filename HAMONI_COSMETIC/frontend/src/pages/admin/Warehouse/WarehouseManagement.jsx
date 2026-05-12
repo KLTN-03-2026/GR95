@@ -32,6 +32,18 @@ const getLogStatusLabel = (log) => {
     return normalizeChangeType(log) === 'out' ? 'Đang xử lý' : 'Thành công';
 };
 
+const getWarehouseActionLabel = (log) => {
+    return normalizeChangeType(log) === 'out' ? 'Xuất kho' : 'Nhập kho';
+};
+
+const getLogNoteLabel = (log) => {
+    return String(log?.GhiChu || '').trim() || 'Không có ghi chú';
+};
+
+const getLogProductLabel = (log) => {
+    return String(log?.TenSP || '').trim() || 'Sản phẩm không tên';
+};
+
 const getLogQuantityText = (log) => {
     return Math.abs(Number(log?.SoLuongThayDoi || 0));
 };
@@ -71,6 +83,7 @@ const WarehouseDashboard = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [logSearchTerm, setLogSearchTerm] = useState('');
+    const [productSearchTerm, setProductSearchTerm] = useState('');
 
     // --- LOGIC PHÂN TRANG ---
     const [currentPage, setCurrentPage] = useState(1);
@@ -93,9 +106,11 @@ const filteredLogs = useMemo(() => {
             log?.TenSP,
             log?.LoaiGiaoDich,
             log?.SoLuongThayDoi,
+            log?.GhiChu,
             log?.thoiGian,
             getLogStatusLabel(log),
-            getLogTypeLabel(log)
+            getLogTypeLabel(log),
+            getWarehouseActionLabel(log)
         ]
             .map(normalizeText)
             .join(' ');
@@ -132,6 +147,10 @@ const showStockAlerts = useCallback((products = []) => {
         setCurrentLogPage(1);
     }, [logSearchTerm]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [productSearchTerm]);
+
     const fetchData = useCallback(async () => {
     try {
         setLoading(true);
@@ -157,13 +176,12 @@ const exportLogs = () => {
         return;
     }
 
-    const header = ["Thời gian", "Sản phẩm", "Số lượng", "Loại giao dịch"];
+    const header = ["Cộng/Trừ SP", "Trạng thái", "Ghi chú"];
 
     const rows = filteredLogs.map(l => [
-        l.thoiGian ? new Date(l.thoiGian).toLocaleString("vi-VN") : "",
-        l.TenSP || "",
-        l.SoLuongThayDoi || "",
-        l.LoaiGiaoDich === "Tru" ? "Xuất kho" : "Nhập kho"
+        `${getLogTypeLabel(l)} ${getLogQuantityText(l)} SP`,
+        getWarehouseActionLabel(l),
+        getLogNoteLabel(l)
     ]);
 
     const csvContent =
@@ -210,6 +228,26 @@ const exportLogs = () => {
 
     const allProducts = useMemo(() => data?.products || [], [data?.products]);
 
+    const filteredProducts = useMemo(() => {
+        const products = allProducts || [];
+        const keyword = normalizeText(productSearchTerm).trim();
+
+        if (!keyword) return products;
+
+        return products.filter((p) => {
+            const searchable = [
+                p?.ten,
+                p?.tenSanPham,
+                p?.tenBienThe,
+                p?.sku,
+            ]
+                .map(normalizeText)
+                .join(' ');
+
+            return searchable.includes(keyword);
+        });
+    }, [allProducts, productSearchTerm]);
+
     const stockSummary = useMemo(() => {
         return allProducts.reduce(
             (acc, product) => {
@@ -254,17 +292,21 @@ const exportLogs = () => {
         );
     }
 
-    // Tính toán dữ liệu hiển thị cho trang hiện tại
+    // Tính toán dữ liệu hiển thị cho trang hiện tại (áp dụng tìm kiếm)
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentProducts = allProducts.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(allProducts.length / itemsPerPage);
+    const currentProducts = (filteredProducts || []).slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil((filteredProducts || []).length / itemsPerPage);
+    const productStartPage = Math.max(1, Math.min(currentPage - 1, Math.max(totalPages - 2, 1)));
+    const productEndPage = Math.min(totalPages, productStartPage + 2);
 
     const logTotalPages = Math.max(1, Math.ceil(filteredLogs.length / logItemsPerPage));
     const activeLogPage = Math.min(currentLogPage, logTotalPages);
     const logIndexOfLastItem = activeLogPage * logItemsPerPage;
     const logIndexOfFirstItem = logIndexOfLastItem - logItemsPerPage;
     const currentLogItems = filteredLogs.slice(logIndexOfFirstItem, logIndexOfLastItem);
+    const logStartPage = Math.max(1, Math.min(activeLogPage - 1, Math.max(logTotalPages - 2, 1)));
+    const logEndPage = Math.min(logTotalPages, logStartPage + 2);
 
     return (
         <div className="warehouse-container">
@@ -331,7 +373,28 @@ const exportLogs = () => {
                     {/* Bảng Tồn Kho với Phân Trang */}
                     <div className="full-width">
                     <div className="section-white">
-                        <h3>Bảng theo dõi tồn kho</h3>
+                        <div className="section-header-row">
+                            <h3>Bảng theo dõi tồn kho</h3>
+                            <div className="inventory-search-compact">
+                                <input
+                                    type="text"
+                                    value={productSearchTerm}
+                                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                                    placeholder="Tìm tên sản phẩm,số lư"
+                                    aria-label="Tìm sản phẩm"
+                                />
+                                {productSearchTerm && (
+                                    <button
+                                        type="button"
+                                        className="log-search-clear"
+                                        onClick={() => setProductSearchTerm('')}
+                                        aria-label="Xóa từ khóa tìm kiếm sản phẩm"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                         <table className="inventory-table">
                             <thead>
                                 <tr>
@@ -396,15 +459,18 @@ const exportLogs = () => {
                                 >
                                     Trước
                                 </button>
-                                {[...Array(totalPages)].map((_, i) => (
+                                {[...Array(productEndPage - productStartPage + 1)].map((_, i) => {
+                                    const pageNumber = productStartPage + i;
+
+                                    return (
                                     <button 
-                                        key={i} 
-                                        className={currentPage === i + 1 ? "active" : ""}
-                                        onClick={() => setCurrentPage(i + 1)}
+                                        key={pageNumber} 
+                                        className={currentPage === pageNumber ? "active" : ""}
+                                        onClick={() => setCurrentPage(pageNumber)}
                                     >
-                                        {i + 1}
+                                        {pageNumber}
                                     </button>
-                                ))}
+                                );})}
                                 <button 
                                     disabled={currentPage === totalPages} 
                                     onClick={() => setCurrentPage(prev => prev + 1)}
@@ -417,50 +483,76 @@ const exportLogs = () => {
 
                     {/* Bảng Nhật ký tự động */}
                     <section className="log-container-full">
-                        <h3>🕒 Nhật ký tự động</h3>
-                        <div className="log-search-box">
-                            <input
-                                type="text"
-                                value={logSearchTerm}
-                                onChange={(e) => setLogSearchTerm(e.target.value)}
-                                placeholder="Tìm theo từ khóa: tên SP, loại giao dịch, số lượng..."
-                                aria-label="Tìm kiếm nhật ký kho"
-                            />
-                            {logSearchTerm && (
-                                <button
-                                    type="button"
-                                    className="log-search-clear"
-                                    onClick={() => setLogSearchTerm('')}
-                                    aria-label="Xóa từ khóa tìm kiếm"
-                                >
-                                    ×
-                                </button>
-                            )}
-                        </div>
-                        <div className="log-search-meta">
-                            Hiển thị {currentLogItems.length} / {filteredLogs.length} nhật ký
+                        <div className="section-header-row">
+                            <h3>🕒 Nhật ký tự động</h3>
+                            <div className="inventory-search-compact log-search-compact">
+                                <input
+                                    type="text"
+                                    value={logSearchTerm}
+                                    onChange={(e) => setLogSearchTerm(e.target.value)}
+                                    placeholder="Tìm tên SP / loại / ghi chú"
+                                    aria-label="Tìm kiếm nhật ký kho"
+                                />
+                                {logSearchTerm && (
+                                    <button
+                                        type="button"
+                                        className="log-search-clear"
+                                        onClick={() => setLogSearchTerm('')}
+                                        aria-label="Xóa từ khóa tìm kiếm"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="log-list">
-                            {currentLogItems.map((l, i) => (
-                                <div key={i} className="log-item">
-                                    <div className={`log-icon ${normalizeChangeType(l) === 'out' ? 'minus' : 'plus'}`}>
-                                        {normalizeChangeType(l) === 'out' ? '-' : '+'}
-                                    </div>
-                                    <div className="log-content-wrapper">
-                                        <div className="log-main-text">
-                                            <strong>Đã {getLogTypeLabel(l)} {getLogQuantityText(l)} {l.TenSP}</strong>
-                                        </div>
-                                        <div className="log-sub-text">Mã: #ORD{123+i} - {getLogStatusLabel(l)}</div>
-                                        <div className="log-time">{l.thoiGian ? new Date(l.thoiGian).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "Chưa có"}</div>
-                                    </div>
-                                </div>
-                            ))}
-                            {!filteredLogs.length && (
-                                <div className="log-empty-state">
-                                    Không tìm thấy nhật ký phù hợp với từ khóa đã nhập.
-                                </div>
-                            )}
+                        <div className="log-table-wrapper">
+                            <table className="log-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ghi chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentLogItems.map((l, i) => {
+                                        const isOut = normalizeChangeType(l) === 'out';
+
+                                        return (
+                                            <tr key={i}>
+                                                <td>
+                                                    <div className="log-product-cell">
+                                                        <span className="log-product-name">
+                                                            {getLogProductLabel(l)}
+                                                        </span>
+                                                        <span className={`log-qty-chip ${isOut ? 'minus' : 'plus'}`}>
+                                                            {isOut ? 'Trừ' : 'Cộng'} {getLogQuantityText(l)} SP
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className={`log-status-chip ${isOut ? 'out' : 'in'}`}>
+                                                        {getWarehouseActionLabel(l)}
+                                                    </span>
+                                                </td>
+                                                <td className="log-note-cell">
+                                                    {getLogNoteLabel(l)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {!filteredLogs.length && (
+                                        <tr>
+                                            <td colSpan="3">
+                                                <div className="log-empty-state">
+                                                    Không tìm thấy nhật ký phù hợp với từ khóa đã nhập.
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                         {filteredLogs.length > 0 && (
                             <div className="pagination-wrapper">
@@ -474,21 +566,24 @@ const exportLogs = () => {
                                     >
                                         Trước
                                     </button>
-                                    {[...Array(logTotalPages)].map((_, i) => (
+                                    {[...Array(logEndPage - logStartPage + 1)].map((_, i) => {
+                                        const pageNumber = logStartPage + i;
+
+                                        return (
                                         <button
-                                            key={i}
-                                            className={activeLogPage === i + 1 ? "active" : ""}
-                                            onClick={() => setCurrentLogPage(i + 1)}
+                                            key={pageNumber}
+                                            className={activeLogPage === pageNumber ? "active" : ""}
+                                            onClick={() => setCurrentLogPage(pageNumber)}
                                         >
-                                            {i + 1}
+                                            {pageNumber}
                                         </button>
-                                    ))}
+                                    );})}
                                     <button
                                         disabled={activeLogPage === logTotalPages}
                                         onClick={() => setCurrentLogPage((prev) => prev + 1)}
                                     >
                                         Sau
-                                    </button>
+                                    </button>                                 
                                 </div>
                             </div>
                         )}

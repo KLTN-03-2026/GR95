@@ -68,17 +68,6 @@ const hasStatusChanged = Boolean(order?.trangThai) && (status !== order?.trangTh
 
     const totalNeedCollect = isTransferPaidOrder(order) ? 0 : Number(order?.tongTien || 0);
 
-    // normalize helper to detect cancelled status regardless of diacritics
-    const normalize = (s = '') => {
-        try {
-            return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        } catch {
-            return String(s).toLowerCase();
-        }
-    };
-
-    const isCancelled = !!order && (normalize(order.trangThai).includes('huy') || normalize(order.trangThai).includes('dahuy'));
-
     useEffect(() => {
         if (!order) return;
         // initialize refund status from likely backend fields
@@ -107,7 +96,12 @@ const hasStatusChanged = Boolean(order?.trangThai) && (status !== order?.trangTh
 
         await axiosClient.put(`/orders/${id}/status`, body);
 
-        showSuccess("Cập nhật trạng thái đơn hàng thành công!");
+        // Show different toast based on status being set
+        if (status === 'DaHuy') {
+            showError("⚠️ Đơn hàng đã bị hủy!");
+        } else {
+            showSuccess("Cập nhật trạng thái đơn hàng thành công!");
+        }
         // optimistically update local order state
         setOrder((prev) => prev ? { ...prev, trangThai: status, daHoanTien: refundStatus === 'refunded' } : prev);
         fetchOrderDetail(); 
@@ -150,7 +144,7 @@ const handleCancelOrder = async () => {
     try {
         await axiosClient.put(`/orders/${id}/cancel`);
         
-        showSuccess("Đã hủy đơn hàng thành công!");
+        showError("🚫 Đơn hàng đã bị hủy!");
         setTimeout(() => navigate('/admin/orders'), 1500);
 
     } catch (err) {
@@ -237,7 +231,12 @@ const handleCancelOrder = async () => {
                         <div className="products-list">
                             {(order.chiTiet || []).map((item, index) => (
                                 <div className="product-item" key={index}>
-                                    <img className="product-thumb" src={'https://via.placeholder.com/80'} alt={item.tenSP} />
+                                    <img 
+                                        className="product-thumb" 
+                                        src={item.hinhAnh || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"%3E%3Crect fill="%23f0f0f0" width="90" height="90"/%3E%3C/svg%3E'} 
+                                        alt={item.tenSP}
+                                        onError={(e) => { e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"%3E%3Crect fill="%23f0f0f0" width="90" height="90"/%3E%3C/svg%3E'; }}
+                                    />
                                     <div className="item-info">
                                         <h4>{item.tenSP || item.TenSP || item.tenSanPham || "Sản phẩm không tên"}</h4> 
                                         <p className="variant">{item.TenBienThe || item.tenBienThe || item.PhanLoai}</p>
@@ -291,7 +290,7 @@ const handleCancelOrder = async () => {
                         <div className={`print-status-badge ${(isPrinted || order?.daInHoaDon) ? 'printed' : 'not-printed'}`}>
                             {(isPrinted || order?.daInHoaDon) ? '✔ Đã in' : '⏳ Chưa in'}
                         </div>
-                        {isCancelled && (
+                        {isTransferPaidOrder(order) && (
                             <div style={{ marginBottom: 12 }}>
                                 <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>Hoàn tiền</label>
                                 <select
