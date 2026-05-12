@@ -105,6 +105,23 @@ const promotionController = {
         }
     },
 
+    // 3.5. LẤY CÁC KHUYẾN MÃI ĐANG HOẠT ĐỘNG (dùng cho dropdown gợi ý URL)
+    getActivePromotions: async (req, res) => {
+        try {
+            const [rows] = await db.execute(`
+                SELECT MaCTKM, TenCTKM, NgayBatDau, NgayKetThuc
+                FROM ChuongTrinhKhuyenMai
+                WHERE (NgayBatDau IS NULL OR DATE(NgayBatDau) <= CURDATE())
+                  AND (NgayKetThuc IS NULL OR DATE(NgayKetThuc) >= CURDATE())
+                ORDER BY NgayKetThuc ASC
+            `);
+
+            res.status(200).json(rows);
+        } catch (error) {
+            console.error('Lỗi lấy khuyến mãi đang hoạt động:', error);
+            res.status(500).json({ message: 'Lỗi server' });
+        }
+    },
     // 4. LẤY CHI TIẾT 1 KHUYẾN MÃI
     getPromotionDetail: async (req, res) => {
         try {

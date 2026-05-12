@@ -5,6 +5,9 @@ const promotionController = require('../controllers/promotionController');
 // ⭐ ROUTES CỤ THỂ (không có :id) PHẢI ĐẶT TRÊN CÙNG
 router.get('/variants-for-promo', promotionController.getVariantsForPromo);
 
+// Lấy danh sách chương trình khuyến mãi đang hoạt động (dùng cho dropdown gợi ý)
+router.get('/active', promotionController.getActivePromotions);
+
 // ⭐ ROUTES CÓ :id/path PHẢI TRƯỚC :id ĐƠN GIẢN
 router.get('/:id/products', promotionController.getPromotionProducts);
 

@@ -20,15 +20,15 @@
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
 }
 .product-create-container .btn-back {
-    background: #fff; border: 1px solid var(--border-color); width: 40px; height: 40px; 
-    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid var(--border-color); width: 50px; height: 50px; 
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: 0.2s;
 }
 .product-create-container .btn-back:hover { background: #eee; }
 
 .product-create-container .btn-save-primary {
     background-color: var(--primary-olive); color: #fff; border: none; padding: 10px 20px; 
-    border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+    border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 8px;
     transition: 0.2s; cursor: pointer;
 }
 .product-create-container .btn-save-primary:hover:not(:disabled) { background-color: #4a4934; }

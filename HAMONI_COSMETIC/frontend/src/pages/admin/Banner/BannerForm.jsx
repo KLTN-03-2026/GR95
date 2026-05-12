@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, AlertCircle, Upload } from 'lucide-react';
-import { toast } from 'react-toastify';
 import { bannerApi } from '../../../services/bannerApi';
 import axios from 'axios';
 
 const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
     // 1. State Management
+    const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     const [preview, setPreview] = useState(''); 
     const [selectedFile, setSelectedFile] = useState(null); 
     const [errors, setErrors] = useState({}); // THÊM: State quản lý lỗi
+    const [allBanners, setAllBanners] = useState([]); // Lưu danh sách tất cả banner
+    const [activePromotions, setActivePromotions] = useState([]); // Gợi ý: chương trình KM đang hoạt động
 
     const editingId = data?.MaBanner;
     
@@ -23,7 +25,47 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         NgayHetHan: ''
     });
 
-    // 2. Sync Data & Cleanup
+    // 2. Fetch danh sách banner khi form mở
+    useEffect(() => {
+        if (isOpen) {
+            const fetchBanners = async () => {
+                try {
+                    const res = await axios.get('http://localhost:5000/api/banners');
+                    setAllBanners(res.data?.data || res.data || []);
+                } catch (error) {
+                    console.error('Lỗi tải danh sách banner:', error);
+                }
+            };
+            fetchBanners();
+
+            // Lấy danh sách khuyến mãi đang hoạt động để hiển thị dropdown gợi ý URL
+            const fetchActivePromos = async () => {
+                try {
+                    // Gọi trực tiếp backend bằng URL đầy đủ để tránh phụ thuộc vào axiosClient.baseURL
+                    const resp = await axios.get('http://localhost:5000/api/promotions/active');
+                    console.debug('API /promotions/active returned:', resp.data || resp);
+                    const list = Array.isArray(resp.data) ? resp.data : (Array.isArray(resp) ? resp : (resp?.data || []));
+                    setActivePromotions(list);
+
+                    // Nếu chỉ có 1 chương trình đang hoạt động và URL hiện tại rỗng, tự động điền
+                    if (Array.isArray(list) && list.length === 1) {
+                        setFormValues(prev => {
+                            if (!prev.URLDich || prev.URLDich.trim() === '') {
+                                return { ...prev, URLDich: `/khuyen-mai/${list[0].MaCTKM}` };
+                            }
+                            return prev;
+                        });
+                    }
+                } catch (err) {
+                    console.error('Lỗi tải khuyến mãi đang hoạt động:', err);
+                    setActivePromotions([]);
+                }
+            };
+            fetchActivePromos();
+        }
+    }, [isOpen]);
+
+    // 3. Sync Data & Cleanup
     useEffect(() => {
         if (isOpen) {
             const initialPreview = data?.DuongDanAnh || '';
@@ -56,6 +98,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
             }
 
             setSelectedFile(null);
+            setAlert({ show: false, type: '', message: '' });
             setErrors({}); // Xóa hết lỗi cũ khi mở form
         }
         
@@ -69,7 +112,35 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
 
     if (!isOpen) return null;
 
-    // 3. Hàm kiểm tra hợp lệ (Validation)
+    // Helper: Kiểm tra banner có đang hoạt động không
+    const isActiveBanner = (banner) => {
+        if (banner.TrangThai !== 'Active') return false;
+        
+        // Nếu có ngày hết hạn, kiểm tra xem đã hết hạn chưa
+        if (banner.NgayHetHan) {
+            const endDate = new Date(banner.NgayHetHan);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return endDate >= today;
+        }
+        
+        return true; // Không có hạn => vẫn hoạt động
+    };
+
+    // 4. Hàm kiểm tra số thứ tự không trùng (chỉ với banner đang hoạt động)
+    const checkDuplicateOrder = (orderValue) => {
+        const normalizedValue = normalizeOrderValue(orderValue);
+        // Chỉ kiểm tra xem số thứ tự này có banner **đang hoạt động** nào dùng không (trừ banner hiện tại)
+        const isDuplicate = allBanners.some(
+            banner => 
+                banner.ThuTuHienThi === normalizedValue && 
+                banner.MaBanner !== editingId && 
+                isActiveBanner(banner)
+        );
+        return isDuplicate;
+    };
+
+    // 5. Hàm kiểm tra hợp lệ (Validation)
     const validateForm = () => {
         let newErrors = {};
         
@@ -91,11 +162,16 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
             newErrors.ThuTuHienThi = 'Thứ tự phải lớn hơn hoặc bằng 1';
         }
 
+        // Kiểm tra số thứ tự không trùng (chỉ với banner đang hoạt động)
+        if (checkDuplicateOrder(formValues.ThuTuHienThi)) {
+            newErrors.ThuTuHienThi = 'Số thứ tự này đã được sử dụng bởi banner đang hoạt động';
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0; // Trả về true nếu không có lỗi
     };
 
-    // 4. Xử lý khi chọn File
+    // 6. Xử lý khi chọn File
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -111,7 +187,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         }
     };
     
-    // 5. Gửi dữ liệu lên Server
+    // 7. Gửi dữ liệu lên Server
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -148,14 +224,14 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
             onClose();
         } catch (error) {
             const apiMessage = error?.response?.data?.message || error?.response?.data?.error;
-            toast.error("Lỗi khi lưu: " + (apiMessage || error.message));
+            setAlert({ show: true, type: 'danger', message: "Lỗi khi lưu: " + (apiMessage || error.message) });
         }
     };
 
     return createPortal(
         <div 
-            className="position-fixed d-flex justify-content-center align-items-center" 
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050, padding: '24px 16px', overflowY: 'auto', inset: 0 }}
+            className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1050, padding: '24px 16px', overflowY: 'auto' }}
         >
             <div className="card shadow-lg border-0 rounded-4" style={{ width: '100%', maxWidth: '550px', maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
                 
@@ -168,6 +244,13 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                 </div>
 
                 <div className="card-body px-4 pb-4" style={{ overflowY: 'auto' }}>
+                    {alert.show && (
+                        <div className={`alert alert-${alert.type} d-flex align-items-center p-3 mb-4`} role="alert">
+                            {alert.type === 'success' ? <CheckCircle size={20} className="me-2" /> : <AlertCircle size={20} className="me-2" />}
+                            <div className="fw-medium" style={{ fontSize: '15px' }}>{alert.message}</div>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} encType="multipart/form-data">
                         {/* Tiêu đề chiến dịch */}
                         <div className="mb-3">
@@ -206,9 +289,9 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                         onChange={handleFileChange}
                                     />
                                     <div 
-                                        className={`form-control bg-light text-muted d-flex align-items-center ${errors.image ? 'is-invalid border-danger' : ''}`}
+                                        className={`form-control bg-light text-muted d-flex align-items-center ${errors.image ? 'is-invalid border-danger' : 'border-0'}`}
                                         onClick={() => document.getElementById('upload-banner').click()}
-                                        style={{ cursor: 'pointer', fontSize: '14px', border: errors.image ? '1px solid #dc3545' : '1px solid #dee2e6' }}
+                                        style={{ cursor: 'pointer', fontSize: '14px' }}
                                     >
                                         {selectedFile ? selectedFile.name : (data?.DuongDanAnh ? "Đã có ảnh (Click để thay đổi)" : "Chọn ảnh từ máy tính...")}
                                     </div>
@@ -231,23 +314,55 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Link đích (URLDich)</label>
                                 <input 
                                     value={formValues.URLDich}
-                                    className="form-control bg-light border py-2 px-3 rounded-3"
+                                    className="form-control bg-light border-1 py-2 px-3 rounded-3"
                                     type="text"
                                     onChange={(e) => setFormValues({ ...formValues, URLDich: e.target.value })}
                                 />
+
+                                {/* Dropdown gợi ý: các chương trình khuyến mãi đang hoạt động */}
+                                {activePromotions && activePromotions.length > 0 ? (
+                                    <div className="mt-2">
+                                        <label className="form-label small text-muted">Chọn chương trình khuyến mãi đang hoạt động</label>
+                                        <select
+                                            className="form-select form-select-sm mt-1"
+                                            value={(() => {
+                                                const found = activePromotions.find(p => `/khuyen-mai/${p.MaCTKM}` === formValues.URLDich);
+                                                return found ? String(found.MaCTKM) : '';
+                                            })()}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (!val) setFormValues({ ...formValues, URLDich: '' });
+                                                else setFormValues({ ...formValues, URLDich: `/khuyen-mai/${val}` });
+                                            }}
+                                        >
+                                            <option value="">-- Không chọn --</option>
+                                            {activePromotions.map((p) => (
+                                                <option key={p.MaCTKM} value={p.MaCTKM}>
+                                                    {p.TenCTKM}{p.NgayKetThuc ? ` (Hết: ${formatDateDisplay(toDateInputValue(p.NgayKetThuc))})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="form-text small text-muted mt-1">Chọn khuyến mãi để tự điền URL, hoặc gõ URL tuỳ ý.</div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-2">
+                                        <small className="text-muted">(Không có chương trình khuyến mãi đang hoạt động)</small>
+                                    </div>
+                                )}
                             </div>
                             <div className="col-md-6">
-                                <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Vị trí hiển thị</label>
-                                <select
-                                    className="form-select bg-light border py-2 px-3 rounded-3"
-                                    value={formValues.ViTriHienThi}
-                                    onChange={(e) => setFormValues({ ...formValues, ViTriHienThi: e.target.value })}
-                                >
-                                    <option value="TrangChu">Trang chủ</option>
-                                    <option value="Sidebar">Sidebar</option>
-                                    <option value="Popup">Popup</option>
-                                </select>
-                            </div>
+    <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>
+        Vị trí hiển thị
+    </label>
+    <input
+        type="text"
+        className="form-control bg-light border-1 py-2 px-3 rounded-3"
+        style={{ cursor: 'not-allowed' }} // Hiển thị icon cấm khi di chuột vào
+        value="Trang chủ"
+        readOnly // Ngăn người dùng sửa nội dung
+    />
+    {/* Vẫn giữ input ẩn hoặc mặc định giá trị trong formValues là 'TrangChu' */}
+</div>
                         </div>
 
                         {/* Thứ tự và Trạng thái */}
@@ -257,8 +372,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <input
                                     type="number"
                                     min="1"
-                                    className="form-control bg-light py-2 px-3 rounded-3"
-                                    style={{ border: '1px solid #dee2e6' }}
+                                    className={`form-control bg-light border-1 py-2 px-3 rounded-3 ${errors.ThuTuHienThi ? 'is-invalid border-danger' : ''}`}
                                     value={formValues.ThuTuHienThi}
                                     onChange={(e) => {
                                         const rawValue = e.target.value;
@@ -274,7 +388,13 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                         }
 
                                         setFormValues({ ...formValues, ThuTuHienThi: parsedValue });
-                                        if (errors.ThuTuHienThi) setErrors({ ...errors, ThuTuHienThi: null });
+                                        
+                                        // Kiểm tra trùng lặp khi nhập
+                                        if (checkDuplicateOrder(parsedValue)) {
+                                            setErrors({ ...errors, ThuTuHienThi: 'Số thứ tự này đã được sử dụng bởi banner khác' });
+                                        } else if (errors.ThuTuHienThi) {
+                                            setErrors({ ...errors, ThuTuHienThi: null });
+                                        }
                                     }}
                                 />
                                 {errors.ThuTuHienThi && (
@@ -287,8 +407,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 <label className="form-label fw-bold text-dark" style={{ fontSize: '14px' }}>Trạng thái</label>
                                 <select
                                     value={formValues.TrangThai}
-                                    className="form-select bg-light py-2 px-3 rounded-3"
-                                    style={{ border: '1px solid #dee2e6' }}
+                                    className="form-select bg-light border-1 py-2 px-3 rounded-3"
                                     onChange={(e) => setFormValues({ ...formValues, TrangThai: e.target.value })}
                                 >
                                     <option value="Active">Đang hiển thị</option>
@@ -304,8 +423,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 </label>
                                 <input
                                     type="date"
-                                    className={`form-control bg-light py-2 px-3 rounded-3 ${errors.NgayBatDau ? 'is-invalid border-danger' : ''}`}
-                                    style={{ border: errors.NgayBatDau ? '1px solid #dc3545' : '1px solid #dee2e6' }}
+                                    className={`form-control bg-light border-1 py-2 px-3 rounded-3 ${errors.NgayBatDau ? 'is-invalid border-danger' : ''}`}
                                     value={formValues.NgayBatDau}
                                     onChange={(e) => {
                                         setFormValues({ ...formValues, NgayBatDau: e.target.value });
@@ -324,8 +442,7 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
                                 </label>
                                 <input
                                     type="date"
-                                    className="form-control bg-light py-2 px-3 rounded-3"
-                                    style={{ border: '1px solid #dee2e6' }}
+                                    className="form-control bg-light border-1 py-2 px-3 rounded-3"
                                     value={formValues.NgayHetHan}
                                     onChange={(e) => setFormValues({ ...formValues, NgayHetHan: e.target.value })}
                                 />
@@ -339,13 +456,13 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
 
                         {/* Action Buttons */}
                         <div className="d-flex gap-3">
-                            <button type="button" className="btn btn-light border-0 fw-semibold" style={{ flexGrow: 1 }} onClick={onClose}>
+                            <button type="button" className="btn btn-light flex-grow-1 border-0 fw-semibold" onClick={onClose}>
                                 Hủy bỏ
                             </button>
                             <button 
                                 type="submit" 
-                                className="btn fw-bold text-white shadow-sm"
-                                style={{ backgroundColor: '#81802E', flexGrow: 1 }}
+                                className="btn flex-grow-1 fw-bold text-white shadow-sm" 
+                                style={{ backgroundColor: '#81802E' }}
                             >
                                 {editingId ? "Lưu thay đổi" : "Thêm mới"}
                             </button>

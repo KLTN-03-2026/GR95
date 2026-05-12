@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { Plus, Search, Filter } from 'lucide-react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import axiosClient from '../../../services/axiosClient';
 import './ProductManagement.css'; 
 
@@ -93,7 +91,7 @@ const ProductManagement = () => {
         if (hasPermission('VIEW_PRODUCT') || hasPermission('EDIT_PRODUCT')) {
             navigate(`/admin/products/${maSP}`);
         } else {
-            toast.warning("Bạn không có quyền xem chi tiết hoặc chỉnh sửa sản phẩm này!");
+            alert("Bạn không có quyền xem chi tiết hoặc chỉnh sửa sản phẩm này!");
         }
     };
 
@@ -115,7 +113,7 @@ const ProductManagement = () => {
                     <Search className="search-icon" size={18} />
                     <input 
                         type="text" 
-                        placeholder="Tìm theo Mã SP, Tên sản phẩm..." 
+                        placeholder="Tìm kiếm theo tên sản phẩm..." 
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -198,8 +196,6 @@ const ProductManagement = () => {
                     <button className="pagi-arrow" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}>›</button>
                 </div>
             </div>
-            
-            <ToastContainer position="top-right" autoClose={3000} theme="colored" />
         </div>
     );
 };
