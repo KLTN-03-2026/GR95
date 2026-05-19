@@ -1,49 +1,42 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, ShieldCheck, LockKeyhole } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import {
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  LockKeyhole,
+  AlertCircle,
+  X,
+  Mail,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import { useForm } from "react-hook-form";
 import axiosClient from "../../services/axiosClient";
-import "./ForgotPassword.css";
 
-const ForgotPassword = () => {
-  const navigate = useNavigate();
-
-  // State quản lý luồng (1: Nhập Email, 2: Đổi mật khẩu)
+const ForgotPasswordModal = ({ onClose }) => {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Form Data
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savedEmail, setSavedEmail] = useState("");
 
   // ==========================================
-  // XỬ LÝ BƯỚC 1: GỬI YÊU CẦU LẤY OTP
+  // FORM 1: OTP
   // ==========================================
-  const handleRequestOTP = async (e) => {
-    e.preventDefault();
-    if (!email) {
-      return toast.warning("Vui lòng nhập địa chỉ email!");
-    }
+  const {
+    register: registerStep1,
+    handleSubmit: handleSubmitStep1,
+    formState: { errors: errorsStep1 },
+  } = useForm();
 
-    // Regex kiểm tra định dạng email cơ bản
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return toast.warning("Email không hợp lệ!");
-    }
-
+  const onRequestOTP = async (data) => {
     setIsLoading(true);
     try {
       const response = await axiosClient.post("/auth/forgot-password", {
-        email,
+        email: data.email,
       });
-
       toast.success(
         response?.message || "Mã OTP đã được gửi đến email của bạn!",
       );
+      setSavedEmail(data.email);
       setStep(2);
     } catch (error) {
       const message =
@@ -56,33 +49,30 @@ const ForgotPassword = () => {
   };
 
   // ==========================================
-  // XỬ LÝ BƯỚC 2: ĐẶT LẠI MẬT KHẨU
+  // FORM 2: ĐỔI MẬT KHẨU
   // ==========================================
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    if (!otp || !newPassword || !confirmPassword) {
-      return toast.warning("Vui lòng điền đầy đủ thông tin!");
-    }
-    if (newPassword.length < 6) {
-      return toast.warning("Mật khẩu mới phải có ít nhất 6 ký tự!");
-    }
-    if (newPassword !== confirmPassword) {
-      return toast.warning("Mật khẩu xác nhận không trùng khớp!");
-    }
+  const {
+    register: registerStep2,
+    handleSubmit: handleSubmitStep2,
+    watch,
+    formState: { errors: errorsStep2 },
+  } = useForm();
+  const newPasswordValue = watch("newPassword", "");
 
+  const onResetPassword = async (data) => {
     setIsLoading(true);
     try {
       const response = await axiosClient.post("/auth/reset-password", {
-        email,
-        otp,
-        newPassword,
+        email: savedEmail,
+        otp: data.otp,
+        newPassword: data.newPassword,
       });
 
       toast.success(
         response?.message ||
           "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.",
       );
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => onClose(), 1500);
     } catch (error) {
       const message =
         error?.response?.data?.message ||
@@ -94,132 +84,187 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F4F4F4] px-4 font-sans text-slate-800">
-      <div className="w-full max-w-105 p-8 md:p-10">
-        {/* BƯỚC 1: NHẬP EMAIL */}
+    /* LỚP OVERLAY - Đã set z-[999] để luôn nằm trên ảnh */
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 transition-opacity duration-300">
+      {/* BOX TRẮNG CHÍNH - Đồng bộ bo góc 30px và shadow giống AuthPage */}
+      <div className="w-full max-w-[450px] bg-white rounded-[30px] shadow-[0_20px_50px_rgba(225,29,72,0.1)] p-8 md:p-10 relative border border-rose-50 transform transition-all scale-100">
+        {/* NÚT TẮT (X) CÁCH ĐIỆU */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 rounded-full transition-colors"
+        >
+          <X size={18} strokeWidth={2.5} />
+        </button>
+
+        {/* ======================= BƯỚC 1 ======================= */}
         {step === 1 && (
-          <div className="text-center animate-fade-in-up">
-            <h1 className="text-4xl md:text-5xl text-black mb-3 font-medium">
-              Quên mật khẩu
+          <div className="text-center mt-2">
+            <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5">
+              <Mail size={24} strokeWidth={2} />
+            </div>
+
+            {/* Font Playfair Display đồng bộ với AuthPage */}
+            <h1
+              className="text-3xl font-bold text-slate-900 mb-2"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              Quên Mật Khẩu
             </h1>
-            <p className="text-sm text-gray-500 mb-10">
-              Nhập email để nhận mã xác thực
+            <p className="text-sm text-slate-500 mb-8">
+              Nhập địa chỉ email để nhận mã xác thực
             </p>
 
-            <form onSubmit={handleRequestOTP} className="text-left">
+            <form
+              onSubmit={handleSubmitStep1(onRequestOTP)}
+              className="text-left"
+            >
               <div className="mb-8">
-                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
-                  ĐỊA CHỈ EMAIL
-                </label>
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ten_email@domain.com"
-                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors"
+                  placeholder="Nhập email của bạn..."
+                  className={`w-full bg-slate-50 border ${errorsStep1.email ? "border-rose-400" : "border-slate-100"} px-5 py-3.5 rounded-2xl outline-none text-sm transition-all duration-300 focus:border-rose-300 focus:bg-white focus:shadow-[0_4px_15px_rgba(251,113,133,0.15)]`}
+                  {...registerStep1("email", {
+                    required: "Vui lòng nhập địa chỉ email!",
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Email không hợp lệ!",
+                    },
+                  })}
                 />
+                {errorsStep1.email && (
+                  <p className="text-rose-500 text-[11px] font-semibold mt-2 flex items-center gap-1 pl-2">
+                    <AlertCircle size={12} /> {errorsStep1.email.message}
+                  </p>
+                )}
               </div>
 
+              {/* Nút Submit đổi thành Gradient tone Rose đồng bộ */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-black text-white rounded-full py-3.5 text-xs font-semibold tracking-wider uppercase transition-all hover:bg-gray-800 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed mb-8"
+                className="w-full rounded-full bg-gradient-to-r from-rose-400 to-rose-500 text-white text-[15px] font-bold py-4 transition-all duration-300 hover:from-rose-500 hover:to-rose-600 hover:shadow-[0_8px_20px_rgba(244,63,94,0.35)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mb-6"
               >
-                {isLoading ? "Đang xử lý..." : "Gửi yêu cầu"}
+                {isLoading ? "Đang gửi OTP..." : "Gửi yêu cầu →"}
               </button>
             </form>
           </div>
         )}
 
-        {/* BƯỚC 2: NHẬP OTP & ĐỔI MẬT KHẨU */}
+        {/* ======================= BƯỚC 2 ======================= */}
         {step === 2 && (
-          <div className="text-center animate-fade-in-up">
-            <div className="mx-auto w-12 h-12 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center mb-6">
-              <LockKeyhole size={20} />
+          <div className="text-center mt-2">
+            <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5">
+              <LockKeyhole size={24} strokeWidth={2} />
             </div>
-            <h1 className="text-3xl md:text-4xl text-black mb-3 font-medium">
-              Đặt lại mật khẩu
+
+            {/* Font Playfair Display */}
+            <h1
+              className="text-3xl font-bold text-slate-900 mb-2"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              Đặt Lại Mật Khẩu
             </h1>
-            <p className="text-sm text-gray-500 mb-10 px-4">
-              Vui lòng nhập mã xác thực và mật khẩu mới của bạn.
+            <p className="text-[13px] text-slate-500 mb-8 px-2">
+              Vui lòng nhập mã xác thực gồm 6 chữ số vừa được gửi đến{" "}
+              <b>{savedEmail}</b>
             </p>
 
-            <form onSubmit={handleResetPassword} className="text-left">
+            <form
+              onSubmit={handleSubmitStep2(onResetPassword)}
+              className="text-left"
+            >
               <div className="mb-5 relative">
-                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
-                  MÃ OTP
-                </label>
                 <input
                   type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Nhập mã 6 chữ số"
+                  placeholder="Mã OTP (6 chữ số)"
                   maxLength={6}
-                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors"
+                  className={`w-full bg-slate-50 border ${errorsStep2.otp ? "border-rose-400" : "border-slate-100"} px-5 py-3.5 rounded-2xl outline-none text-sm transition-all duration-300 focus:border-rose-300 focus:bg-white focus:shadow-[0_4px_15px_rgba(251,113,133,0.15)]`}
+                  {...registerStep2("otp", {
+                    required: "Vui lòng nhập mã OTP!",
+                    minLength: { value: 6, message: "Mã OTP phải đủ 6 ký tự!" },
+                  })}
                 />
-                <div className="absolute right-4 top-8.5 text-gray-400">
+                <div className="absolute right-5 top-3.5 text-slate-400">
                   <ShieldCheck size={18} />
                 </div>
+                {errorsStep2.otp && (
+                  <p className="text-rose-500 text-[11px] font-semibold mt-2 flex items-center gap-1 pl-2">
+                    <AlertCircle size={12} /> {errorsStep2.otp.message}
+                  </p>
+                )}
               </div>
 
               <div className="mb-5 relative">
-                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
-                  MẬT KHẨU MỚI
-                </label>
                 <input
                   type={showPassword ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors pr-10"
+                  placeholder="Mật khẩu mới"
+                  className={`w-full bg-slate-50 border ${errorsStep2.newPassword ? "border-rose-400" : "border-slate-100"} px-5 py-3.5 rounded-2xl outline-none pr-12 text-sm transition-all duration-300 focus:border-rose-300 focus:bg-white focus:shadow-[0_4px_15px_rgba(251,113,133,0.15)]`}
+                  {...registerStep2("newPassword", {
+                    required: "Vui lòng nhập mật khẩu mới!",
+                    minLength: {
+                      value: 6,
+                      message: "Mật khẩu tối thiểu 6 ký tự!",
+                    },
+                  })}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-8.5 text-gray-400 hover:text-black transition-colors bg-transparent border-0 outline-none"
+                  className="absolute right-4 top-3.5 text-slate-400 hover:text-rose-500 transition-colors bg-transparent border-0 outline-none"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
+                {errorsStep2.newPassword && (
+                  <p className="text-rose-500 text-[11px] font-semibold mt-2 flex items-center gap-1 pl-2">
+                    <AlertCircle size={12} /> {errorsStep2.newPassword.message}
+                  </p>
+                )}
               </div>
 
               <div className="mb-8 relative">
-                <label className="block text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-2 pl-1">
-                  XÁC NHẬN MẬT KHẨU
-                </label>
                 <input
                   type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-transparent border border-gray-300 rounded-md px-4 py-3 text-sm outline-none focus:border-black transition-colors pr-10"
+                  placeholder="Xác nhận mật khẩu mới"
+                  className={`w-full bg-slate-50 border ${errorsStep2.confirmPassword ? "border-rose-400" : "border-slate-100"} px-5 py-3.5 rounded-2xl outline-none pr-12 text-sm transition-all duration-300 focus:border-rose-300 focus:bg-white focus:shadow-[0_4px_15px_rgba(251,113,133,0.15)]`}
+                  {...registerStep2("confirmPassword", {
+                    required: "Vui lòng xác nhận mật khẩu!",
+                    validate: (value) =>
+                      value === newPasswordValue || "Mật khẩu không khớp!",
+                  })}
                 />
+                {errorsStep2.confirmPassword && (
+                  <p className="text-rose-500 text-[11px] font-semibold mt-2 flex items-center gap-1 pl-2">
+                    <AlertCircle size={12} />{" "}
+                    {errorsStep2.confirmPassword.message}
+                  </p>
+                )}
               </div>
 
+              {/* Nút Submit đổi thành Gradient tone Rose đồng bộ */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-black text-white rounded-full py-3.5 text-xs font-semibold tracking-wider uppercase transition-all hover:bg-gray-800 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed mb-8"
+                className="w-full rounded-full bg-gradient-to-r from-rose-400 to-rose-500 text-white text-[15px] font-bold py-4 transition-all duration-300 hover:from-rose-500 hover:to-rose-600 hover:shadow-[0_8px_20px_rgba(244,63,94,0.35)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mb-6"
               >
-                {isLoading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+                {isLoading ? "Đang xử lý..." : "Xác nhận đổi mật khẩu →"}
               </button>
             </form>
           </div>
         )}
 
-        {/* NÚT QUAY LẠI CHUNG CHO CẢ 2 BƯỚC */}
-        <div className="text-center mt-2">
-          <Link
-            to="/login"
-            className="text-[10px] uppercase tracking-widest font-semibold text-gray-500 hover:text-black transition-colors relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-px after:bg-gray-300 hover:after:bg-black no-underline"
+        {/* NÚT QUAY LẠI CHUNG */}
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-[13px] font-bold text-slate-500 hover:text-rose-500 hover:underline transition-colors bg-transparent border-none outline-none cursor-pointer p-0"
           >
-            QUAY LẠI ĐĂNG NHẬP
-          </Link>
+            Quay lại đăng nhập
+          </button>
         </div>
       </div>
-
-      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
     </div>
   );
 };
 
-export default ForgotPassword;
+export default ForgotPasswordModal;

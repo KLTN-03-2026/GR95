@@ -57,6 +57,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState({});
   const [originalProduct, setOriginalProduct] = useState({});
   const [images, setImages] = useState([]);
+  const [originalImages, setOriginalImages] = useState([]);
   const [variants, setVariants] = useState([]);
 
   // STATE THÊM / SỬA BIẾN THỂ
@@ -74,11 +75,13 @@ const ProductDetail = () => {
 
       setProduct(fetchedInfo);
       setOriginalProduct(fetchedInfo);
-      setImages(res.images || res.data?.images || []);
+      const fetchedImages = res.images || res.data?.images || [];
+      setImages(fetchedImages);
+      setOriginalImages(fetchedImages);
       setVariants(res.variants || res.data?.variants || []);
     } catch (error) {
       console.error("Lỗi tải chi tiết:", error);
-      toast.error("Không thể tải thông tin sản phẩm này!");
+      toast.error("Không thể tải thông tin sản phẩm!");
     } finally {
       setLoading(false);
     }
@@ -94,11 +97,12 @@ const ProductDetail = () => {
   };
 
   const handleSaveInfo = async () => {
-    // Kiểm tra xem có thay đổi gì không
+    // Hàm kiểm tra cho các trường dữ liệu dạng chuỗi (text)
     const isDifferent = (val1, val2) =>
       String(val1 || "").trim() !== String(val2 || "").trim();
 
-    const hasChanged =
+    // 1. Kiểm tra các trường text cơ bản
+    const hasTextChanged =
       isDifferent(product.TenSP, originalProduct.TenSP) ||
       isDifferent(product.MaDM, originalProduct.MaDM) ||
       isDifferent(product.LoaiDaPhuHop, originalProduct.LoaiDaPhuHop) ||
@@ -106,15 +110,46 @@ const ProductDetail = () => {
       isDifferent(product.ThanhPhan, originalProduct.ThanhPhan) ||
       isDifferent(product.CachSuDung, originalProduct.CachSuDung);
 
+    // 2. Kiểm tra thay đổi ảnh
+    // TRƯỜNG HỢP A: Nếu ảnh lưu dạng URL/chuỗi trong object product (VD: product.DuongDanAnh hoặc product.image)
+    const hasImageStringChanged = isDifferent(
+      product.DuongDanAnh,
+      originalProduct.DuongDanAnh,
+    );
+    const hasImagesChanged =
+      images.length !== originalImages.length ||
+      images.some(
+        (img, index) =>
+          img.MaHinhAnh !== originalImages[index]?.MaHinhAnh ||
+          img.DuongDanAnh !== originalImages[index]?.DuongDanAnh,
+      );
+    /* (Lưu ý: Thay 'DuongDanAnh' bằng key thực tế bạn đang dùng, ví dụ: product.image) */
+
+    // TRƯỜNG HỢP B: Nếu bạn có một state riêng biệt chứa File ảnh khi người dùng upload lên (VD: const [imageFile, setImageFile] = useState(null))
+    // const hasNewFileUpload = imageFile !== null;
+
+    // Tổng hợp điều kiện: Có thay đổi text HOẶC có thay đổi URL ảnh HOẶC có file ảnh mới
+    const hasChanged =
+      hasTextChanged || hasImageStringChanged || hasImagesChanged;
+    // Nếu có dùng state file rời thì đổi thành: const hasChanged = hasTextChanged || hasImageStringChanged || hasNewFileUpload;
+
     if (!hasChanged) {
-      return toast.info("Bạn chưa thay đổi thông tin nào cả!");
+      return toast.warning("Chưa có thay đổi nào để lưu!");
     }
 
     setIsSaving(true);
     try {
+      // Nếu có gửi file ảnh lên server, thường bạn sẽ phải dùng FormData thay vì gửi trực tiếp JSON object
+      // Nhưng nếu chỉ gửi URL dạng chuỗi thì giữ nguyên như cũ:
       await axiosClient.put(`/products/${id}`, product);
-      toast.success("Đã lưu thông tin cơ bản thành công!");
-      setOriginalProduct(product); // Cập nhật lại bản gốc
+
+      toast.success("Đã lưu thông tin sản phẩm thành công!");
+
+      // Cập nhật lại bản gốc sau khi lưu thành công
+      setOriginalProduct(product);
+
+      // Nếu có dùng state file rời (Trường hợp B), nhớ reset nó sau khi lưu:
+      // setImageFile(null);
     } catch (error) {
       const message =
         error?.response?.data?.message || "Lỗi khi lưu thông tin!";
@@ -150,7 +185,7 @@ const ProductDetail = () => {
       ]);
       toast.success("Đã thêm ảnh mới thành công!");
     } catch (error) {
-      toast.error("Lỗi tải ảnh lên hệ thống!");
+      toast.error("Không thể tải ảnh lên hệ thống!");
       console.error(error);
     } finally {
       setIsUploading(false);
@@ -174,14 +209,14 @@ const ProductDetail = () => {
       setImages(images.filter((img) => img.MaHinhAnh !== imageId));
       toast.success("Đã xóa ảnh thành công!");
     } catch {
-      toast.error("Lỗi khi xóa ảnh!");
+      toast.error("Không thể xóa ảnh!");
     }
   };
 
   // ===== QUẢN LÝ BIẾN THỂ (PHÂN LOẠI) =====
   const handleAddVariant = async () => {
     if (!newVariant.TenBienThe || !newVariant.Gia) {
-      return toast.warning("Vui lòng nhập đầy đủ tên phân loại và giá bán!");
+      return toast.warning("Vui lòng nhập tên phân loại và giá bán!");
     }
 
     try {
@@ -194,7 +229,7 @@ const ProductDetail = () => {
       setNewVariant({ TenBienThe: "", Gia: "" });
       toast.success("Đã thêm phân loại mới!");
     } catch (error) {
-      toast.error("Lỗi thêm biến thể mới!");
+      toast.error("Không thể thêm phân loại mới!");
       console.error(error);
     }
   };
@@ -216,7 +251,9 @@ const ProductDetail = () => {
       setVariants(variants.filter((v) => v.MaBienThe !== variant.MaBienThe));
       toast.success("Đã xóa phân loại thành công!");
     } catch (error) {
-      toast.error("Lỗi xóa biến thể! Có thể đang vướng dữ liệu đơn hàng.");
+      toast.error(
+        "Không thể xóa phân loại. Có thể đang vướng dữ liệu đơn hàng.",
+      );
       console.error(error);
     }
   };
@@ -230,7 +267,7 @@ const ProductDetail = () => {
   };
   const handleUpdateVariant = async (variantId) => {
     if (!editingVariant.TenBienThe || !editingVariant.Gia) {
-      return toast.warning("Tên phân loại và giá không được để trống!");
+      return toast.warning("Vui lòng nhập tên phân loại và giá bán!");
     }
     try {
       await axiosClient.put(`/products/variants/${variantId}`, {
@@ -241,10 +278,10 @@ const ProductDetail = () => {
         variants.map((v) => (v.MaBienThe === variantId ? editingVariant : v)),
       );
       setEditingVariant(null);
-      toast.success("Cập nhật phân loại thành công!");
+      toast.success("Đã cập nhật phân loại thành công!");
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Lỗi khi cập nhật biến thể!",
+        error?.response?.data?.message || "Không thể cập nhật phân loại!",
       );
     }
   };
@@ -252,7 +289,7 @@ const ProductDetail = () => {
   // ===== XÓA TOÀN BỘ SẢN PHẨM =====
   const handleDeleteProduct = async () => {
     if (!canDeleteProduct) {
-      toast.warning("Bạn không có quyền xóa sản phẩm này!");
+      toast.warning("Bạn không có quyền xóa sản phẩm!");
       return;
     }
 
@@ -278,7 +315,7 @@ const ProductDetail = () => {
       });
       navigate("/admin/products");
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Lỗi xóa sản phẩm!");
+      toast.error(error?.response?.data?.message || "Không thể xóa sản phẩm!");
     }
   };
 
@@ -358,18 +395,18 @@ const ProductDetail = () => {
               </div>
               <div className="form-group full-width">
                 <label>Thành phần chính</label>
-                <input
-                  type="text"
+                <textarea
                   name="ThanhPhan"
+                  rows="4"
                   value={product.ThanhPhan || ""}
                   onChange={handleInfoChange}
                 />
               </div>
               <div className="form-group full-width">
                 <label>Cách sử dụng</label>
-                <input
-                  type="text"
+                <textarea
                   name="CachSuDung"
+                  rows="4"
                   value={product.CachSuDung || ""}
                   onChange={handleInfoChange}
                 />

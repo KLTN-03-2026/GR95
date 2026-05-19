@@ -1,9 +1,9 @@
-const db = require('../config/db'); // Đường dẫn tới file cấu hình DB
+const db = require("../config/db"); // Đường dẫn tới file cấu hình DB
 
 const getHomeData = async (req, res) => {
-    try {
-        // 1. Logic lấy Banners
-        const [banners] = await db.query(`
+  try {
+    // 1. Logic lấy Banners
+    const [banners] = await db.query(`
             SELECT 
                 MaBanner, 
                 TieuDe, 
@@ -19,8 +19,8 @@ const getHomeData = async (req, res) => {
             ORDER BY ThuTuHienThi ASC, MaBanner ASC
         `);
 
-        // 2. Logic lấy Sản phẩm (GIỮ NGUYÊN 100% CỦA BẠN)
-        const [products] = await db.query(`
+    // 2. Logic lấy Sản phẩm (GIỮ NGUYÊN 100% CỦA BẠN)
+    const [products] = await db.query(`
             SELECT 
                 sp.MaSP as id, 
                 sp.TenSP as name,
@@ -113,16 +113,16 @@ const getHomeData = async (req, res) => {
             FROM SanPham sp
             LEFT JOIN DANHMUC dm ON sp.MaDM = dm.MaDM
             ORDER BY sp.MaSP ASC
-            LIMIT 9
+            LIMIT 100
         `);
 
-        const productIds = products.map((product) => product.id);
-        let variantsByProduct = new Map();
+    const productIds = products.map((product) => product.id);
+    let variantsByProduct = new Map();
 
-        if (productIds.length > 0) {
-            const placeholders = productIds.map(() => '?').join(',');
-            const [variantRows] = await db.query(
-                `
+    if (productIds.length > 0) {
+      const placeholders = productIds.map(() => "?").join(",");
+      const [variantRows] = await db.query(
+        `
                 SELECT 
                     bt.MaSP as productId,
                     bt.MaBienThe as id,
@@ -150,64 +150,63 @@ const getHomeData = async (req, res) => {
                 WHERE bt.MaSP IN (${placeholders})
                 ORDER BY bt.MaSP ASC, effectivePrice ASC, bt.MaBienThe ASC
                 `,
-                productIds
-            );
+        productIds,
+      );
 
-            variantsByProduct = variantRows.reduce((accumulator, variant) => {
-                const productId = String(variant.productId);
-                if (!accumulator.has(productId)) {
-                    accumulator.set(productId, []);
-                }
-
-                accumulator.get(productId).push({
-                    id: variant.id,
-                    label: variant.label,
-                    price: Number(variant.effectivePrice) || 0,
-                    oldPrice: Number(variant.originalPrice) || 0,
-                    inStock: Number(variant.stock) > 0
-                });
-
-                return accumulator;
-            }, new Map());
+      variantsByProduct = variantRows.reduce((accumulator, variant) => {
+        const productId = String(variant.productId);
+        if (!accumulator.has(productId)) {
+          accumulator.set(productId, []);
         }
 
-        // 3. Format dữ liệu
-        const formattedData = {
-            slides: banners.map(b => ({
-                id: b.MaBanner,
-                image: b.image,
-                title: b.TieuDe,
-                URLDich: b.URLDich,
-                NgayBatDau: b.NgayBatDau,
-                NgayHetHan: b.NgayHetHan,
-                cta: 'Xem chi tiết'
-            })),
-            products: products.map(p => ({
-                id: p.id,
-                name: p.name,
-                createdAt: p.createdAt,
-                categoryId: p.categoryId,
-                category: p.category,
-                image: p.image || '/images/default-product.jpg',
-                price: parseFloat(p.price) || 0,
-                oldPrice: parseFloat(p.oldPrice) || null,
-                rating: parseFloat(p.rating) || 5.0,
-                reviews: Number(p.reviews) || 0,
-                soldCount: Number(p.soldCount) || 0,
-                inStock: p.inStock === 1,
-                variants: variantsByProduct.get(String(p.id)) || []
-            }))
-        };
+        accumulator.get(productId).push({
+          id: variant.id,
+          label: variant.label,
+          price: Number(variant.effectivePrice) || 0,
+          oldPrice: Number(variant.originalPrice) || 0,
+          inStock: Number(variant.stock) > 0,
+        });
 
-        // 5. Trả về kết quả
-        res.status(200).json(formattedData);
-
-    } catch (error) {
-        console.error("Lỗi Controller:", error);
-        res.status(500).json({ message: "Lỗi server nội bộ" });
+        return accumulator;
+      }, new Map());
     }
+
+    // 3. Format dữ liệu
+    const formattedData = {
+      slides: banners.map((b) => ({
+        id: b.MaBanner,
+        image: b.image,
+        title: b.TieuDe,
+        URLDich: b.URLDich,
+        NgayBatDau: b.NgayBatDau,
+        NgayHetHan: b.NgayHetHan,
+        cta: "Xem chi tiết",
+      })),
+      products: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        createdAt: p.createdAt,
+        categoryId: p.categoryId,
+        category: p.category,
+        image: p.image || "/images/default-product.jpg",
+        price: parseFloat(p.price) || 0,
+        oldPrice: parseFloat(p.oldPrice) || null,
+        rating: parseFloat(p.rating) || 5.0,
+        reviews: Number(p.reviews) || 0,
+        soldCount: Number(p.soldCount) || 0,
+        inStock: p.inStock === 1,
+        variants: variantsByProduct.get(String(p.id)) || [],
+      })),
+    };
+
+    // 5. Trả về kết quả
+    res.status(200).json(formattedData);
+  } catch (error) {
+    console.error("Lỗi Controller:", error);
+    res.status(500).json({ message: "Lỗi server nội bộ" });
+  }
 };
 
 module.exports = {
-    getHomeData
+  getHomeData,
 };

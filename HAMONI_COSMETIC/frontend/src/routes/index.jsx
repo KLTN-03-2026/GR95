@@ -75,28 +75,63 @@ const NotFound = () => (
   </div>
 );
 
-// --- BẢO VỆ ĐƯỜNG DẪN ADMIN ---
-const AdminRoute = ({ children }) => {
+const ADMIN_ROLES = new Set(["ADMIN", "STAFF"]);
+
+const getStoredAuth = () => {
   const token = localStorage.getItem("token");
   const userRaw = localStorage.getItem("user");
 
   if (!token || !userRaw) {
-    return <Navigate to="/login" replace />;
+    return { token: null, user: null };
   }
 
   try {
-    const user = JSON.parse(userRaw);
-    const roleCode = user?.maQuyen;
-    const isAdminAreaAllowed =
-      roleCode === "ADMIN" || roleCode === "STAFF" || roleCode === "KHO";
-
-    if (!isAdminAreaAllowed) {
-      return <Navigate to="/" replace />;
-    }
+    return { token, user: JSON.parse(userRaw) };
   } catch {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    return { token: null, user: null };
+  }
+};
+
+const getRoleCode = (user) =>
+  String(user?.maQuyen || user?.MaQuyen || user?.role || "").toUpperCase();
+
+const getPostLoginPath = (user) =>
+  ADMIN_ROLES.has(getRoleCode(user)) ? "/admin/dashboard" : "/";
+
+const AuthRoute = ({ children }) => {
+  const { token, user } = getStoredAuth();
+
+  if (token && user) {
+    return <Navigate to={getPostLoginPath(user)} replace />;
+  }
+
+  return children;
+};
+
+const ClientRoute = ({ children }) => {
+  const { token, user } = getStoredAuth();
+
+  if (token && user && ADMIN_ROLES.has(getRoleCode(user))) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  return children;
+};
+
+// --- BẢO VỆ ĐƯỜNG DẪN ADMIN ---
+const AdminRoute = ({ children }) => {
+  const { token, user } = getStoredAuth();
+
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
+  }
+
+  const isAdminAreaAllowed = ADMIN_ROLES.has(getRoleCode(user));
+
+  if (!isAdminAreaAllowed) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -120,19 +155,54 @@ const AppRouter = () => {
 
                     KHU VỰC 1: XÁC THỰC (Không cần Layout)
                     ========================================== */}
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route
+          path="/forgot-password"
+          element={
+            <AuthRoute>
+              <ForgotPassword />
+            </AuthRoute>
+          }
+        />
         {/* <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} /> */}
         <Route path="/otp" element={<OTP />} />
-        <Route path="/quen-mat-khau" element={<ForgotPassword />} />
-        <Route path="/login" element={<AuthPage />} />
-        <Route path="/register" element={<AuthPage />} />
+        <Route
+          path="/quen-mat-khau"
+          element={
+            <AuthRoute>
+              <ForgotPassword />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <AuthRoute>
+              <AuthPage />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <AuthRoute>
+              <AuthPage />
+            </AuthRoute>
+          }
+        />
 
         {/* ==========================================
                     KHU VỰC 2: KHÁCH HÀNG (Sử dụng ClientLayout)
                     ========================================== */}
 
-        <Route path="/" element={<ClientLayout />}>
+        <Route
+          path="/"
+          element={
+            <ClientRoute>
+              <ClientLayout />
+            </ClientRoute>
+          }
+        >
           <Route index element={<Home />} />
           <Route path="products" element={<ClientProducts />} />
           <Route path="promotions" element={<PromotionClient />} />

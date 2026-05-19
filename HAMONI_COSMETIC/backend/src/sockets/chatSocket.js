@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const db = require("../config/db");
 
-// Khởi tạo Gemini AI (Chỉ khai báo API Key ở ngoài, Model sẽ được cấu hình động ở bên trong)
+// Khởi tạo Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 module.exports = function (io) {
@@ -15,7 +15,6 @@ module.exports = function (io) {
       }
     });
 
-    // Nhân viên CSKH tham gia phòng tổng để trực tin nhắn
     socket.on("join_staff_room", () => {
       socket.join("STAFF_ROOM");
       console.log(`Nhân viên đã tham gia trực chat.`);
@@ -28,12 +27,23 @@ module.exports = function (io) {
       socket.join(roomName);
 
       try {
-        let [rows] = await db.query(
-          `SELECT MaPhien, TrangThai FROM PhienChat 
-                     WHERE (MaND = ? OR SessionID = ?) AND TrangThai != 'closed' 
-                     ORDER BY MaPhien DESC LIMIT 1`,
-          [maND || null, sessionID || null],
-        );
+        let rows = [];
+
+        if (maND) {
+          [rows] = await db.query(
+            `SELECT MaPhien, TrangThai FROM PhienChat 
+             WHERE MaND = ? AND TrangThai != 'closed' 
+             ORDER BY MaPhien DESC LIMIT 1`,
+            [maND],
+          );
+        } else {
+          [rows] = await db.query(
+            `SELECT MaPhien, TrangThai FROM PhienChat 
+             WHERE SessionID = ? AND TrangThai != 'closed' 
+             ORDER BY MaPhien DESC LIMIT 1`,
+            [sessionID || null],
+          );
+        }
 
         let maPhien;
         let currentStatus = "bot";
@@ -48,10 +58,9 @@ module.exports = function (io) {
           currentStatus = rows[0].TrangThai;
         }
 
-        // --- LẤY LỊCH SỬ TIN NHẮN TỪ DATABASE ---
         const [historyRows] = await db.query(
           `SELECT MaTinNhan, VaiTro, NoiDung, NgayGui 
-                     FROM ChiTietChat WHERE MaPhien = ? ORDER BY NgayGui ASC`,
+           FROM ChiTietChat WHERE MaPhien = ? ORDER BY NgayGui ASC`,
           [maPhien],
         );
 
@@ -71,7 +80,6 @@ module.exports = function (io) {
           }),
         }));
 
-        // Gửi mã phiên và lịch sử về cho Frontend hiển thị
         socket.emit("chat_ready", {
           maPhien,
           roomName,
@@ -88,13 +96,11 @@ module.exports = function (io) {
       const { maPhien, roomName, text, isHandoverToHuman } = data;
 
       try {
-        // Lưu tin nhắn của Khách (CUST) vào DB
         await db.query(
           `INSERT INTO ChiTietChat (MaPhien, VaiTro, NoiDung) VALUES (?, 'CUST', ?)`,
           [maPhien, text],
         );
 
-        // TẠO 1 ID DUY NHẤT CHỐNG ĐÚP TIN NHẮN
         const custMessageId = Date.now();
         const messageTime = new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
@@ -102,7 +108,6 @@ module.exports = function (io) {
           hour12: true,
         });
 
-        // NẾU ĐANG CHỜ/GẶP NHÂN VIÊN
         if (isHandoverToHuman) {
           try {
             const [current] = await db.query(
@@ -123,7 +128,6 @@ module.exports = function (io) {
                 text,
                 time: messageTime,
               });
-              // Phát monitor_message ĐÚNG 1 LẦN cho Admin
               io.to("STAFF_ROOM").emit("monitor_message", {
                 id: custMessageId,
                 senderType: "USER",
@@ -133,7 +137,6 @@ module.exports = function (io) {
                 status: "pending",
               });
             } else {
-              // Phát monitor_message ĐÚNG 1 LẦN cho Admin
               io.to("STAFF_ROOM").emit("monitor_message", {
                 id: custMessageId,
                 senderType: "USER",
@@ -146,10 +149,9 @@ module.exports = function (io) {
           } catch (err) {
             console.error("Lỗi khi kiểm tra trạng thái Handover:", err);
           }
-          return; // Kết thúc hàm, không cho AI nhảy vào trả lời
+          return;
         }
 
-        // NẾU LÀ CHẾ ĐỘ BOT: Phát 1 lần cho Admin xem ké
         io.to("STAFF_ROOM").emit("monitor_message", {
           id: custMessageId,
           senderType: "USER",
@@ -181,32 +183,80 @@ module.exports = function (io) {
               duLieuHuanLuyen = configRows[0].DuLieuHuanLuyen || "";
             }
           } catch (err) {
-            console.error(
-              "Chưa có bảng CauHinhAI hoặc lỗi truy vấn, dùng prompt mặc định.",
-            );
+            console.error("Lỗi lấy cấu hình AI, dùng prompt mặc định.");
           }
 
-          // Ghép thành System Instruction hoàn chỉnh
+          // 👉 ĐÃ UPDATE: Truy xuất đồng thời bảng Sản phẩm và Biến thể bằng câu lệnh JOIN
+          let dsSanPham = "";
+          try {
+            const [rows] = await db.query(`
+    SELECT sp.MaSP, sp.TenSP, bt.MaBienThe, bt.TenBienThe, bt.Gia 
+    FROM SanPham sp
+    JOIN BienTheSanPham bt ON sp.MaSP = bt.MaSP
+  `);
+
+            if (rows.length > 0) {
+              // Gom nhóm các biến thể theo từng sản phẩm để AI dễ đọc
+              const groupedProducts = rows.reduce((acc, current) => {
+                if (!acc[current.MaSP]) {
+                  acc[current.MaSP] = {
+                    id: current.MaSP,
+                    name: current.TenSP,
+                    variants: [],
+                  };
+                }
+                acc[current.MaSP].variants.push({
+                  variantId: current.MaBienThe,
+                  variantName: current.TenBienThe,
+                  price: current.Gia,
+                });
+                return acc;
+              }, {});
+
+              // Chuyển đổi object gom nhóm thành chuỗi văn bản cho Prompt
+              dsSanPham = Object.values(groupedProducts)
+                .map((p) => {
+                  const variantText = p.variants
+                    .map(
+                      (v) =>
+                        `   + Phân loại: ${v.variantName} - Giá: ${Number(v.price).toLocaleString("vi-VN")}đ`,
+                    )
+                    .join("\n");
+                  return `- ${p.name} (Mã SP để tạo link: ${p.id})\n${variantText}`;
+                })
+                .join("\n\n");
+            }
+          } catch (error) {
+            console.error("Lỗi lấy danh sách sản phẩm và biến thể:", error);
+          }
+
+          // 👉 HÀNG RÀO BẢO VỆ PROMPT ĐƯỢC THIẾT KẾ LẠI
           const dynamicInstruction = `
 ${promptCoBan}
 
-TÀI LIỆU KIẾN THỨC CỬA HÀNG (Sử dụng dữ liệu này để tư vấn cho khách):
+**QUY TẮC BẮT BUỘC TẠO LINK MUA HÀNG:**
+Khi bạn giới thiệu bất kỳ sản phẩm nào có tên trong danh sách dưới đây, bạn **PHẢI** chèn thêm cú pháp "[XEM_NGAY|Mã_Sản_Phẩm]" ngay sau tên sản phẩm đó.
+Ví dụ: "Bạn có thể tham khảo dòng Kem Chống Nắng HAMONI [XEM_NGAY|1] hiện có các phân loại dung tích phù hợp với da của bạn."
+*Lưu ý:* Sử dụng **CHÍNH XÁC số Mã SP** (Ví dụ: 1, 2, 3...) được cung cấp, tuyệt đối không chèn mã biến thể hay tự thêm chữ vào ID.
+
+**DANH SÁCH SẢN PHẨM & CÁC BIẾN THỂ HIỆN CÓ TRONG KHO:**
+${dsSanPham}
+
+TÀI LIỆU KIẾN THỨC CHUYÊN SÂU VỀ MỸ PHẨM VÀ DA LIỄU (Sử dụng kiến thức này để tư vấn):
 """
 ${duLieuHuanLuyen}
 """
-                    `;
+`;
 
-          // Khởi tạo Model với Ngữ cảnh vừa nạp
           const dynamicAiModel = genAI.getGenerativeModel({
             model: "gemini-3.1-flash-lite-preview",
             systemInstruction: dynamicInstruction,
           });
           // =========================================================
 
-          // Lấy 5 tin nhắn cũ để AI nhớ nội dung trò chuyện
           const [history] = await db.query(
             `SELECT VaiTro, NoiDung FROM ChiTietChat 
-                         WHERE MaPhien = ? ORDER BY NgayGui DESC LIMIT 5`,
+             WHERE MaPhien = ? ORDER BY NgayGui DESC LIMIT 5`,
             [maPhien],
           );
 
@@ -216,11 +266,9 @@ ${duLieuHuanLuyen}
           });
           contextPrompt += `\nCâu hỏi mới của CUST: ${text}`;
 
-          // Gọi AI sinh câu trả lời dựa trên bối cảnh
           const result = await dynamicAiModel.generateContent(contextPrompt);
           const aiResponse = result.response.text();
 
-          // Lưu câu trả lời của Bot
           await db.query(
             `INSERT INTO ChiTietChat (MaPhien, VaiTro, NoiDung) VALUES (?, 'BOT', ?)`,
             [maPhien, aiResponse],
@@ -262,7 +310,6 @@ ${duLieuHuanLuyen}
     socket.on("staff_send_message", async (data) => {
       const { id, maPhien, maNhanVien, roomName, text } = data;
       try {
-        // TÔN TRỌNG ID TỪ FRONTEND TRUYỀN LÊN ĐỂ CHỐNG ĐÚP
         const messageId = id || Date.now();
         const timeNow = new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
@@ -303,16 +350,13 @@ ${duLieuHuanLuyen}
     socket.on("end_chat", async (data) => {
       const { maPhien, roomName } = data;
       try {
-        // Cập nhật trạng thái phiên chat về 'bot' để AI tiếp tục xử lý
         await db.query(
           `UPDATE PhienChat SET TrangThai = 'bot', MaNhanVienXuLy = NULL WHERE MaPhien = ?`,
           [maPhien],
         );
 
-        // Thông báo cho khách hàng rằng phiên đã kết thúc, AI quay trở lại
         io.to(roomName).emit("chat_closed_by_admin");
 
-        // Cập nhật danh sách phiên cho các nhân viên khác
         io.to("STAFF_ROOM").emit("monitor_message", {
           maPhien,
           text: "Phiên hỗ trợ đã kết thúc. AI quay trở lại.",

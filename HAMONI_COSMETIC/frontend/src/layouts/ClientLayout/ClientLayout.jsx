@@ -35,6 +35,38 @@ const getStoredUserInfo = () => {
   }
 };
 
+// ===============================================
+// LOGIC ĐIỀU HƯỚNG THÔNG BÁO THÔNG MINH
+// ===============================================
+const getNotificationTarget = (notif) => {
+  const title = String(notif?.title || "");
+  const content = String(notif?.content || "");
+  const combinedText = `${title} ${content}`.toLowerCase();
+
+  const orderIdMatch =
+    combinedText.match(/#(\d+)/) || combinedText.match(/đơn hàng (\d+)/);
+  const orderId = orderIdMatch ? Number(orderIdMatch[1]) : null;
+
+  if (
+    orderId &&
+    /(thanh toán|trạng thái|giao hàng|hủy|thành công|đơn hàng)/.test(
+      combinedText,
+    )
+  ) {
+    return `/order/${orderId}`;
+  }
+
+  if (
+    /(khuyến mãi|khuyen mai|voucher|giảm giá|giam gia|ưu đãi)/.test(
+      combinedText,
+    )
+  ) {
+    return "/khuyen-mai";
+  }
+
+  return "/profile";
+};
+
 const ClientLayout = () => {
   const SEARCH_HISTORY_KEY = "hamoni_search_history";
   const MAX_HISTORY_ITEMS = 8;
@@ -119,6 +151,11 @@ const ClientLayout = () => {
   useEffect(() => {
     if (!user?.id) return;
 
+    // ĐÃ FIX: Hàm đảm bảo Socket luôn join đúng phòng dù mạng chậm
+    const joinRoom = () => {
+      socket.emit("join_notification_room", user.id);
+    };
+
     const fetchNotifications = async () => {
       try {
         const res = await fetch(`${API_BASE}/notifications/${user.id}`);
@@ -134,13 +171,19 @@ const ClientLayout = () => {
 
     fetchNotifications();
 
-    socket.emit("join_notification_room", user.id);
+    // Lắng nghe sự kiện connect để đảm bảo join thành công
+    if (socket.connected) {
+      joinRoom();
+    }
+    socket.on("connect", joinRoom);
+
     socket.on("new_notification", (newNotif) => {
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
     });
 
     return () => {
+      socket.off("connect", joinRoom);
       socket.off("new_notification");
     };
   }, [user?.id]);
@@ -199,11 +242,37 @@ const ClientLayout = () => {
     }
   };
 
+  const handleNotificationClick = (notif) => {
+    setIsNotifOpen(false);
+    if (!notif.isRead) {
+      handleMarkAsRead(notif.id);
+    }
+    navigate(getNotificationTarget(notif));
+  };
+
   const handleLogout = () => {
     setIsUserMenuOpen(false);
     logout();
+    localStorage.removeItem("user");
+    localStorage.removeItem("user_info");
+    localStorage.removeItem("userPermissions");
     localStorage.removeItem("token");
     navigate("/login");
+  };
+
+  // ĐÃ FIX: Bổ sung lại hàm fomat thời gian chuẩn Việt Nam
+  const formatTime = (timeString) => {
+    if (!timeString) return "Gần đây";
+    try {
+      const date = new Date(timeString);
+      return (
+        date.toLocaleDateString("vi-VN") +
+        " " +
+        date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+      );
+    } catch {
+      return timeString;
+    }
   };
 
   // --- 6. RENDER GIAO DIỆN ---
@@ -339,7 +408,6 @@ const ClientLayout = () => {
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
-                {/* Dùng Tailwind group-hover thay cho CSS ngoài */}
                 {!isNotifOpen && (
                   <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                     Thông báo
@@ -371,7 +439,7 @@ const ClientLayout = () => {
                       notifications.map((notif) => (
                         <div
                           key={notif.id}
-                          onClick={() => handleMarkAsRead(notif.id)}
+                          onClick={() => handleNotificationClick(notif)}
                           className={`p-3 border-b border-gray-50 cursor-pointer transition-colors hover:bg-slate-50 flex flex-row gap-3 ${!notif.isRead ? "bg-rose-50/50" : ""}`}
                         >
                           <div
@@ -387,7 +455,8 @@ const ClientLayout = () => {
                               {notif.content}
                             </p>
                             <div className="flex flex-row items-center gap-1 text-[10px] text-slate-400 mt-2">
-                              <Clock size={10} /> {notif.time}
+                              {/* ĐÃ FIX: Gọi hàm formatTime để in ra giờ đẹp */}
+                              <Clock size={10} /> {formatTime(notif.time)}
                             </div>
                           </div>
                         </div>
@@ -396,7 +465,7 @@ const ClientLayout = () => {
                   </div>
                   <div className="p-2 border-t border-gray-100 text-center bg-slate-50/80">
                     <Link
-                      to="/profile?tab=notifications"
+                      to="/profile"
                       onClick={() => setIsNotifOpen(false)}
                       className="text-xs text-slate-500 hover:text-rose-500 font-medium block w-full py-1 text-decoration:none transition-colors"
                     >

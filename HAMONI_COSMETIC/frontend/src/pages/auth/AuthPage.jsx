@@ -6,6 +6,10 @@ import authApi from "../../services/authApi";
 import { useStore } from "../../store/useStore";
 import "react-toastify/dist/ReactToastify.css";
 
+// Nhúng Component Modal Quên mật khẩu vào đây
+// import ForgotPasswordModal from "../ForgotPasswordModal";
+import ForgotPasswordModal from "./ForgotPassword";
+
 // ==========================================
 // CẤU HÌNH ẢNH NỀN CHO ĐĂNG NHẬP VÀ ĐĂNG KÝ
 // ==========================================
@@ -22,6 +26,9 @@ export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(location.pathname === "/register");
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // State quản lý việc bật/tắt Modal Quên Mật Khẩu
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   // ==========================================
   // LOGIC ĐĂNG NHẬP
@@ -228,7 +235,7 @@ export default function AuthPage() {
               </div>
             </div>
 
-            {/* CÁC Ô INPUT ĐĂNG KÝ (Dùng relative và mb-6 để chứa text absolute) */}
+            {/* CÁC Ô INPUT ĐĂNG KÝ */}
             <div className="w-full text-left relative mb-6">
               <input
                 type="text"
@@ -389,12 +396,15 @@ export default function AuthPage() {
                   Nhớ mật khẩu
                 </label>
               </div>
-              <Link
-                to="/forgot-password"
-                className="text-[12px] text-slate-700 font-semibold no-underline transition-colors hover:text-rose-500"
+
+              {/* ĐÃ THAY ĐỔI: Sử dụng button để bật Modal thay vì Link */}
+              <button
+                type="button"
+                onClick={() => setIsForgotModalOpen(true)}
+                className="text-[12px] text-slate-700 font-semibold transition-colors hover:text-rose-500 bg-transparent border-none outline-none cursor-pointer p-0"
               >
                 Quên mật khẩu?
-              </Link>
+              </button>
             </div>
 
             <button
@@ -437,6 +447,14 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      {/* ========================================== */}
+      {/* MODAL QUÊN MẬT KHẨU */}
+      {/* ========================================== */}
+      {isForgotModalOpen && (
+        <ForgotPasswordModal onClose={() => setIsForgotModalOpen(false)} />
+      )}
+
       <ToastContainer position="top-right" autoClose={3000} theme="colored" />
     </div>
   );

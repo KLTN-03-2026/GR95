@@ -5,8 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
-  Filter,
-  RefreshCcw,
   AlertCircle,
   Leaf,
   ShieldCheck,
@@ -19,85 +17,7 @@ import {
 import axiosClient from "../../../services/axiosClient";
 
 // ==========================================
-// COMPONENT: COUNTDOWN TIMER (THÊM MỚI)
-// ==========================================
-const parseVietnameseDate = (dateStr) => {
-  if (!dateStr) return null;
-  const parts = dateStr.split("/");
-  if (parts.length !== 3) return null;
-  const [day, month, year] = parts;
-  return new Date(`${year}-${month}-${day}T00:00:00`).getTime();
-};
-
-const CountdownTimer = ({ startDateStr, endDateStr }) => {
-  const [timeLeft, setTimeLeft] = useState("");
-  const [status, setStatus] = useState(""); // 'upcoming', 'ongoing', 'ended'
-
-  useEffect(() => {
-    const start = parseVietnameseDate(startDateStr);
-    const end = parseVietnameseDate(endDateStr);
-
-    if (!start || !end) return;
-
-    // Đẩy end time đến cuối ngày (23:59:59)
-    const realEnd = end + 24 * 60 * 60 * 1000 - 1;
-
-    const calculateTimeLeft = (difference) => {
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-      );
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-      setTimeLeft(`${days} ngày ${hours}h ${minutes}p ${seconds}s`);
-    };
-
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-
-      if (now < start) {
-        setStatus("upcoming");
-        calculateTimeLeft(start - now);
-      } else if (now >= start && now <= realEnd) {
-        setStatus("ongoing");
-        calculateTimeLeft(realEnd - now);
-      } else {
-        setStatus("ended");
-        setTimeLeft("");
-        clearInterval(timer);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [startDateStr, endDateStr]);
-
-  if (status === "ended" || !timeLeft) return null;
-
-  return (
-    <div className="inline-flex items-center gap-2 bg-slate-900/60 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full mb-4 shadow-lg w-max">
-      <span className="relative flex h-3 w-3">
-        <span
-          className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === "ongoing" ? "bg-rose-400" : "bg-amber-400"}`}
-        ></span>
-        <span
-          className={`relative inline-flex rounded-full h-3 w-3 ${status === "ongoing" ? "bg-rose-500" : "bg-amber-500"}`}
-        ></span>
-      </span>
-      <span className="text-sm font-medium">
-        {status === "upcoming" ? "Sắp diễn ra sau:" : "Kết thúc sau:"}
-        <strong
-          className={`ml-2 tracking-wider ${status === "ongoing" ? "text-rose-300" : "text-amber-300"}`}
-        >
-          {timeLeft}
-        </strong>
-      </span>
-    </div>
-  );
-};
-
-// ==========================================
-// COMPONENT: HERO SLIDER
+// COMPONENT: HERO SLIDER (ĐÃ BỎ ĐẾM NGƯỢC THỜI GIAN)
 // ==========================================
 const HeroSlider = ({ slides }) => {
   const [current, setCurrent] = useState(0);
@@ -112,7 +32,6 @@ const HeroSlider = ({ slides }) => {
     return () => clearInterval(timer);
   }, [current, slides]);
 
-  // HÀM XỬ LÝ CLICK: XEM CHI TIẾT
   const handleViewDetails = (e, slide) => {
     if (e) e.stopPropagation();
 
@@ -125,9 +44,7 @@ const HeroSlider = ({ slides }) => {
         navigate(slide.URLDich);
       }
     } else {
-      alert(
-        "Banner này chưa được gắn liên kết (Vui lòng gắn trong trang Admin).",
-      );
+      alert("Banner này chưa được gắn liên kết.");
     }
   };
 
@@ -151,7 +68,7 @@ const HeroSlider = ({ slides }) => {
 
   return (
     <div
-      className="relative w-full h-62.5 md:h-120 rounded-3xl overflow-hidden bg-slate-100 group shadow-md cursor-pointer"
+      className="relative w-full h-62.5 md:h-[480px] rounded-3xl overflow-hidden bg-slate-100 group shadow-md cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => handleViewDetails(e, activeSlide)}
@@ -175,7 +92,7 @@ const HeroSlider = ({ slides }) => {
 
       <div className="absolute inset-0 z-10 flex flex-col justify-end px-8 md:px-16 pb-12 pointer-events-none">
         <div
-          className={`absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/40 to-transparent transition-opacity duration-500 ease-out z-[-1] ${isHovered ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent transition-opacity duration-500 ease-out z-[-1] ${isHovered ? "opacity-100" : "opacity-0"}`}
         ></div>
 
         <div
@@ -186,13 +103,6 @@ const HeroSlider = ({ slides }) => {
               {slideBadge}
             </span>
           )}
-
-          {/*
-                        GHI CHÚ: Muốn hiện lại thời gian trên hero bar thì bỏ comment khối CountdownTimer bên dưới.
-                        {(activeSlide.NgayBatDau || activeSlide.NgayHetHan) && (
-                            <CountdownTimer startDateStr={activeSlide.NgayBatDau} endDateStr={activeSlide.NgayHetHan} />
-                        )}
-                    */}
 
           <h2 className="text-3xl md:text-5xl lg:text-6xl font-black mb-4 max-w-2xl leading-tight text-white">
             {slideTitle}
@@ -242,9 +152,161 @@ const HeroSlider = ({ slides }) => {
 };
 
 // ==========================================
+// COMPONENT: VÒNG QUAY DANH MỤC (NÚT TRÒN NHỎ - THU HẸP KHOẢNG CÁCH)
+// ==========================================
+const CategoryCarousel = ({ categories }) => {
+  const navigate = useNavigate();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const items = Array.isArray(categories) ? categories : [];
+
+  const archColors = [
+    "bg-[#E2F0EF]",
+    "bg-[#F5E6D3]",
+    "bg-[#FDE2E4]",
+    "bg-[#FEF5E7]",
+    "bg-[#E8F0FE]",
+    "bg-[#F0E6EF]",
+  ];
+
+  const nextSlide = () => {
+    if (items.length === 0) return;
+    setCurrentIndex((prev) => (prev + 1) % items.length);
+  };
+
+  const prevSlide = () => {
+    if (items.length === 0) return;
+    setCurrentIndex((prev) => (prev === 0 ? items.length - 1 : prev - 1));
+  };
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % items.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [items.length]);
+
+  if (!items || items.length === 0) return null;
+
+  const normalizedIndex = currentIndex % items.length;
+  const visibleItems = [
+    ...items.slice(normalizedIndex),
+    ...items.slice(0, normalizedIndex),
+  ].slice(0, 5);
+
+  return (
+    // Đã thay đổi margin: mt-8 mb-10 (thay vì my-16)
+    <section className="mt-8 mb-6 relative w-full overflow-hidden px-2 md:px-8">
+      <div className="flex flex-col items-center mb-6 text-center">
+        <h2
+          className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          Khám Phá Danh Mục
+        </h2>
+        <p className="text-slate-500 text-sm mt-1">
+          Tìm kiếm sản phẩm phù hợp nhất cho làn da của bạn
+        </p>
+      </div>
+
+      <div className="relative w-full flex items-center justify-center max-w-7xl mx-auto">
+        {/* NÚT BACK - HÌNH TRÒN NHỎ 40x40 */}
+        <button
+          type="button"
+          onClick={prevSlide}
+          style={{
+            width: 40,
+            height: 40,
+            minWidth: 40,
+            minHeight: 40,
+            borderRadius: "9999px",
+          }}
+          className="absolute left-0 md:left-2 z-20 inline-flex aspect-square shrink-0 items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-white border border-slate-200 text-slate-600 hover:text-rose-500 hover:border-rose-300 shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none"
+        >
+          <ChevronLeft size={20} className="-ml-px" />
+        </button>
+
+        {/* CONTAINER CHỨA DANH MỤC */}
+        <div className="flex gap-4 md:gap-5 lg:gap-6 w-full justify-center px-12 md:px-16">
+          <AnimatePresence mode="popLayout">
+            {visibleItems.map((cat, idx) => {
+              const originalIndex = categories.findIndex(
+                (c) => c.MaDM === cat.MaDM,
+              );
+              const bgColor =
+                archColors[
+                  (originalIndex === -1 ? idx : originalIndex) %
+                    archColors.length
+                ];
+              const defaultImg =
+                "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=600&auto=format&fit=crop";
+
+              return (
+                <Motion.div
+                  layout
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.5, ease: "anticipate" }}
+                  key={cat.MaDM || cat.id}
+                  whileHover={{ y: -6 }}
+                  className={`flex flex-col items-center cursor-pointer group flex-1 max-w-[220px]
+                    ${idx >= 2 ? "hidden sm:flex" : "flex"} 
+                    ${idx >= 3 ? "sm:hidden md:flex" : ""}
+                    ${idx >= 4 ? "md:hidden lg:flex" : ""}
+                  `}
+                  onClick={() =>
+                    navigate(`/products?category=${cat.TenDM || cat.name}`)
+                  }
+                >
+                  <div
+                    className={`relative w-full aspect-[3/4] md:aspect-[3/4.2] ${bgColor} rounded-t-[100px] rounded-b-xl overflow-hidden mb-4 border border-white/50 shadow-sm transition-all duration-300 group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.08)]`}
+                  >
+                    <div className="absolute inset-2 border-[1.5px] border-white/50 rounded-t-[90px] rounded-b-lg z-10 pointer-events-none transition-colors duration-300 group-hover:border-white/80"></div>
+                    <img
+                      src={cat.DuongDanAnh || defaultImg}
+                      alt={cat.TenDM || cat.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      style={{ objectPosition: "center" }}
+                    />
+                    <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  </div>
+
+                  <h3
+                    className="text-slate-800 font-bold text-sm md:text-base lg:text-[17px] text-center transition-colors group-hover:text-rose-600"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    {cat.TenDM || cat.name}
+                  </h3>
+                </Motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+
+        {/* NÚT NEXT - HÌNH TRÒN NHỎ 40x40 */}
+        <button
+          type="button"
+          onClick={nextSlide}
+          style={{
+            width: 40,
+            height: 40,
+            minWidth: 40,
+            minHeight: 40,
+            borderRadius: "9999px",
+          }}
+          className="absolute right-0 md:right-2 z-20 inline-flex aspect-square shrink-0 items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-white border border-slate-200 text-slate-600 hover:text-rose-500 hover:border-rose-300 shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none"
+        >
+          <ChevronRight size={20} className="-mr-px" />
+        </button>
+      </div>
+    </section>
+  );
+};
+
+// ==========================================
 // LOGIC XỬ LÝ DỮ LIỆU
 // ==========================================
-
 const checkIsNewProduct = (dateString) => {
   if (!dateString) return false;
   const createdDate = new Date(dateString);
@@ -347,7 +409,7 @@ const normalizeProducts = (products = []) => {
 };
 
 // ==========================================
-// COMPONENT: THẺ SẢN PHẨM (ĐỒNG BỘ GIAO DIỆN MỚI)
+// COMPONENT: THẺ SẢN PHẨM
 // ==========================================
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
@@ -360,10 +422,8 @@ const ProductCard = ({ product }) => {
   const discountPercent = product.discountPercent;
   const displayImage = defaultVariant.image || product.image;
 
-  // Kiểm tra tổng quát: Có số lượng > 0 HOẶC có cờ inStock = true
   const hasAnyVariantInStock = product.variants?.some((v) => v.inStock);
 
-  // Fomat giá hiển thị đầy đủ (Ví dụ: 135.000đ)
   const formatPrice = (price) => {
     if (!price) return "Liên hệ";
     return Number(price).toLocaleString("vi-VN") + "đ";
@@ -378,7 +438,6 @@ const ProductCard = ({ product }) => {
       whileHover={{ y: -6 }}
       className="group bg-white rounded-2xl p-3 border border-rose-100/50 hover:border-rose-200 hover:shadow-[0_12px_30px_rgba(191,124,124,0.12)] transition-all duration-300 flex flex-col h-full relative overflow-hidden"
     >
-      {/* TAG TRẠNG THÁI */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start pointer-events-none">
         {discountPercent > 0 && (
           <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
@@ -392,9 +451,8 @@ const ProductCard = ({ product }) => {
         )}
       </div>
 
-      {/* HÌNH ẢNH */}
       <div
-        className="relative aspect-4/5 rounded-xl overflow-hidden mb-3 bg-slate-50 flex items-center justify-center cursor-pointer"
+        className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 bg-slate-50 flex items-center justify-center cursor-pointer"
         onClick={handleNavigate}
       >
         <img
@@ -404,7 +462,6 @@ const ProductCard = ({ product }) => {
         />
       </div>
 
-      {/* THÔNG TIN SẢN PHẨM */}
       <div className="mt-auto flex flex-col flex-1 px-1">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] uppercase tracking-wider font-bold text-rose-500 truncate pr-2">
@@ -430,7 +487,6 @@ const ProductCard = ({ product }) => {
           <span>({product.reviews || 0})</span>
         </div>
 
-        {/* KHỐI GIÁ & TÌNH TRẠNG KHO */}
         <div className="mt-auto pt-2.5 border-t border-slate-100">
           <div className="flex items-end justify-between">
             <div className="flex flex-col">
@@ -458,7 +514,7 @@ const ProductCard = ({ product }) => {
 
 const ProductSkeleton = () => (
   <div className="bg-white p-3 rounded-2xl border border-slate-100">
-    <div className="w-full aspect-4/5 bg-slate-100 rounded-xl mb-3 animate-pulse"></div>
+    <div className="w-full aspect-[4/5] bg-slate-100 rounded-xl mb-3 animate-pulse"></div>
     <div className="h-3 bg-slate-100 rounded w-3/4 mb-2 animate-pulse"></div>
     <div className="h-3 bg-slate-100 rounded w-1/2 animate-pulse mt-auto"></div>
   </div>
@@ -473,47 +529,46 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [maxPrice, setMaxPrice] = useState(2000000);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedBrand, setSelectedBrand] = useState("all");
-
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
         const [homeResult, categoryResult] = await Promise.all([
-          axiosClient.get("/home"),
-          axiosClient.get("/categories"),
+          axiosClient.get("/home").catch((error) => {
+            console.error("Lỗi tải sản phẩm:", error);
+            return { products: [], slides: [] };
+          }),
+          axiosClient.get("/categories").catch((error) => {
+            console.error("Lỗi tải danh mục:", error);
+            return { data: [] };
+          }),
         ]);
 
         const fromApi = normalizeProducts(homeResult.products || []);
         setData({
           slides: (homeResult.slides || []).map((s) => {
-            const timeText =
-              s.NgayBatDau && s.NgayHetHan
-                ? `⏰ Ưu đãi áp dụng từ ${s.NgayBatDau} đến ${s.NgayHetHan}`
-                : "Xem ngay các xu hướng và ưu đãi nổi bật đang chờ bạn.";
-
             return {
               ...s,
               image: s.DuongDanAnh || s.image,
               title: s.TieuDe || s.title,
               MaSP: s.MaSP,
               URLDich: s.URLDich,
-              NgayBatDau: s.NgayBatDau,
-              NgayHetHan: s.NgayHetHan,
-              subtitle: timeText,
+              subtitle:
+                s.subtitle ||
+                s.MoTa ||
+                "Xem ngay các xu hướng và ưu đãi nổi bật đang chờ bạn.",
             };
           }),
           products: fromApi,
         });
 
-        setDbCategories(categoryResult || []);
+        let catData = categoryResult.data || categoryResult || [];
+        if (!Array.isArray(catData)) catData = [];
+        setDbCategories(catData);
       } catch (err) {
         console.error("Lỗi Fetch Data:", err);
         setError(
           "Hệ thống đang bảo trì hoặc lỗi kết nối. Vui lòng thử lại sau.",
         );
-        setData({ slides: [], products: [] });
       } finally {
         setLoading(false);
       }
@@ -521,122 +576,39 @@ export default function Home() {
     fetchHomeData();
   }, []);
 
-  const brands = [
-    "all",
-    ...new Set((data.products || []).map((p) => p.brand).filter(Boolean)),
-  ];
-
-  const handleResetFilter = () => {
-    setMaxPrice(2000000);
-    setSelectedCategory("all");
-    setSelectedBrand("all");
-  };
-
-  const filteredProducts = data.products?.filter((product) => {
-    const minVariantPrice = Math.min(
-      ...product.variants.map((v) => Number(v.price) || 0),
-    );
-    const matchPrice = minVariantPrice <= maxPrice;
-    const matchCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    const matchBrand =
-      selectedBrand === "all" || product.brand === selectedBrand;
-    return matchPrice && matchCategory && matchBrand;
-  });
-
-  const todaySuggestionProducts = filteredProducts
-    .filter((product) => product.isNew || product.discountPercent > 0)
+  const todaySuggestionProducts = (data.products || [])
+    .filter((product) => product.discountPercent > 0)
     .slice(0, 8);
-  const featuredProducts = [...filteredProducts]
+
+  const featuredProducts = [...(data.products || [])]
     .filter((product) => (product.soldCount || 0) > 0)
     .sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0))
     .slice(0, 8);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white">
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium">
+        <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium">
           <AlertCircle size={20} /> <p>{error}</p>
         </div>
       )}
 
-      <div className="mb-6 shadow-sm">
+      {/* HERO SLIDER (Giảm mb-6 -> mb-4) */}
+      <div className="mb-2 shadow-sm">
         {loading ? (
-          <div className="w-full h-62.5 md:h-120 bg-slate-100 rounded-3xl animate-pulse"></div>
+          <div className="w-full h-62.5 md:h-[480px] bg-slate-100 rounded-3xl animate-pulse"></div>
         ) : (
           <HeroSlider slides={data.slides} />
         )}
       </div>
 
-      <div className="bg-white p-4 md:px-6 md:py-4 rounded-2xl border border-slate-200 shadow-sm mb-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sticky top-(--client-nav-offset) z-30">
-        <div className="flex items-center gap-3 flex-wrap w-full">
-          <div className="flex items-center gap-2 text-rose-500 font-bold mr-2">
-            <Filter size={20} />{" "}
-            <span className="hidden md:inline text-slate-800 text-base">
-              Bộ lọc:
-            </span>
-          </div>
+      {/* VÒNG QUAY DANH MỤC */}
+      {!loading && dbCategories.length > 0 && (
+        <CategoryCarousel categories={dbCategories} />
+      )}
 
-          <div className="flex-1 min-w-35 max-w-50">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 cursor-pointer"
-            >
-              <option value="all">Tất cả danh mục</option>
-              {dbCategories.map((item) => (
-                <option
-                  key={item.id || item.MaDM}
-                  value={item.name || item.TenDM}
-                >
-                  {item.name || item.TenDM}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-35 max-w-50">
-            <select
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 cursor-pointer"
-            >
-              {brands.map((item) => (
-                <option key={item} value={item}>
-                  {item === "all" ? "Tất cả thương hiệu" : item}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-1.5 min-w-65 max-w-87.5">
-            <span className="text-[11px] font-bold text-slate-500 uppercase whitespace-nowrap">
-              Giá tới:
-            </span>
-            <input
-              type="range"
-              min="0"
-              max="2000000"
-              step="50000"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
-            />
-            <span className="text-sm font-bold text-rose-600 whitespace-nowrap w-20 text-right">
-              {maxPrice.toLocaleString("vi-VN")}đ
-            </span>
-          </div>
-
-          <button
-            onClick={handleResetFilter}
-            className="ml-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-sm font-bold transition-colors w-full lg:w-auto"
-          >
-            <RefreshCcw size={16} /> Làm mới
-          </button>
-        </div>
-      </div>
-
-      <div className="w-full mb-10 space-y-10">
+      {/* LIST SẢN PHẨM (Giảm space-y-12 -> space-y-8, mb-10 -> mb-8) */}
+      <div className="w-full mb-4 space-y-4">
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {Array(8)
@@ -649,13 +621,16 @@ export default function Home() {
           <>
             {todaySuggestionProducts.length > 0 && (
               <section>
-                <div className="flex items-center gap-2 mb-6">
+                <div className="flex items-center gap-2 mb-4">
                   <Sparkles size={28} className="text-amber-400" />
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                  <h2
+                    className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
                     Gợi Ý Hôm Nay
                   </h2>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                   {todaySuggestionProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -664,10 +639,13 @@ export default function Home() {
             )}
 
             {featuredProducts.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2 mb-6">
+              <section className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
                   <Flame size={28} className="text-rose-500" />
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                  <h2
+                    className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
                     Sản Phẩm Nổi Bật
                   </h2>
                 </div>
@@ -678,25 +656,11 @@ export default function Home() {
                 </div>
               </section>
             )}
-
-            {filteredProducts.length === 0 && !error && (
-              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                <p className="text-slate-600 text-lg font-medium mb-4">
-                  Không tìm thấy sản phẩm phù hợp với bộ lọc.
-                </p>
-                <button
-                  onClick={handleResetFilter}
-                  className="text-white bg-rose-500 hover:bg-rose-600 px-8 py-3 rounded-xl font-bold text-base transition-all shadow-lg shadow-rose-500/30"
-                >
-                  Xóa bộ lọc ngay
-                </button>
-              </div>
-            )}
           </>
         )}
 
-        {!loading && filteredProducts?.length > 0 && (
-          <div className="mt-10 text-center">
+        {!loading && data.products?.length > 0 && (
+          <div className="mt-8 pb-4 text-center">
             <Link
               to="/products"
               className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-full font-bold transition-colors group"
@@ -711,37 +675,44 @@ export default function Home() {
         )}
       </div>
 
-      <section className="py-16 bg-rose-50/50 rounded-3xl border border-rose-100/50 shadow-sm overflow-hidden mb-8">
-        <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center px-8 lg:px-16">
-          <div className="relative h-100 rounded-2xl overflow-hidden bg-slate-100 group">
+      {/* KHỐI BANNER THÔNG TIN HAMONI */}
+      <section className="py-12 bg-rose-50/50 rounded-3xl border border-rose-100/50 shadow-sm overflow-hidden mb-8">
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-16 items-center px-8 lg:px-16">
+          <div className="relative h-[350px] md:h-[400px] rounded-2xl overflow-hidden bg-slate-100 group">
             <img
               src="https://bizweb.dktcdn.net/thumb/1024x1024/100/413/259/files/my-pham-thien-nhien-8-jpeg.jpg?v=1674563308361"
               alt="Triết lý Hamoni"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
-            <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
             <div className="absolute bottom-6 left-6 right-6">
-              <p className="text-white text-lg font-bold">
+              <p
+                className="text-white text-lg font-bold"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
                 Nâng niu làn da từ những điều thuần khiết nhất.
               </p>
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white text-rose-600 font-bold text-xs uppercase tracking-wider shadow-sm">
               <Droplets size={14} /> Triết lý của chúng tôi
             </div>
-            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight">
+            <h2
+              className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
               Sự kết hợp hoàn hảo giữa <br className="hidden lg:block" />
               <span className="text-rose-500">Thiên nhiên & Khoa học</span>.
             </h2>
-            <p className="text-slate-600 leading-relaxed text-base">
+            <p className="text-slate-600 leading-relaxed text-sm md:text-base">
               Mỗi sản phẩm của Hamoni không chỉ là mỹ phẩm, mà là một lời hứa về
               chất lượng. Chúng tôi tuyển chọn khắt khe từng thành phần thảo
               mộc, kết hợp cùng các hoạt chất da liễu tiên tiến để tạo ra những
               công thức độc quyền.
             </p>
-            <p className="text-slate-600 leading-relaxed text-base">
+            <p className="text-slate-600 leading-relaxed text-sm md:text-base">
               Hamoni hướng tới một quy trình Skincare tối giản nhưng mang lại
               hiệu quả tối đa, giúp bạn tự tin tỏa sáng với làn da mộc rạng rỡ
               và khỏe khoắn từ sâu bên trong.
@@ -762,17 +733,20 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-16 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-8">
-        <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center px-8 lg:px-16">
-          <div className="space-y-6">
+      <section className="py-12 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-4">
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-16 items-center px-8 lg:px-16">
+          <div className="space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 font-bold text-xs uppercase tracking-wider">
               <Sparkles size={14} /> Về Hamoni Cosmetic
             </div>
-            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight">
+            <h2
+              className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
               Đánh thức vẻ đẹp <span className="text-rose-500">nguyên bản</span>{" "}
               của bạn.
             </h2>
-            <p className="text-slate-600 leading-relaxed text-base">
+            <p className="text-slate-600 leading-relaxed text-sm md:text-base">
               Tại Hamoni, chúng tôi tin rằng vẻ đẹp thực sự bắt nguồn từ sự khỏe
               mạnh của làn da. Bằng việc chắt lọc những tinh túy thuần khiết
               nhất từ thiên nhiên, kết hợp cùng công nghệ làm đẹp tiên tiến,
@@ -780,12 +754,12 @@ export default function Home() {
               và bền vững.
             </p>
 
-            <div className="grid grid-cols-2 gap-4 pt-4">
+            <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
                   <Leaf size={20} />
                 </div>
-                <span className="font-bold text-sm text-slate-800">
+                <span className="font-bold text-xs md:text-sm text-slate-800">
                   100% Nguồn gốc
                   <br />
                   Thiên nhiên
@@ -795,7 +769,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
                   <ShieldCheck size={20} />
                 </div>
-                <span className="font-bold text-sm text-slate-800">
+                <span className="font-bold text-xs md:text-sm text-slate-800">
                   An toàn &<br />
                   Lành tính
                 </span>
@@ -804,7 +778,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
                   <Truck size={20} />
                 </div>
-                <span className="font-bold text-sm text-slate-800">
+                <span className="font-bold text-xs md:text-sm text-slate-800">
                   Giao hàng
                   <br />
                   Toàn quốc
@@ -814,7 +788,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
                   <Star size={20} />
                 </div>
-                <span className="font-bold text-sm text-slate-800">
+                <span className="font-bold text-xs md:text-sm text-slate-800">
                   Cam kết
                   <br />
                   Chính hãng
@@ -823,15 +797,18 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="relative h-100 rounded-2xl overflow-hidden bg-slate-100 group">
+          <div className="relative h-[350px] md:h-[400px] rounded-2xl overflow-hidden bg-slate-100 group">
             <img
               src="https://myphamcacdai.vn/upload/ckfinder/images/q1(1).jpg"
               alt="Hamoni Cosmetic Store"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
-            <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
             <div className="absolute bottom-6 left-6 right-6">
-              <p className="text-white text-lg font-bold">
+              <p
+                className="text-white text-lg font-bold"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
                 Chăm sóc sắc đẹp bằng cả trái tim.
               </p>
             </div>
