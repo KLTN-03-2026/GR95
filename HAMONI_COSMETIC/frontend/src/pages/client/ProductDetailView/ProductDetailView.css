@@ -1000,6 +1000,71 @@
   line-height: 1.45;
 }
 
+.review-media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.review-media-item {
+  position: relative;
+  width: 5.25rem;
+  height: 5.25rem;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.65rem;
+  background: #fff;
+  overflow: hidden;
+  cursor: zoom-in;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  flex: 0 0 auto;
+}
+
+.review-media-item:hover {
+  transform: translateY(-1px);
+  border-color: #fda4af;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.review-media-item img,
+.review-media-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #f8fafc;
+}
+
+.review-media-item--video {
+  background: #0f172a;
+}
+
+.review-media-play-indicator {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.82);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.review-media-play-indicator--thumb {
+  right: 0.3rem;
+  bottom: 0.3rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 0.62rem;
+}
+
 .review-replies {
   margin-top: 0.75rem;
   padding-left: 0.9rem;
@@ -1459,6 +1524,19 @@
   object-fit: contain;
 }
 
+.image-modal-main video {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background-color: #000;
+}
+
+.image-modal-main--video {
+  background-color: #000;
+}
+
 /* Nút chuyển ảnh Trái/Phải */
 .image-modal-nav {
   position: absolute;
@@ -1525,6 +1603,14 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.image-modal-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #0f172a;
 }
 
 .image-modal-thumb:hover {

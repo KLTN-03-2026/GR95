@@ -19,10 +19,10 @@ const AiConfigPage = () => {
   const [loadError, setLoadError] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
 
-  // State lưu cấu hình
+  // 👉 SỬA CHỖ 1: Để trống state khởi tạo hoàn toàn để ưu tiên Placeholder
   const [config, setConfig] = useState({
-    basePrompt: `Bạn là "Hamoni AI" - Chuyên viên tư vấn chăm sóc sắc đẹp ảo của cửa hàng mỹ phẩm Hamoni Cosmetic.\nNhiệm vụ của bạn là tư vấn sản phẩm, giải đáp thắc mắc và hỗ trợ khách hàng chốt đơn một cách lịch sự, thân thiện.\nQUY TẮC: Luôn xưng "mình" và gọi khách là "bạn". Trả lời ngắn gọn dưới 100 chữ. Không bịa đặt thông tin.`,
-    trainingText: `[Chưa có dữ liệu. Vui lòng tải lên file tài liệu (PDF/Word) để AI học kiến thức mới về sản phẩm và chính sách của Hamoni Cosmetic.]`,
+    basePrompt: "",
+    trainingText: "",
   });
 
   useEffect(() => {
@@ -36,8 +36,9 @@ const AiConfigPage = () => {
 
         if (backendConfig) {
           setConfig({
-            basePrompt: backendConfig.promptCoBan || config.basePrompt,
-            trainingText: backendConfig.duLieuHuanLuyen || config.trainingText,
+            // 👉 SỬA CHỖ 2: Dùng toán tử ?? "" để tôn trọng chuỗi rỗng từ DB
+            basePrompt: backendConfig.promptCoBan ?? "",
+            trainingText: backendConfig.duLieuHuanLuyen ?? "",
           });
         }
       } catch {
@@ -77,8 +78,9 @@ const AiConfigPage = () => {
 
       if (response?.config) {
         setConfig({
-          basePrompt: response.config.promptCoBan || config.basePrompt,
-          trainingText: response.config.duLieuHuanLuyen || config.trainingText,
+          // 👉 SỬA CHỖ 3: Dùng toán tử ?? ""
+          basePrompt: response.config.promptCoBan ?? "",
+          trainingText: response.config.duLieuHuanLuyen ?? "",
         });
       }
 
@@ -104,10 +106,6 @@ const AiConfigPage = () => {
             <Bot className="text-rose-500" size={28} />
             Huấn luyện Hamoni AI
           </h1>
-          {/* <p className="text-sm text-slate-500 mt-1">
-            Cấu hình tính cách và cập nhật tài liệu kiến thức (RAG) cho trợ lý
-            ảo.
-          </p> */}
           {loadError && (
             <p className="text-sm text-rose-600 mt-2">{loadError}</p>
           )}
@@ -149,7 +147,7 @@ const AiConfigPage = () => {
               onChange={(e) =>
                 setConfig({ ...config, basePrompt: e.target.value })
               }
-              placeholder="Nhập System Prompt..."
+              placeholder='Ví dụ: Bạn là "Hamoni AI" - Chuyên viên tư vấn chăm sóc sắc đẹp ảo...'
             />
           </div>
 
@@ -172,7 +170,7 @@ const AiConfigPage = () => {
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 hover:border-rose-400 transition-colors cursor-pointer relative group">
               <input
                 type="file"
-                accept=".pdf,.doc,.docx"
+                accept=".pdf,.doc,.docx,.xls,.xlsx"
                 onChange={handleFileChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
@@ -185,7 +183,7 @@ const AiConfigPage = () => {
                   Kéo thả file hoặc Click để chọn
                 </p>
                 <p className="text-xs text-slate-400 m-0">
-                  Hỗ trợ định dạng: PDF, DOCX (Tối đa 5MB)
+                  Hỗ trợ định dạng: PDF, DOC, DOCX, XLS, XLSX (Tối đa 5MB)
                 </p>
               </div>
             </div>
@@ -233,7 +231,7 @@ const AiConfigPage = () => {
               <textarea
                 readOnly
                 className="w-full h-full min-h-125 bg-transparent text-slate-300 text-[13px] font-mono leading-relaxed outline-none resize-none custom-scrollbar"
-                value={`=== SYSTEM PROMPT ===\n${config.basePrompt}\n\n\n=== TÀI LIỆU CỬA HÀNG (KNOWLEDGE BASE) ===\n${selectedFile ? `File đang chọn: ${selectedFile.name}\n\n` : ""}${config.trainingText}`}
+                value={`=== SYSTEM PROMPT ===\n${config.basePrompt || "[Trống - Đang sử dụng cấu hình AI mặc định của hệ thống]"}\n\n\n=== TÀI LIỆU CỬA HÀNG (KNOWLEDGE BASE) ===\n${selectedFile ? `File đang chọn: ${selectedFile.name}\n\n` : ""}${config.trainingText || "[Trống - Chưa có tài liệu nào được nạp]"}`}
               />
             </div>
 

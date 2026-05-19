@@ -21,8 +21,8 @@ import ClientProducts from "../pages/client/products/ClientProducts";
 import ProductDetailView from "../pages/client/ProductDetailView/ProductDetailView";
 import ShoppingCart from "../pages/client/Cart/ShoppingCart";
 import OrderPayment from "../pages/client/Payment/orderpayment";
-import OrderHistory from '../pages/client/Orderhistory/Orderhistory';
-import ClientOrderDetail from '../pages/client/Orderhistory/OrderDetails';
+import OrderHistory from "../pages/client/Orderhistory/Orderhistory";
+import ClientOrderDetail from "../pages/client/Orderhistory/OrderDetails";
 import CustomerProfile from "../pages/client/Profile/CustomerProfile";
 import PromotionClient from "../pages/client/PromotionClient/PromotionClient";
 import PromotionDetailClient from "../pages/client/PromotionClient/PromotionDetailClient";
@@ -32,38 +32,39 @@ import PromotionDetailClient from "../pages/client/PromotionClient/PromotionDeta
 // ==========================================
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
+import AuthPage from "../pages/auth/AuthPage";
 import OTP from "../pages/auth/OTP";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 
 // ==========================================
 // 4. IMPORT ADMIN PAGES (Quản trị)
 // ==========================================
-import RoleManagement from '../pages/admin/RoleManagement';
-import CustomerManagement from '../pages/admin/Customer/CustomerManagement';
-import CustomerDetail from '../pages/admin/Customer/CustomerDetail';
-import CategoryManagement from '../pages/admin/category/CategoryManagement';
-import CategoryForm from '../pages/admin/category/CategoryForm';
-import EmployeeManagement from '../pages/admin/Employee/EmployeeManagement';
-import EmployeeDetail from '../pages/admin/Employee/EmployeeDetail';
-import EmployeeForm from '../pages/admin/Employee/EmployeeForm';
-import Profile from '../pages/admin/Profile/Profile';
-import OrderManagement from '../pages/admin/Order/OrderManagement';
-import OrderDetail from '../pages/admin/Order/OrderDetailModal';
-import OrderLogsPage from '../pages/admin/Order/OrderLogsPage';
-import ProductManagement from '../pages/admin/Product/ProductManagement';
-import ProductCreate from '../pages/admin/Product/ProductCreate';
-import ProductDetail from '../pages/admin/Product/ProductDetail';
-import Dashboard from '../pages/admin/Dashboard/DashboardOverview';
-import ProductInventoryReport from '../pages/admin/Dashboard/ProductInventoryReport';
-import ReviewManagement from '../pages/admin/Reviews/ReviewManagement';
-import VoucherManagement from '../pages/admin/Voucher/VoucherManagement';
-import VoucherDetail from '../pages/admin/Voucher/VoucherDetail';
-import PromotionManagement from '../pages/admin/Promotion/PromotionManagement';
-import PromotionCreate from '../pages/admin/Promotion/PromotionCreate';
-import PromotionDetail from '../pages/admin/Promotion/PromotionDetail';
-import WarehouseManagement from '../pages/admin/Warehouse/WarehouseManagement';
-import WarehouseLog from '../pages/admin/Warehouse/WarehouseLog';
-import BannerManagement from '../pages/admin/Banner/BannerManagement';
+import RoleManagement from "../pages/admin/RoleManagement";
+import CustomerManagement from "../pages/admin/Customer/CustomerManagement";
+import CustomerDetail from "../pages/admin/Customer/CustomerDetail";
+import CategoryManagement from "../pages/admin/category/CategoryManagement";
+import CategoryForm from "../pages/admin/category/CategoryForm";
+import EmployeeManagement from "../pages/admin/Employee/EmployeeManagement";
+import EmployeeDetail from "../pages/admin/Employee/EmployeeDetail";
+import EmployeeForm from "../pages/admin/Employee/EmployeeForm";
+import Profile from "../pages/admin/Profile/Profile";
+import OrderManagement from "../pages/admin/Order/OrderManagement";
+import OrderDetail from "../pages/admin/Order/OrderDetailModal";
+import OrderLogsPage from "../pages/admin/Order/OrderLogsPage";
+import ProductManagement from "../pages/admin/Product/ProductManagement";
+import ProductCreate from "../pages/admin/Product/ProductCreate";
+import ProductDetail from "../pages/admin/Product/ProductDetail";
+import Dashboard from "../pages/admin/Dashboard/DashboardOverview";
+import ProductInventoryReport from "../pages/admin/Dashboard/ProductInventoryReport";
+import ReviewManagement from "../pages/admin/Reviews/ReviewManagement";
+import VoucherManagement from "../pages/admin/Voucher/VoucherManagement";
+import VoucherDetail from "../pages/admin/Voucher/VoucherDetail";
+import PromotionManagement from "../pages/admin/Promotion/PromotionManagement";
+import PromotionCreate from "../pages/admin/Promotion/PromotionCreate";
+import PromotionDetail from "../pages/admin/Promotion/PromotionDetail";
+import WarehouseManagement from "../pages/admin/Warehouse/WarehouseManagement";
+import WarehouseLog from "../pages/admin/Warehouse/WarehouseLog";
+import BannerManagement from "../pages/admin/Banner/BannerManagement";
 import AiConfigPage from "../pages/admin/AI/AiConfigPage";
 import AdminChat from "../pages/admin/AI/AdminChatPage";
 import ProductReview from "../pages/client/ProductReview/ProductReview";
@@ -74,35 +75,69 @@ const NotFound = () => (
   </div>
 );
 
-// --- BẢO VỆ ĐƯỜNG DẪN ADMIN ---
-const AdminRoute = ({ children }) => {
+const ADMIN_ROLES = new Set(["ADMIN", "STAFF"]);
+
+const getStoredAuth = () => {
   const token = localStorage.getItem("token");
   const userRaw = localStorage.getItem("user");
 
   if (!token || !userRaw) {
-    return <Navigate to="/login" replace />;
+    return { token: null, user: null };
   }
 
   try {
-    const user = JSON.parse(userRaw);
-    const roleCode = user?.maQuyen;
-    const isAdminAreaAllowed =
-      roleCode === "ADMIN" || roleCode === "STAFF" || roleCode === "KHO";
-
-    if (!isAdminAreaAllowed) {
-      return <Navigate to="/" replace />;
-    }
+    return { token, user: JSON.parse(userRaw) };
   } catch {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    return { token: null, user: null };
+  }
+};
+
+const getRoleCode = (user) =>
+  String(user?.maQuyen || user?.MaQuyen || user?.role || "").toUpperCase();
+
+const getPostLoginPath = (user) =>
+  ADMIN_ROLES.has(getRoleCode(user)) ? "/admin/dashboard" : "/";
+
+const AuthRoute = ({ children }) => {
+  const { token, user } = getStoredAuth();
+
+  if (token && user) {
+    return <Navigate to={getPostLoginPath(user)} replace />;
+  }
+
+  return children;
+};
+
+const ClientRoute = ({ children }) => {
+  const { token, user } = getStoredAuth();
+
+  if (token && user && ADMIN_ROLES.has(getRoleCode(user))) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  return children;
+};
+
+// --- BẢO VỆ ĐƯỜNG DẪN ADMIN ---
+const AdminRoute = ({ children }) => {
+  const { token, user } = getStoredAuth();
+
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
+  }
+
+  const isAdminAreaAllowed = ADMIN_ROLES.has(getRoleCode(user));
+
+  if (!isAdminAreaAllowed) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
 };
 
 const AppRouter = () => {
-
   // Try to read logged-in user to provide MaND for test route
   let _storedUser = null;
   try {
@@ -120,16 +155,54 @@ const AppRouter = () => {
 
                     KHU VỰC 1: XÁC THỰC (Không cần Layout)
                     ========================================== */}
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/forgot-password"
+          element={
+            <AuthRoute>
+              <ForgotPassword />
+            </AuthRoute>
+          }
+        />
+        {/* <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} /> */}
         <Route path="/otp" element={<OTP />} />
+        <Route
+          path="/quen-mat-khau"
+          element={
+            <AuthRoute>
+              <ForgotPassword />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <AuthRoute>
+              <AuthPage />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <AuthRoute>
+              <AuthPage />
+            </AuthRoute>
+          }
+        />
 
         {/* ==========================================
                     KHU VỰC 2: KHÁCH HÀNG (Sử dụng ClientLayout)
                     ========================================== */}
 
-        <Route path="/" element={<ClientLayout />}>
+        <Route
+          path="/"
+          element={
+            <ClientRoute>
+              <ClientLayout />
+            </ClientRoute>
+          }
+        >
           <Route index element={<Home />} />
           <Route path="products" element={<ClientProducts />} />
           <Route path="promotions" element={<PromotionClient />} />

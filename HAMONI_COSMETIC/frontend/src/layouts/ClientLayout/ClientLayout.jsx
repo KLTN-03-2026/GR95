@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Outlet, Link, useNavigate, useLocation } from "react-router-dom"; // Đã bổ sung useLocation
+import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
   ShoppingCart,
@@ -33,6 +33,38 @@ const getStoredUserInfo = () => {
   } catch {
     return {};
   }
+};
+
+// ===============================================
+// LOGIC ĐIỀU HƯỚNG THÔNG BÁO THÔNG MINH
+// ===============================================
+const getNotificationTarget = (notif) => {
+  const title = String(notif?.title || "");
+  const content = String(notif?.content || "");
+  const combinedText = `${title} ${content}`.toLowerCase();
+
+  const orderIdMatch =
+    combinedText.match(/#(\d+)/) || combinedText.match(/đơn hàng (\d+)/);
+  const orderId = orderIdMatch ? Number(orderIdMatch[1]) : null;
+
+  if (
+    orderId &&
+    /(thanh toán|trạng thái|giao hàng|hủy|thành công|đơn hàng)/.test(
+      combinedText,
+    )
+  ) {
+    return `/order/${orderId}`;
+  }
+
+  if (
+    /(khuyến mãi|khuyen mai|voucher|giảm giá|giam gia|ưu đãi)/.test(
+      combinedText,
+    )
+  ) {
+    return "/khuyen-mai";
+  }
+
+  return "/profile";
 };
 
 const ClientLayout = () => {
@@ -86,14 +118,12 @@ const ClientLayout = () => {
     displayUser?.avatarUrl || storedUserInfo?.avatarUrl || "";
 
   // --- 4. EFFECTS ---
-  // Xử lý scroll
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Xử lý click ra ngoài để đóng menu
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -118,9 +148,13 @@ const ClientLayout = () => {
     };
   }, []);
 
-  // Lấy thông báo & Socket realtime
   useEffect(() => {
     if (!user?.id) return;
+
+    // ĐÃ FIX: Hàm đảm bảo Socket luôn join đúng phòng dù mạng chậm
+    const joinRoom = () => {
+      socket.emit("join_notification_room", user.id);
+    };
 
     const fetchNotifications = async () => {
       try {
@@ -137,13 +171,19 @@ const ClientLayout = () => {
 
     fetchNotifications();
 
-    socket.emit("join_notification_room", user.id);
+    // Lắng nghe sự kiện connect để đảm bảo join thành công
+    if (socket.connected) {
+      joinRoom();
+    }
+    socket.on("connect", joinRoom);
+
     socket.on("new_notification", (newNotif) => {
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
     });
 
     return () => {
+      socket.off("connect", joinRoom);
       socket.off("new_notification");
     };
   }, [user?.id]);
@@ -202,17 +242,42 @@ const ClientLayout = () => {
     }
   };
 
+  const handleNotificationClick = (notif) => {
+    setIsNotifOpen(false);
+    if (!notif.isRead) {
+      handleMarkAsRead(notif.id);
+    }
+    navigate(getNotificationTarget(notif));
+  };
+
   const handleLogout = () => {
     setIsUserMenuOpen(false);
     logout();
+    localStorage.removeItem("user");
+    localStorage.removeItem("user_info");
+    localStorage.removeItem("userPermissions");
     localStorage.removeItem("token");
     navigate("/login");
+  };
+
+  // ĐÃ FIX: Bổ sung lại hàm fomat thời gian chuẩn Việt Nam
+  const formatTime = (timeString) => {
+    if (!timeString) return "Gần đây";
+    try {
+      const date = new Date(timeString);
+      return (
+        date.toLocaleDateString("vi-VN") +
+        " " +
+        date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+      );
+    } catch {
+      return timeString;
+    }
   };
 
   // --- 6. RENDER GIAO DIỆN ---
   return (
     <div className="client-theme min-h-screen flex flex-col bg-gray-50 text-slate-800">
-      {/* NAVBAR */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white/95 backdrop-blur-sm border-b border-gray-100"}`}
       >
@@ -220,26 +285,26 @@ const ClientLayout = () => {
           Hamoni Cosmetic - Mỹ phẩm thiên nhiên cao cấp
         </h1>
 
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 h-16 md:h-20 flex items-center justify-between gap-8">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 h-16 md:h-20 flex flex-row items-center justify-between gap-8">
           {/* Logo & Mobile Menu */}
-          <div className="flex items-center gap-4">
-            <button className="lg:hidden text-slate-600 hover:text-rose-500 transition-colors">
+          <div className="flex flex-row items-center gap-4">
+            <button className="lg:hidden text-slate-600 hover:text-rose-500 transition-colors bg-transparent border-0">
               <Menu size={24} />
             </button>
             <Link
               to="/"
-              className="text-2xl font-black tracking-tight text-slate-900 no-underline flex items-center gap-1"
+              className="text-2xl font-black tracking-tight text-slate-900 text-decoration:none flex flex-row items-center gap-1"
             >
               HAMONI<span className="text-rose-500"></span>
             </Link>
           </div>
 
           {/* Main Menu (Desktop) */}
-          <ul className="hidden lg:flex items-center gap-8 font-medium text-sm text-slate-600 mb-0 pl-0">
+          <ul className="hidden lg:flex flex-row items-center gap-8 font-medium text-sm text-slate-600 mb-0 pl-0">
             <li>
               <Link
                 to="/"
-                className="hover:text-rose-500 transition-colors no-underline"
+                className="hover:text-rose-500 transition-colors text-decoration:none"
               >
                 Trang chủ
               </Link>
@@ -247,7 +312,7 @@ const ClientLayout = () => {
             <li>
               <Link
                 to="/products"
-                className="hover:text-rose-500 transition-colors no-underline"
+                className="hover:text-rose-500 transition-colors text-decoration:none"
               >
                 Sản phẩm
               </Link>
@@ -255,7 +320,7 @@ const ClientLayout = () => {
             <li>
               <Link
                 to="/khuyen-mai"
-                className="hover:text-rose-500 transition-colors no-underline text-rose-500 font-semibold"
+                className="hover:text-rose-500 transition-colors text-decoration:none text-rose-500 font-semibold"
               >
                 Khuyến mãi
               </Link>
@@ -263,7 +328,7 @@ const ClientLayout = () => {
             <li>
               <Link
                 to="/lien-he"
-                className="hover:text-rose-500 transition-colors no-underline"
+                className="hover:text-rose-500 transition-colors text-decoration:none"
               >
                 Liên hệ
               </Link>
@@ -290,19 +355,18 @@ const ClientLayout = () => {
               <button
                 onClick={handleSearchSubmit}
                 onMouseDown={(e) => e.preventDefault()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-colors border-0"
               >
                 <Search size={14} />
               </button>
             </div>
 
-            {/* Gợi ý tìm kiếm (Lịch sử) */}
             {showSearchSuggest && (
               <div className="absolute top-full mt-2 w-full bg-white shadow-xl rounded-xl border border-gray-100 p-4 z-50">
                 <p className="text-xs font-semibold text-slate-400 mb-2 uppercase">
                   Lịch sử tìm kiếm
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-row flex-wrap gap-2">
                   {searchHistory.length > 0 ? (
                     searchHistory.map((item) => (
                       <button
@@ -324,16 +388,16 @@ const ClientLayout = () => {
             )}
           </div>
 
-          {/* Icons Right (Thông báo, Giỏ hàng, User) */}
-          <div className="flex items-center gap-6">
-            {/* 1. THÔNG BÁO */}
+          {/* Icons Right */}
+          <div className="flex flex-row items-center gap-6">
+            {/* THÔNG BÁO */}
             <div className="relative flex items-center" ref={notifRef}>
               <button
                 onClick={() => {
                   if (user) setIsNotifOpen(!isNotifOpen);
                   else navigate("/login");
                 }}
-                className="relative text-slate-600 hover:text-rose-500 transition-colors py-2 outline-none group"
+                className="relative text-slate-600 hover:text-rose-500 transition-colors py-2 outline-none group bg-transparent border-0"
               >
                 <Bell
                   size={22}
@@ -345,23 +409,22 @@ const ClientLayout = () => {
                   </span>
                 )}
                 {!isNotifOpen && (
-                  <span className="client-icon-tooltip absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                     Thông báo
                   </span>
                 )}
               </button>
 
-              {/* DROPDOWN THÔNG BÁO */}
               {isNotifOpen && user && (
                 <div className="absolute top-full right-[-50px] sm:right-0 mt-3 w-80 bg-white shadow-xl rounded-xl border border-gray-100 overflow-hidden z-50">
-                  <div className="p-3 border-b border-gray-100 flex justify-between items-center bg-slate-50/80">
+                  <div className="p-3 border-b border-gray-100 flex flex-row justify-between items-center bg-slate-50/80">
                     <h3 className="font-bold text-sm text-slate-800 m-0">
                       Thông báo
                     </h3>
                     {unreadCount > 0 && (
                       <button
                         onClick={handleMarkAllAsRead}
-                        className="text-[11px] text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1 border-0 bg-transparent"
+                        className="text-[11px] text-rose-500 hover:text-rose-600 font-medium flex flex-row items-center gap-1 border-0 bg-transparent"
                       >
                         <Check size={12} /> Đánh dấu đã đọc
                       </button>
@@ -376,8 +439,8 @@ const ClientLayout = () => {
                       notifications.map((notif) => (
                         <div
                           key={notif.id}
-                          onClick={() => handleMarkAsRead(notif.id)}
-                          className={`p-3 border-b border-gray-50 cursor-pointer transition-colors hover:bg-slate-50 flex gap-3 ${!notif.isRead ? "bg-rose-50/50" : ""}`}
+                          onClick={() => handleNotificationClick(notif)}
+                          className={`p-3 border-b border-gray-50 cursor-pointer transition-colors hover:bg-slate-50 flex flex-row gap-3 ${!notif.isRead ? "bg-rose-50/50" : ""}`}
                         >
                           <div
                             className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!notif.isRead ? "bg-rose-500" : "bg-transparent"}`}
@@ -391,8 +454,9 @@ const ClientLayout = () => {
                             <p className="text-xs text-slate-500 mt-1 line-clamp-2">
                               {notif.content}
                             </p>
-                            <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-2">
-                              <Clock size={10} /> {notif.time}
+                            <div className="flex flex-row items-center gap-1 text-[10px] text-slate-400 mt-2">
+                              {/* ĐÃ FIX: Gọi hàm formatTime để in ra giờ đẹp */}
+                              <Clock size={10} /> {formatTime(notif.time)}
                             </div>
                           </div>
                         </div>
@@ -401,9 +465,9 @@ const ClientLayout = () => {
                   </div>
                   <div className="p-2 border-t border-gray-100 text-center bg-slate-50/80">
                     <Link
-                      to="/profile?tab=notifications"
+                      to="/profile"
                       onClick={() => setIsNotifOpen(false)}
-                      className="text-xs text-slate-500 hover:text-rose-500 font-medium block w-full py-1 no-underline transition-colors"
+                      className="text-xs text-slate-500 hover:text-rose-500 font-medium block w-full py-1 text-decoration:none transition-colors"
                     >
                       Xem tất cả thông báo
                     </Link>
@@ -412,7 +476,7 @@ const ClientLayout = () => {
               )}
             </div>
 
-            {/* 2. GIỎ HÀNG */}
+            {/* GIỎ HÀNG */}
             <div className="relative group flex items-center">
               <Link
                 to="/cart"
@@ -425,19 +489,19 @@ const ClientLayout = () => {
                   </span>
                 )}
               </Link>
-              <span className="client-icon-tooltip absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                 Giỏ hàng
               </span>
             </div>
 
-            {/* 3. USER MENU */}
+            {/* USER MENU */}
             <div className="hidden sm:block relative py-2" ref={userMenuRef}>
               {user ? (
                 <div>
                   <button
                     type="button"
                     onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                    className="flex items-center gap-3 text-left outline-none group border-0 bg-transparent"
+                    className="flex flex-row items-center gap-3 text-left outline-none group border-0 bg-transparent"
                   >
                     <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-rose-400 via-pink-400 to-purple-400 p-[2px] transition-transform duration-300 group-hover:scale-105 group-hover:shadow-[0_0_15px_rgba(244,63,94,0.4)]">
                       <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-rose-600 font-black text-sm overflow-hidden">
@@ -448,7 +512,7 @@ const ClientLayout = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : displayUserName ? (
-                          displayUserName.charAt(0)
+                          displayUserName.charAt(0).toUpperCase()
                         ) : (
                           "U"
                         )}
@@ -459,16 +523,16 @@ const ClientLayout = () => {
                         Xin chào,
                       </span>
                       <span className="text-sm font-bold text-slate-800 group-hover:text-rose-500 transition-colors duration-300 max-w-[120px] truncate">
-                        {displayUserName}
+                        {displayUserName || "Khách hàng"}
                       </span>
                     </div>
                   </button>
 
                   <div
-                    className={`client-user-menu absolute top-full right-0 mt-4 w-72 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] rounded-[24px] border border-slate-100 z-50 transition-all duration-400 origin-top-right overflow-hidden ${isUserMenuOpen ? "opacity-100 scale-100 visible translate-y-0" : "opacity-0 scale-95 invisible -translate-y-4"}`}
+                    className={`absolute top-full right-0 mt-3 w-64 bg-white shadow-[0_15px_40px_-10px_rgba(0,0,0,0.1)] rounded-2xl border border-slate-100 z-50 transition-all duration-300 origin-top-right overflow-hidden ${isUserMenuOpen ? "opacity-100 scale-100 visible translate-y-0" : "opacity-0 scale-95 invisible -translate-y-2"}`}
                   >
-                    <div className="m-2 p-4 bg-gradient-to-br from-rose-50 to-slate-50 rounded-[18px] border border-slate-100/50 flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 text-white flex items-center justify-center text-lg font-black shadow-inner flex-shrink-0 overflow-hidden">
+                    <div className="m-2 p-3 bg-gradient-to-br from-rose-50 to-slate-50 rounded-xl border border-slate-100/50 flex flex-row items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 text-white flex items-center justify-center text-base font-black shadow-inner flex-shrink-0 overflow-hidden">
                         {displayAvatar ? (
                           <img
                             src={displayAvatar}
@@ -476,84 +540,96 @@ const ClientLayout = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : displayUserName ? (
-                          displayUserName.charAt(0)
+                          displayUserName.charAt(0).toUpperCase()
                         ) : (
                           "U"
                         )}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <h4 className="text-base font-extrabold text-slate-800 truncate m-0 leading-tight">
-                          {displayUserName}
+                        <h4 className="text-sm font-extrabold text-slate-800 truncate m-0 leading-tight">
+                          {displayUserName || "Người dùng"}
                         </h4>
-                        <p className="text-xs text-slate-500 truncate m-0 mt-0.5">
+                        <p className="text-[11px] text-slate-500 truncate m-0 mt-0.5">
                           {user.email || "Thành viên VIP"}
                         </p>
                       </div>
                     </div>
+
                     <div className="px-2 pb-2 flex flex-col gap-1">
                       <Link
                         to="/profile"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="group relative flex items-center gap-3 p-3 rounded-2xl overflow-hidden no-underline bg-white"
+                        className="group relative flex flex-row items-center justify-between px-3 py-2 rounded-xl overflow-hidden text-decoration:none bg-white"
                       >
                         <div className="absolute inset-0 bg-rose-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
-                        <div className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-rose-500 group-hover:shadow-sm transition-all duration-300">
-                          <Settings
-                            size={18}
-                            className="group-hover:rotate-90 transition-transform duration-500"
-                          />
+
+                        {/* Wrapper bọc Icon và Text đảm bảo nằm ngang */}
+                        <div className="relative z-10 flex flex-row items-center gap-2.5">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-rose-500 group-hover:shadow-sm transition-all duration-300 flex-shrink-0">
+                            <Settings
+                              size={16}
+                              className="group-hover:rotate-90 transition-transform duration-500"
+                            />
+                          </div>
+                          <span className="text-[13px] font-semibold text-slate-600 group-hover:text-rose-600 transition-colors whitespace-nowrap leading-none mt-0.5">
+                            Tài khoản của tôi
+                          </span>
                         </div>
-                        <span className="relative z-10 text-sm font-semibold text-slate-600 group-hover:text-rose-600 transition-colors">
-                          Tài khoản của tôi
-                        </span>
+
                         <ChevronRight
-                          size={16}
-                          className="relative z-10 ml-auto text-rose-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
+                          size={14}
+                          className="relative z-10 ml-auto text-rose-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 flex-shrink-0"
                         />
                       </Link>
+
                       <Link
                         to="/orderhistory"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="group relative flex items-center gap-3 p-3 rounded-2xl overflow-hidden no-underline bg-white"
+                        className="group relative flex flex-row items-center justify-between px-3 py-2 rounded-xl overflow-hidden text-decoration:none bg-white"
                       >
                         <div className="absolute inset-0 bg-rose-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
-                        <div className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-rose-500 group-hover:shadow-sm transition-all duration-300">
-                          <FileText
-                            size={18}
-                            className="group-hover:-translate-y-0.5 transition-transform duration-300"
-                          />
+
+                        <div className="relative z-10 flex flex-row items-center gap-2.5">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-rose-500 group-hover:shadow-sm transition-all duration-300 flex-shrink-0">
+                            <FileText
+                              size={16}
+                              className="group-hover:-translate-y-0.5 transition-transform duration-300"
+                            />
+                          </div>
+                          <span className="text-[13px] font-semibold text-slate-600 group-hover:text-rose-600 transition-colors whitespace-nowrap leading-none mt-0.5">
+                            Lịch sử đơn hàng
+                          </span>
                         </div>
-                        <span className="relative z-10 text-sm font-semibold text-slate-600 group-hover:text-rose-600 transition-colors">
-                          Lịch sử đơn hàng
-                        </span>
+
                         <ChevronRight
-                          size={16}
-                          className="relative z-10 ml-auto text-rose-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
+                          size={14}
+                          className="relative z-10 ml-auto text-rose-500 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 flex-shrink-0"
                         />
                       </Link>
                     </div>
-                    <div className="p-2 bg-slate-50 mt-1">
+
+                    <div className="p-2 bg-slate-50 mt-0 border-t border-slate-100">
                       <button
                         onClick={handleLogout}
-                        className="group w-full flex items-center justify-center gap-2 p-3 rounded-[16px] text-sm font-bold text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all duration-300 outline-none border border-rose-200"
+                        className="group w-full flex flex-row items-center justify-center gap-2 py-2 rounded-xl bg-white border border-rose-100 text-[13px] font-bold text-rose-500 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600 transition-all duration-300 outline-none shadow-sm"
                       >
                         <LogOut
-                          size={18}
+                          size={16}
                           className="group-hover:-translate-x-1 transition-transform duration-300"
-                        />{" "}
+                        />
                         Đăng xuất
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center group relative">
+                <div className="flex flex-row items-center group relative">
                   <Link
                     to="/login"
-                    className="relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all duration-300 no-underline shadow-sm"
+                    className="relative flex flex-row items-center gap-2.5 px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all duration-300 text-decoration:none shadow-sm"
                   >
                     <User size={18} />
-                    <span className="text-sm font-semibold hidden lg:block">
+                    <span className="text-[13px] font-semibold hidden lg:block">
                       Đăng nhập
                     </span>
                   </Link>
@@ -564,7 +640,6 @@ const ClientLayout = () => {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 w-full pt-16 md:pt-20">
         <Outlet />
       </main>
@@ -576,7 +651,7 @@ const ClientLayout = () => {
             <div>
               <Link
                 to="/"
-                className="text-2xl font-black tracking-tight text-slate-900 no-underline mb-4 inline-block"
+                className="text-2xl font-black tracking-tight text-slate-900 text-decoration:none mb-4 inline-block"
               >
                 HAMONI<span className="text-rose-500"></span>
               </Link>
@@ -591,7 +666,7 @@ const ClientLayout = () => {
                 <li>
                   <Link
                     to="/about"
-                    className="hover:text-rose-500 no-underline transition-colors"
+                    className="hover:text-rose-500 text-decoration:none transition-colors"
                   >
                     Về chúng tôi
                   </Link>
@@ -599,7 +674,7 @@ const ClientLayout = () => {
                 <li>
                   <Link
                     to="/privacy"
-                    className="hover:text-rose-500 no-underline transition-colors"
+                    className="hover:text-rose-500 text-decoration:none transition-colors"
                   >
                     Chính sách bảo mật
                   </Link>
@@ -607,7 +682,7 @@ const ClientLayout = () => {
                 <li>
                   <Link
                     to="/terms"
-                    className="hover:text-rose-500 no-underline transition-colors"
+                    className="hover:text-rose-500 text-decoration:none transition-colors"
                   >
                     Điều khoản dịch vụ
                   </Link>
@@ -622,7 +697,7 @@ const ClientLayout = () => {
                 <li>
                   <Link
                     to="/help"
-                    className="hover:text-rose-500 no-underline transition-colors"
+                    className="hover:text-rose-500 text-decoration:none transition-colors"
                   >
                     Trung tâm trợ giúp
                   </Link>
@@ -630,7 +705,7 @@ const ClientLayout = () => {
                 <li>
                   <Link
                     to="/guide"
-                    className="hover:text-rose-500 no-underline transition-colors"
+                    className="hover:text-rose-500 text-decoration:none transition-colors"
                   >
                     Hướng dẫn mua hàng
                   </Link>
@@ -638,7 +713,7 @@ const ClientLayout = () => {
                 <li>
                   <Link
                     to="/return-policy"
-                    className="hover:text-rose-500 no-underline transition-colors"
+                    className="hover:text-rose-500 text-decoration:none transition-colors"
                   >
                     Chính sách đổi trả
                   </Link>

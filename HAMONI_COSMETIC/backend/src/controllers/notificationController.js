@@ -5,11 +5,8 @@ const formatNotification = (row) => ({
   title: row.TieuDe,
   content: row.NoiDung,
   isRead: row.TrangThaiDoc === 1,
-  time: new Date(row.NgayTao).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }),
+  // ĐIỂM THAY ĐỔI: Trả về thẳng thời gian gốc để Frontend tự hiển thị cả Ngày lẫn Giờ cho đẹp
+  time: row.NgayTao,
 });
 
 const createNotification = async ({ userId, title, content, io }) => {

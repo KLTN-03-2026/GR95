@@ -1,3 +1,4 @@
+DROP DATABASE IF EXISTS QLBanMyPham_Hamoni;
 CREATE DATABASE QLBanMyPham_Hamoni CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE QLBanMyPham_Hamoni;
 
@@ -5,7 +6,7 @@ USE QLBanMyPham_Hamoni;
 -- PHẦN I: ĐỊNH NGHĨA CẤU TRÚC BẢNG (DDL)
 -- ==========================================
 
--- 1. QUẢN LÝ NGƯỜI DÙNG & PHÂN QUYỀN 
+-- 1. QUẢN LÝ NGƯỜI DÙNG & PHÂN QUYỀN
 CREATE TABLE PHANQUYEN (
     MaQuyen CHAR(5) PRIMARY KEY,
     TenQuyen VARCHAR(50),
@@ -21,9 +22,9 @@ CREATE TABLE NguoiDung (
     MatKhau VARCHAR(255) NOT NULL,
     SoDienThoai VARCHAR(20),
     DiaChi VARCHAR(255),
-    GioiTinh VARCHAR(10),
+    GioiTinh VARCHAR(20),
     NgaySinh DATE,
-    AvatarUrl VARCHAR(500),
+    AvatarUrl VARCHAR(255) NULL,
     TrangThai TINYINT(1) DEFAULT 1, 
     NgayDangKy DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT FK_NguoiDung_PhanQuyen FOREIGN KEY (MaQuyen) REFERENCES PHANQUYEN(MaQuyen)
@@ -33,7 +34,7 @@ CREATE TABLE NguoiDung (
 CREATE TABLE HinhAnh (
     MaHinhAnh INT PRIMARY KEY AUTO_INCREMENT,
     LoaiThamChieu VARCHAR(50) NOT NULL, 
-    MaThamChieu INT NOT NULL, 
+    MaThamChieu VARCHAR(50) NOT NULL, 
     DuongDanAnh VARCHAR(255) NOT NULL,
     LaAnhChinh TINYINT(1) DEFAULT 0,
     ThuTuHienThi INT DEFAULT 0
@@ -143,10 +144,19 @@ CREATE TABLE GioHang (
     MaND INT,
     MaBienThe INT,
     SoLuong INT,
+    IsSelected TINYINT(1) NOT NULL DEFAULT 1,
     NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (MaND, MaBienThe),
     CONSTRAINT FK_GioHang_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND),
     CONSTRAINT FK_GioHang_BienThe FOREIGN KEY (MaBienThe) REFERENCES BienTheSanPham(MaBienThe)
+);
+
+CREATE TABLE GiuHangTam (
+    MaND INT NOT NULL,
+    MaBienThe INT NOT NULL,
+    SoLuong INT NOT NULL,
+    ThoiGianHetHan DATETIME NOT NULL,
+    PRIMARY KEY (MaND, MaBienThe)
 );
 
 CREATE TABLE DonHang (
@@ -161,6 +171,7 @@ CREATE TABLE DonHang (
     ThanhTien DECIMAL(18,2), 
     ThongTinGiaoHang TEXT NOT NULL, 
     GhiChu TEXT,
+    DaHoanTien TINYINT(1),
     CONSTRAINT FK_DonHang_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND),
     CONSTRAINT FK_DonHang_Voucher FOREIGN KEY (MaVoucher) REFERENCES Voucher(MaVoucher)
 );
@@ -195,12 +206,23 @@ CREATE TABLE DanhGia (
     MaDH INT,
     SoSao INT CHECK (SoSao BETWEEN 1 AND 5),
     BinhLuan TEXT,
+    HinhAnh TEXT,
     TrangThai ENUM('CHUA_PHAN_HOI', 'DA_PHAN_HOI') DEFAULT 'CHUA_PHAN_HOI',
     IsHidden TINYINT DEFAULT 0,
     NgayDanhGia DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT FK_DanhGia_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND),
     CONSTRAINT FK_DanhGia_SanPham FOREIGN KEY (MaSP) REFERENCES SanPham(MaSP),
     CONSTRAINT FK_DanhGia_DonHang FOREIGN KEY (MaDH) REFERENCES DonHang(MaDH)
+);
+
+CREATE TABLE DanhGia_PhanHoi (
+    MaPH INT PRIMARY KEY AUTO_INCREMENT,
+    MaDG INT,
+    MaND INT, -- admin hoặc staff trả lời
+    NoiDung TEXT,
+    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_PH_DanhGia FOREIGN KEY (MaDG) REFERENCES DanhGia(MaDG) ON DELETE CASCADE,
+    CONSTRAINT FK_PH_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND)
 );
 
 CREATE TABLE BannerToanCuc (
@@ -281,7 +303,7 @@ CREATE TABLE ChiTietChat (
     INDEX idx_VaiTro (VaiTro)
 );
 
--- 9. CẤU HÌNH AI (MỚI)
+-- 9. CẤU HÌNH AI & THÔNG BÁO
 CREATE TABLE CauHinhAI (
     MaCauHinh INT PRIMARY KEY AUTO_INCREMENT,
     PromptCoBan TEXT, 
@@ -289,15 +311,14 @@ CREATE TABLE CauHinhAI (
     NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_NgayCapNhat (NgayCapNhat)
 );
+
 CREATE TABLE ThongBao (
     MaTB INT AUTO_INCREMENT PRIMARY KEY,
-    MaND INT NOT NULL,               -- Khóa ngoại trỏ đến bảng NguoiDung (Người nhận thông báo)
-    TieuDe VARCHAR(255) NOT NULL,    -- Ví dụ: "Đơn hàng mới", "Có tin nhắn hỗ trợ"
-    NoiDung TEXT NOT NULL,           -- Chi tiết thông báo
-    TrangThaiDoc TINYINT(1) DEFAULT 0, -- 0: Chưa đọc, 1: Đã đọc
-    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP, -- Tự động lấy giờ hiện tại khi tạo
-    
-    -- Liên kết khóa ngoại với bảng NguoiDung (Giả sử bảng user của bạn tên là NguoiDung và khóa chính là MaND)
-    -- Lệnh CASCADE giúp tự động xóa thông báo nếu tài khoản người dùng đó bị xóa
-    FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND) ON DELETE CASCADE
+    MaND INT NOT NULL,               -- Khóa ngoại trỏ đến bảng NguoiDung
+    TieuDe VARCHAR(255) NOT NULL,    
+    NoiDung TEXT NOT NULL,           
+    TrangThaiDoc TINYINT(1) DEFAULT 0, 
+    NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP, 
+    CONSTRAINT FK_ThongBao_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND) ON DELETE CASCADE
 );
+

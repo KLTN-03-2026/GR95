@@ -34,3 +34,15 @@
 {"at":"2026-05-12T08:46:31.484Z","stage":"request-received","body":{"orderId":243},"userId":12,"hasAuthHeader":true}
 {"at":"2026-05-12T08:46:31.487Z","stage":"start","orderId":243,"userId":12}
 {"at":"2026-05-12T08:46:31.514Z","stage":"success","orderId":243,"userId":12,"deleted":{"chiTietDonHang":1,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}
+{"at":"2026-05-14T04:42:45.712Z","stage":"request-received","body":{"orderId":35},"userId":12,"hasAuthHeader":true}
+{"at":"2026-05-14T04:42:45.719Z","stage":"start","orderId":35,"userId":12}
+{"at":"2026-05-14T04:42:45.736Z","stage":"success","orderId":35,"userId":12,"deleted":{"chiTietDonHang":1,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}
+{"at":"2026-05-14T04:42:55.459Z","stage":"request-received","body":{"orderId":36},"userId":12,"hasAuthHeader":true}
+{"at":"2026-05-14T04:42:55.462Z","stage":"start","orderId":36,"userId":12}
+{"at":"2026-05-14T04:42:55.475Z","stage":"success","orderId":36,"userId":12,"deleted":{"chiTietDonHang":1,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}
+{"at":"2026-05-14T04:43:32.646Z","stage":"request-received","body":{"orderId":38},"userId":12,"hasAuthHeader":true}
+{"at":"2026-05-14T04:43:32.650Z","stage":"start","orderId":38,"userId":12}
+{"at":"2026-05-14T04:43:32.664Z","stage":"success","orderId":38,"userId":12,"deleted":{"chiTietDonHang":1,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}
+{"at":"2026-05-14T04:44:12.560Z","stage":"request-received","body":{"orderId":39},"userId":12,"hasAuthHeader":true}
+{"at":"2026-05-14T04:44:12.564Z","stage":"start","orderId":39,"userId":12}
+{"at":"2026-05-14T04:44:12.578Z","stage":"success","orderId":39,"userId":12,"deleted":{"chiTietDonHang":2,"thanhToan":1,"danhGia":0,"logDonHang":1,"donHang":1}}

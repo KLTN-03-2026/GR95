@@ -1,6 +1,6 @@
 // controllers/dashboardController.js
-const db = require('../config/db');
-const ExcelJS = require('exceljs');
+const db = require("../config/db");
+const ExcelJS = require("exceljs");
 
 // ===== BUILD FILTER (ĐÃ FIX TRIỆT ĐỂ LỖI TÌM KIẾM SỐ) =====
 const buildFilter = (query) => {
@@ -10,12 +10,12 @@ const buildFilter = (query) => {
   if (query.keyword) {
     const kwRaw = query.keyword.trim();
     const kwLike = `%${kwRaw}%`;
-    
+
     // Kiểm tra nếu keyword là số thuần túy
     const isNumber = /^\d+$/.test(kwRaw);
 
     if (isNumber) {
-      // FIX: Khi nhập số, CHỈ tìm đích danh Mã đơn hàng. 
+      // FIX: Khi nhập số, CHỈ tìm đích danh Mã đơn hàng.
       // Không tìm LIKE ở Tên khách hay Sản phẩm để tránh bị dính số "5" trong "B5"
       where += ` AND d.MaDH = ?`;
       params.push(kwRaw);
@@ -30,12 +30,12 @@ const buildFilter = (query) => {
   }
 
   // 2. FILTER DROPDOWN
-  if (query.sanPham && query.sanPham !== 'all') {
+  if (query.sanPham && query.sanPham !== "all") {
     where += " AND sp.MaSP = ?";
     params.push(query.sanPham);
   }
 
-  if (query.khachHang && query.khachHang !== 'all') {
+  if (query.khachHang && query.khachHang !== "all") {
     where += " AND n.MaND = ?";
     params.push(query.khachHang);
   }
@@ -54,14 +54,15 @@ const buildFilter = (query) => {
   return { where, params };
 };
 
-
 // ===== 1️⃣ FILTER DROPDOWN =====
 exports.getFilters = async (req, res) => {
   try {
     const [sanPhams] = await db.query("SELECT MaSP, TenSP FROM SanPham");
-    
+
     // ĐÃ FIX: Thêm điều kiện WHERE MaQuyen = 'CUST' để chỉ lấy đúng Khách hàng
-    const [khachHangs] = await db.query("SELECT MaND, HoTen FROM NguoiDung WHERE MaQuyen = 'CUST'");
+    const [khachHangs] = await db.query(
+      "SELECT MaND, HoTen FROM NguoiDung WHERE MaQuyen = 'CUST'",
+    );
 
     res.json({ sanPhams, khachHangs });
   } catch (err) {
@@ -69,7 +70,6 @@ exports.getFilters = async (req, res) => {
     res.status(500).json({ message: "Lỗi filters" });
   }
 };
-
 
 // ===== 2️⃣ OVERVIEW =====
 exports.getOverview = async (req, res) => {
@@ -85,7 +85,8 @@ exports.getOverview = async (req, res) => {
       ({ where, params } = buildFilter(req.query));
     }
 
-    const [rows] = await db.query(`
+    const [rows] = await db.query(
+      `
       SELECT d.MaDH, d.NgayDat, n.HoTen AS KhachHang,
              sp.TenSP AS SanPham,
              ct.SoLuong,
@@ -98,13 +99,15 @@ exports.getOverview = async (req, res) => {
       JOIN SanPham sp ON bt.MaSP = sp.MaSP
       ${where}
       ORDER BY d.NgayDat DESC
-    `, params);
+    `,
+      params,
+    );
 
     // ===== CALCULATE =====
     let tongSL = 0;
     const revenueByOrder = {};
 
-    rows.forEach(r => {
+    rows.forEach((r) => {
       tongSL += Number(r.SoLuong);
 
       if (!revenueByOrder[r.MaDH]) {
@@ -123,17 +126,15 @@ exports.getOverview = async (req, res) => {
         tongDon,
         tongSoLuong: tongSL,
         tongDoanhThu: tongDT,
-        trungBinhDon
+        trungBinhDon,
       },
-      orders: rows
+      orders: rows,
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Lỗi overview" });
   }
 };
-
 
 // ===== 3️⃣ CHART =====
 exports.getCharts = async (req, res) => {
@@ -153,7 +154,9 @@ exports.getCharts = async (req, res) => {
       }
     }
 
-    const timeGroup = isDailyView ? "DATE_FORMAT(d.NgayDat, '%Y-%m-%d')" : "MONTH(d.NgayDat)";
+    const timeGroup = isDailyView
+      ? "DATE_FORMAT(d.NgayDat, '%Y-%m-%d')"
+      : "MONTH(d.NgayDat)";
 
     const sqlRevenue = `
       SELECT ${timeGroup} AS timeKey, IFNULL(SUM(ct.SoLuong * ct.DonGia), 0) AS revenue
@@ -187,49 +190,53 @@ exports.getCharts = async (req, res) => {
     if (isDailyView) {
       let curr = new Date(tuNgay);
       let end = new Date(denNgay);
-      
+
       while (curr <= end) {
         const yyyy = curr.getFullYear();
-        const mm = String(curr.getMonth() + 1).padStart(2, '0');
-        const dd = String(curr.getDate()).padStart(2, '0');
-        const dateStr = `${yyyy}-${mm}-${dd}`; 
+        const mm = String(curr.getMonth() + 1).padStart(2, "0");
+        const dd = String(curr.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}-${mm}-${dd}`;
 
         const display = `${dd}/${mm}`;
 
-        const rev = revenueRows.find(r => r.timeKey === dateStr)?.revenue || 0;
-        const ord = orderRows.find(r => r.timeKey === dateStr)?.orders || 0;
+        const rev =
+          revenueRows.find((r) => r.timeKey === dateStr)?.revenue || 0;
+        const ord = orderRows.find((r) => r.timeKey === dateStr)?.orders || 0;
 
-        chartData.push({ month: display, revenue: Number(rev), orders: Number(ord) });
-        curr.setDate(curr.getDate() + 1); 
+        chartData.push({
+          month: display,
+          revenue: Number(rev),
+          orders: Number(ord),
+        });
+        curr.setDate(curr.getDate() + 1);
       }
     } else {
       for (let i = 1; i <= 12; i++) {
-        const revRow = revenueRows.find(r => Number(r.timeKey) === i);
-        const ordRow = orderRows.find(r => Number(r.timeKey) === i);
-        
+        const revRow = revenueRows.find((r) => Number(r.timeKey) === i);
+        const ordRow = orderRows.find((r) => Number(r.timeKey) === i);
+
         chartData.push({
           month: `Tháng ${i}`,
           revenue: Number(revRow?.revenue || 0),
-          orders: Number(ordRow?.orders || 0)
+          orders: Number(ordRow?.orders || 0),
         });
       }
     }
 
     res.json({ chartData });
-
   } catch (err) {
     console.error("Lỗi chart:", err);
     res.status(500).json({ message: "Lỗi tạo dữ liệu biểu đồ" });
   }
 };
 
-
 // ===== 4️⃣ EXPORT EXCEL =====
 exports.exportExcel = async (req, res) => {
   try {
     const { where, params } = buildFilter(req.query);
 
-    const [rows] = await db.query(`
+    const [rows] = await db.query(
+      `
       SELECT d.MaDH, d.NgayDat, n.HoTen AS KhachHang,
              sp.TenSP AS SanPham,
              ct.SoLuong,
@@ -241,43 +248,41 @@ exports.exportExcel = async (req, res) => {
       JOIN BienTheSanPham bt ON ct.MaBienThe = bt.MaBienThe
       JOIN SanPham sp ON bt.MaSP = sp.MaSP
       ${where}
-    `, params);
+    `,
+      params,
+    );
 
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('BaoCao');
+    const sheet = workbook.addWorksheet("BaoCao");
 
     sheet.columns = [
-      { header: 'Mã đơn', key: 'MaDH', width: 15 },
-      { header: 'Ngày', key: 'NgayDat', width: 20 },
-      { header: 'Khách hàng', key: 'KhachHang', width: 25 },
-      { header: 'Sản phẩm', key: 'SanPham', width: 25 },
-      { header: 'Số lượng', key: 'SoLuong', width: 10 },
-      { header: 'Giá', key: 'DonGia', width: 15 },
-      { header: 'Doanh thu', key: 'DoanhThu', width: 20 }
+      { header: "Mã đơn", key: "MaDH", width: 15 },
+      { header: "Ngày", key: "NgayDat", width: 20 },
+      { header: "Khách hàng", key: "KhachHang", width: 25 },
+      { header: "Sản phẩm", key: "SanPham", width: 25 },
+      { header: "Số lượng", key: "SoLuong", width: 10 },
+      { header: "Giá", key: "DonGia", width: 15 },
+      { header: "Doanh thu", key: "DoanhThu", width: 20 },
     ];
 
-    rows.forEach(r => {
+    rows.forEach((r) => {
       sheet.addRow({
         ...r,
-        NgayDat: new Date(r.NgayDat).toLocaleDateString('vi-VN')
+        NgayDat: new Date(r.NgayDat).toLocaleDateString("vi-VN"),
       });
     });
 
     sheet.getRow(1).font = { bold: true };
 
     res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename=baocao.xlsx'
-    );
+    res.setHeader("Content-Disposition", "attachment; filename=baocao.xlsx");
 
     await workbook.xlsx.write(res);
     res.end();
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Lỗi export Excel" });

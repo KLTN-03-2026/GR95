@@ -1,9 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import authApi from "../../../services/authApi";
+import Swal from "sweetalert2"; // <-- Import SweetAlert2
+import { useStore } from "../../../store/useStore";
+
+// CẤU HÌNH SWEETALERT CHO GIAO DIỆN SANG TRỌNG
+const swalCustom = Swal.mixin({
+  customClass: {
+    popup: "!bg-white !rounded-[24px] !shadow-2xl !border !border-slate-100",
+    title: "!text-xl !font-black !text-slate-800 !mt-2",
+    htmlContainer: "!text-sm !text-slate-500 !mt-1",
+    actions: "!gap-3 !w-full !mt-6",
+    confirmButton:
+      "!bg-rose-500 hover:!bg-rose-600 !text-white !rounded-xl !px-6 !py-2.5 !font-semibold !transition-all !border-0 !shadow-sm !outline-none !m-0",
+    cancelButton:
+      "!bg-slate-100 hover:!bg-slate-200 !text-slate-700 !rounded-xl !px-6 !py-2.5 !font-semibold !transition-all !border-0 !outline-none !m-0",
+    backdrop: "backdrop-blur-sm !bg-slate-900/30",
+  },
+  buttonsStyling: false,
+});
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const navigate = useNavigate();
+  const logout = useStore((state) => state.logout);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
 
@@ -51,8 +70,19 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     fetchUserInfo();
   }, []);
 
-  const handleLogout = () => {
-    if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+  // ĐÃ SỬA: Thay thế window.confirm bằng SweetAlert2
+  const handleLogout = async () => {
+    const result = await swalCustom.fire({
+      title: "Đăng xuất?",
+      text: "Bạn có chắc chắn muốn đăng xuất khỏi phiên làm việc này không?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Vâng, đăng xuất",
+      cancelButtonText: "Hủy bỏ",
+    });
+
+    if (result.isConfirmed) {
+      logout();
       localStorage.removeItem("user");
       localStorage.removeItem("user_info");
       localStorage.removeItem("userPermissions");
@@ -246,7 +276,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               </NavLink>
             </li>
           )}
-          {/* Thêm Quản lý đánh giá vào đây */}
           {/* Thêm Quản lý đánh giá vào đây */}
           {canViewModule("HIDE_MODULE_REVIEW") && (
             <li>
