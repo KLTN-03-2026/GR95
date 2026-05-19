@@ -1,9 +1,9 @@
-const db = require('../config/db'); // Đường dẫn tới file cấu hình DB
+const db = require("../config/db"); // Đường dẫn tới file cấu hình DB
 
 const getClientProductSlides = async () => {
-    const [banners] = await db.query(`
+  const [banners] = await db.query(`
         SELECT MaBanner, TieuDe, DuongDanAnh as image
-        FROM BannerToanCuc 
+        FROM bannertoancuc 
         WHERE TrangThai IN ('Active', 'KichHoat')
           AND ViTriHienThi IN ('TrangChu', 'HeroBanner')
           AND DuongDanAnh IS NOT NULL
@@ -11,16 +11,16 @@ const getClientProductSlides = async () => {
         ORDER BY ThuTuHienThi ASC, MaBanner ASC
     `);
 
-    return banners.map((banner) => ({
-        id: banner.MaBanner,
-        image: banner.image,
-        title: banner.TieuDe,
-        cta: 'Xem chi tiết'
-    }));
+  return banners.map((banner) => ({
+    id: banner.MaBanner,
+    image: banner.image,
+    title: banner.TieuDe,
+    cta: "Xem chi tiết",
+  }));
 };
 
 const getFormattedClientProducts = async () => {
-    const [products] = await db.query(`
+  const [products] = await db.query(`
         SELECT 
             sp.MaSP as id, 
             sp.TenSP as name,
@@ -68,17 +68,17 @@ const getFormattedClientProducts = async () => {
         ORDER BY sp.NgayTao DESC
     `);
 
-    if (products.length === 0) {
-        return [];
-    }
+  if (products.length === 0) {
+    return [];
+  }
 
-    const productIds = products.map((product) => product.id);
-    let variantsByProduct = new Map();
+  const productIds = products.map((product) => product.id);
+  let variantsByProduct = new Map();
 
-    if (productIds.length > 0) {
-        const placeholders = productIds.map(() => '?').join(',');
-        const [variantRows] = await db.query(
-            `
+  if (productIds.length > 0) {
+    const placeholders = productIds.map(() => "?").join(",");
+    const [variantRows] = await db.query(
+      `
             SELECT 
                 bt.MaSP as productId,
                 bt.MaBienThe as id,
@@ -111,85 +111,89 @@ const getFormattedClientProducts = async () => {
             WHERE bt.MaSP IN (${placeholders})
             ORDER BY bt.MaSP ASC, bt.MaBienThe ASC
             `,
-            productIds
-        );
+      productIds,
+    );
 
-        variantsByProduct = variantRows.reduce((accumulator, variant) => {
-            const productId = String(variant.productId);
-            if (!accumulator.has(productId)) {
-                accumulator.set(productId, []);
-            }
+    variantsByProduct = variantRows.reduce((accumulator, variant) => {
+      const productId = String(variant.productId);
+      if (!accumulator.has(productId)) {
+        accumulator.set(productId, []);
+      }
 
-            accumulator.get(productId).push({
-                id: variant.id,
-                name: variant.name,
-                price: Number(variant.effectivePrice) || 0,
-                oldPrice: variant.originalPrice !== null ? Number(variant.originalPrice) : null,
-                inStock: Number(variant.stock) > 0
-            });
+      accumulator.get(productId).push({
+        id: variant.id,
+        name: variant.name,
+        price: Number(variant.effectivePrice) || 0,
+        oldPrice:
+          variant.originalPrice !== null ? Number(variant.originalPrice) : null,
+        inStock: Number(variant.stock) > 0,
+      });
 
-            return accumulator;
-        }, new Map());
+      return accumulator;
+    }, new Map());
+  }
+
+  return products.map((p) => {
+    const productVariants = variantsByProduct.get(String(p.id)) || [];
+
+    let displayPrice = 0;
+    let displayOldPrice = null;
+
+    if (productVariants.length > 0) {
+      const sortedVariants = [...productVariants].sort(
+        (a, b) => a.price - b.price,
+      );
+      displayPrice = sortedVariants[0].price;
+      displayOldPrice = sortedVariants[0].oldPrice;
     }
 
-    return products.map(p => {
-        const productVariants = variantsByProduct.get(String(p.id)) || [];
-
-        let displayPrice = 0;
-        let displayOldPrice = null;
-
-        if (productVariants.length > 0) {
-            const sortedVariants = [...productVariants].sort((a, b) => a.price - b.price);
-            displayPrice = sortedVariants[0].price;
-            displayOldPrice = sortedVariants[0].oldPrice;
-        }
-
-        return {
-            id: p.id,
-            name: p.name,
-            brand: p.brand || 'Hamoni',
-            createdAt: p.createdAt,
-            categoryId: p.categoryId,
-            category: p.category,
-            image: p.image || '/images/default-product.jpg',
-            price: displayPrice,
-            oldPrice: displayOldPrice,
-            rating: parseFloat(p.rating) || 5.0,
-            reviews: Number(p.reviews) || 0,
-            soldCount: Number(p.soldCount) || 0,
-            inStock: p.inStock === 1,
-            variants: productVariants
-        };
-    });
+    return {
+      id: p.id,
+      name: p.name,
+      brand: p.brand || "Hamoni",
+      createdAt: p.createdAt,
+      categoryId: p.categoryId,
+      category: p.category,
+      image: p.image || "/images/default-product.jpg",
+      price: displayPrice,
+      oldPrice: displayOldPrice,
+      rating: parseFloat(p.rating) || 5.0,
+      reviews: Number(p.reviews) || 0,
+      soldCount: Number(p.soldCount) || 0,
+      inStock: p.inStock === 1,
+      variants: productVariants,
+    };
+  });
 };
 
 const getClientProducts = async (req, res) => {
-    try {
-        const formattedData = await getFormattedClientProducts();
-        res.status(200).json(formattedData);
-
-    } catch (error) {
-        console.error("Lỗi Controller (getClientProducts):", error);
-        res.status(500).json({ message: "Lỗi server nội bộ khi tải danh sách sản phẩm." });
-    }
+  try {
+    const formattedData = await getFormattedClientProducts();
+    res.status(200).json(formattedData);
+  } catch (error) {
+    console.error("Lỗi Controller (getClientProducts):", error);
+    res
+      .status(500)
+      .json({ message: "Lỗi server nội bộ khi tải danh sách sản phẩm." });
+  }
 };
 
 const getClientProductsPageData = async (req, res) => {
-    try {
-        const slides = await getClientProductSlides();
-        const products = await getFormattedClientProducts();
+  try {
+    const slides = await getClientProductSlides();
+    const products = await getFormattedClientProducts();
 
-        res.status(200).json({ slides, products });
-    } catch (error) {
-        console.error("Lỗi Controller (getClientProductsPageData):", error);
-        res.status(500).json({
-            message: "Lỗi server nội bộ khi tải dữ liệu trang sản phẩm.",
-            detail: error.message
-        });
-    }
+    res.status(200).json({ slides, products });
+  } catch (error) {
+    console.error("Lỗi Controller (getClientProductsPageData):", error);
+    res.status(500).json({
+      message: "Lỗi server nội bộ khi tải dữ liệu trang sản phẩm.",
+      detail: error.message,
+    });
+  }
 };
 
 module.exports = {
-    getClientProducts,
-    getClientProductsPageData
+  getClientProducts,
+  getClientProductsPageData,
 };
