@@ -11,7 +11,7 @@ const getHomeData = async (req, res) => {
                 URLDich, 
                 DATE_FORMAT(NgayBatDau, '%d/%m/%Y') AS NgayBatDau,
                 DATE_FORMAT(NgayHetHan, '%d/%m/%Y') AS NgayHetHan
-            FROM BannerToanCuc 
+            FROM bannertoancuc 
             WHERE TrangThai IN ('Active', 'KichHoat')
               AND ViTriHienThi IN ('TrangChu', 'HeroBanner')
               AND DuongDanAnh IS NOT NULL
