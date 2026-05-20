@@ -6,6 +6,8 @@ import authApi from "../../services/authApi";
 import { useStore } from "../../store/useStore";
 import "react-toastify/dist/ReactToastify.css";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 // Nhúng Component Modal Quên mật khẩu vào đây
 // import ForgotPasswordModal from "../ForgotPasswordModal";
 import ForgotPasswordModal from "./ForgotPassword";
@@ -173,7 +175,7 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/register",
+        `${API_BASE_URL}/auth/register`,
         dataToSend,
       );
       toast.success(response.data.message || "Mã OTP đã được gửi!");

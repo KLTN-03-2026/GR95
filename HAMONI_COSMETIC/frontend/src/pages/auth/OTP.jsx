@@ -3,6 +3,8 @@ import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShieldCheck, MailOpen } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export default function OTP() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export default function OTP() {
 
     try {
       setLoading(true);
-      await axios.post("http://localhost:5000/api/auth/resend-otp", { email });
+      await axios.post(`${API_BASE_URL}/auth/resend-otp`, { email });
 
       alert("Mã OTP mới đã được gửi!");
       setTimer(60);
@@ -82,7 +84,7 @@ export default function OTP() {
 
     setLoading(true);
     try {
-      await axios.post("http://localhost:5000/api/auth/verify-otp", {
+      await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         email,
         otp: finalOtp,
       });

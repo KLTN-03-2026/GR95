@@ -5,6 +5,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./Register.css";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export default function Register() {
   const [formData, setFormData] = useState({
     hoTen: "",
@@ -104,7 +106,7 @@ export default function Register() {
     setIsLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/register",
+        `${API_BASE_URL}/auth/register`,
         dataToSend,
       );
       toast.success(response.data.message || "Mã OTP đã được gửi!");

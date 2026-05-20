@@ -19,12 +19,8 @@ import io from "socket.io-client";
 import "./ClientLayout.css";
 
 // CẤU HÌNH API VÀ SOCKET
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-const SOCKET_BASE =
-  import.meta.env.VITE_SOCKET_URL ||
-  API_BASE.replace(/\/api\/?$/, "") ||
-  "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const SOCKET_BASE = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "");
 const socket = io(SOCKET_BASE, { transports: ["websocket"] });
 
 const getStoredUserInfo = () => {

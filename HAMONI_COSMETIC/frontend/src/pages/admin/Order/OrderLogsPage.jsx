@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./OrderLogsPage.css";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 const OrderLogsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ const OrderLogsPage = () => {
     setLoading(true);
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/orders/${id}`);
+      const res = await axios.get(`${API_BASE_URL}/orders/${id}`);
       setOrderData(res.data);
     } catch (err) {
       console.error("🔥 Lỗi API:", err);

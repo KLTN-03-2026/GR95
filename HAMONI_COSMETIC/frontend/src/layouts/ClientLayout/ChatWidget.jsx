@@ -19,8 +19,10 @@ import {
 import io from "socket.io-client";
 import { useStore } from "../../store/useStore";
 
+const SOCKET_BASE = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "");
+
 // Kết nối đến Backend
-const socket = io("http://localhost:5000", {
+const socket = io(SOCKET_BASE, {
   transports: ["websocket"],
 });
 
