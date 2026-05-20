@@ -385,7 +385,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [maxPrice, setMaxPrice] = useState(3000000);
+  const [maxPrice, setMaxPrice] = useState(1000000);
   const [selectedCategory, setSelectedCategory] = useState(
     categoryFromUrl || "all",
   );
@@ -444,7 +444,7 @@ export default function Products() {
   }, [maxPrice, selectedCategory, selectedBrand, sortOrder, normalizedKeyword]);
 
   const handleResetFilter = () => {
-    setMaxPrice(3000000);
+    setMaxPrice(1000000);
     setSelectedCategory("all");
     setSelectedBrand("all");
     setSortOrder("newest");
@@ -584,7 +584,7 @@ export default function Products() {
               <input
                 type="range"
                 min="0"
-                max="3000000"
+                max="1000000"
                 step="50000"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
