@@ -24,6 +24,7 @@ const SOCKET_BASE = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "");
 // Kết nối đến Backend
 const socket = io(SOCKET_BASE, {
   transports: ["websocket"],
+  auth: (cb) => cb({ token: localStorage.getItem('token') }),
 });
 
 const ChatWidget = () => {
@@ -63,6 +64,8 @@ const ChatWidget = () => {
 
   // 2. Click ra ngoài để đóng
   useEffect(() => {
+    socket.auth = { token: localStorage.getItem('token') };
+    socket.disconnect().connect();
     const handleClickOutside = (event) => {
       if (
         isOpen &&
@@ -85,8 +88,8 @@ const ChatWidget = () => {
     });
 
     let sessionID = localStorage.getItem("guest_session");
-    if (!sessionID) {
-      sessionID = "GUEST_" + Math.random().toString(36).substr(2, 9);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionID || '')) {
+      sessionID = crypto.randomUUID();
       localStorage.setItem("guest_session", sessionID);
     }
 

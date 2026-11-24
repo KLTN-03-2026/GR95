@@ -1,6 +1,6 @@
 const axios = require('axios');
-const cron = require('node-cron');
 const db = require('./db');
+let polling = false;
 
 const checkCassoTransactions = async () => {
     console.log("--- [" + new Date().toLocaleString() + "] Đang quét giao dịch từ Casso (30s) ---");
@@ -42,6 +42,9 @@ const checkCassoTransactions = async () => {
             const orderId = Number(match[1]);
             if (!orderId) continue;
 
+            await conn.query('SAVEPOINT casso_record');
+            try {
+
             // 3. Chỉ nhận đơn đang chờ thanh toán và số tiền khớp chính xác với đơn hàng.
             const [[orderRow]] = await conn.execute(
                 `
@@ -49,7 +52,7 @@ const checkCassoTransactions = async () => {
                 FROM DonHang dh
                 JOIN ThanhToan tt ON tt.MaDH = dh.MaDH
                 WHERE dh.MaDH = ?
-                LIMIT 1
+                LIMIT 1 FOR UPDATE
                 `,
                 [orderId]
             );
@@ -69,6 +72,14 @@ const checkCassoTransactions = async () => {
                 continue;
             }
 
+            if (!transactionId) continue;
+
+            const [[usedTransaction]] = await conn.execute(
+                'SELECT MaDH FROM ThanhToan WHERE MaGiaoDichDoiTac = ? LIMIT 1',
+                [transactionId]
+            );
+            if (usedTransaction) continue;
+
             const expectedAmount = Math.round(Number(orderRow.ThanhTien || 0));
             const incomingAmount = Math.round(amount);
 
@@ -77,20 +88,21 @@ const checkCassoTransactions = async () => {
                 continue;
             }
 
+            if (orderRow.TrangThai === 'DaHuy') {
+                await conn.execute(
+                    `UPDATE ThanhToan SET TrangThai = 'DaThanhToan', NgayThanhToan = NOW(), MaGiaoDichDoiTac = ? WHERE MaDH = ?`,
+                    [transactionId, orderId]
+                );
+                await conn.execute(
+                    `INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, GhiChu, NgayTao)
+                     VALUES (?, 'DaHuy', 'DaHuy', 'Đã nhận chuyển khoản sau khi hủy; cần hoàn tiền', NOW())`,
+                    [orderId]
+                );
+                continue;
+            }
+
             console.log(`==> Tìm thấy thanh toán cho đơn: ${orderId}. Nội dung: ${content}${transactionId ? ` | GD: ${transactionId}` : ''}`);
             console.log(`==> Cập nhật trạng thái thanh toán cho đơn ${orderId}...`);
-
-            // Cập nhật bảng ThanhToan
-            await conn.execute(
-                `UPDATE ThanhToan SET TrangThai = 'DaThanhToan', NgayThanhToan = NOW() WHERE MaDH = ?`,
-                [orderId]
-            );
-
-            // Cập nhật bảng DonHang (đơn đã nhận tiền thì chuyển sang chờ xác nhận xử lý)
-            await conn.execute(
-                `UPDATE DonHang SET TrangThai = 'ChoXacNhan' WHERE MaDH = ?`,
-                [orderId]
-            );
 
             // Trừ kho nếu chưa trừ
             const [[latestStockLog]] = await conn.execute(
@@ -119,7 +131,9 @@ const checkCassoTransactions = async () => {
                     const totalStock = stocks.reduce((sum, row) => sum + Number(row.SoLuongTon || 0), 0);
                     if (totalStock < quantity) {
                         console.log(`==> Lỗi: không đủ tồn kho cho biến thể ${item.MaBienThe}`);
-                        continue;
+                        const stockError = new Error(`Không đủ tồn kho cho biến thể ${item.MaBienThe} của đơn ${orderId}`);
+                        stockError.code = 'OUT_OF_STOCK';
+                        throw stockError;
                     }
 
                     let remain = quantity;
@@ -149,6 +163,16 @@ const checkCassoTransactions = async () => {
                 console.log(`==> Trừ kho xong cho đơn ${orderId}`);
             }
 
+            // Chỉ ghi nhận đã thanh toán sau khi toàn bộ mặt hàng trừ kho thành công.
+            await conn.execute(
+                `UPDATE ThanhToan SET TrangThai = 'DaThanhToan', NgayThanhToan = NOW(), MaGiaoDichDoiTac = ? WHERE MaDH = ?`,
+                [transactionId, orderId]
+            );
+            await conn.execute(
+                `UPDATE DonHang SET TrangThai = 'ChoXacNhan' WHERE MaDH = ?`,
+                [orderId]
+            );
+
             // Xóa sản phẩm khỏi giỏ hàng
             console.log(`==> Xóa sản phẩm khỏi giỏ hàng cho đơn ${orderId}...`);
             const [orderItems2] = await conn.execute(
@@ -171,6 +195,28 @@ const checkCassoTransactions = async () => {
                     );
                     console.log(`==> Xóa ${variantIds.length} sản phẩm khỏi giỏ hàng`);
                 }
+            }
+            } catch (recordError) {
+                await conn.query('ROLLBACK TO SAVEPOINT casso_record');
+                if (recordError.code === 'OUT_OF_STOCK') {
+                    const [[currentOrder]] = await conn.execute('SELECT TrangThai, MaVoucher FROM DonHang WHERE MaDH = ? FOR UPDATE', [orderId]);
+                    await conn.execute(
+                        `UPDATE ThanhToan SET TrangThai = 'DaThanhToan', NgayThanhToan = NOW(), MaGiaoDichDoiTac = ? WHERE MaDH = ?`,
+                        [transactionId, orderId]
+                    );
+                    await conn.execute(`UPDATE DonHang SET TrangThai = 'DaHuy', DaHoanTien = 0 WHERE MaDH = ?`, [orderId]);
+                    if (currentOrder?.MaVoucher) {
+                        await conn.execute(
+                            `UPDATE Voucher SET SoLuongDaDung = GREATEST(COALESCE(SoLuongDaDung, 0) - 1, 0) WHERE MaVoucher = ?`,
+                            [currentOrder.MaVoucher]
+                        );
+                    }
+                    await conn.execute(
+                        `INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, GhiChu, NgayTao) VALUES (?, ?, 'DaHuy', ?, NOW())`,
+                        [orderId, currentOrder?.TrangThai || null, 'Đã nhận chuyển khoản nhưng hết hàng; cần hoàn tiền']
+                    );
+                }
+                console.error(`Không xử lý được giao dịch ${transactionId || orderId}:`, recordError.message);
             }
         }
         await conn.commit();
@@ -195,8 +241,10 @@ const startCassoCron = () => {
 
     // Chạy kiểm tra giao dịch mỗi 30 giây (30000 milliseconds)
     setInterval(() => {
-        checkCassoTransactions();
+        if (polling) return;
+        polling = true;
+        checkCassoTransactions().finally(() => { polling = false; });
     }, 30000);
 };
 
-module.exports = { startCassoCron };
+module.exports = { startCassoCron, checkCassoTransactions };

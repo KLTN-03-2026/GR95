@@ -22,7 +22,7 @@ const updateEmployee = async (req, res) => {
         const { id } = req.params;
         const { HoTen, Email, SoDienThoai, MaQuyen, TrangThai, AvatarUrl } = req.body;
         await db.execute(
-            "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, MaQuyen = ?, TrangThai = ?, AvatarUrl = ? WHERE MaND = ?",
+            "UPDATE NguoiDung SET HoTen = ?, Email = ?, SoDienThoai = ?, MaQuyen = ?, TrangThai = ?, AvatarUrl = ? WHERE MaND = ? AND MaQuyen != 'CUST'",
             [HoTen, Email, SoDienThoai, MaQuyen, Number(TrangThai), AvatarUrl || null, id]
         );
         res.status(200).json({ message: "Cập nhật thành công" });

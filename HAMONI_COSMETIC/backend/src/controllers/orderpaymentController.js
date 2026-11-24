@@ -1,27 +1,4 @@
-const fs = require("fs");
-const path = require("path");
 const db = require("../config/db");
-const { createNotification } = require("./notificationController");
-
-const cancelDebugLogPath = path.join(
-  __dirname,
-  "../../cancel-unpaid-debug.log",
-);
-
-const appendCancelDebugLog = (entry) => {
-  try {
-    fs.appendFileSync(
-      cancelDebugLogPath,
-      `${JSON.stringify({
-        at: new Date().toISOString(),
-        ...entry,
-      })}\n`,
-      "utf8",
-    );
-  } catch (error) {
-    console.error("[cancelUnpaidOrder] debug log write failed:", error.message);
-  }
-};
 
 const CHECKOUT_STATUS = "ChoXacNhan";
 const STOCK_OUT_MOVEMENT = "XUAT_DON_HANG";
@@ -545,30 +522,6 @@ exports.placeOrderFromCheckout = async (req, res) => {
 
     await conn.beginTransaction();
 
-    await conn.execute(
-      `
-            UPDATE NguoiDung
-            SET
-                HoTen = ?,
-                SoDienThoai = ?,
-                DiaChi = ?,
-                Email = CASE
-                    WHEN ? IS NULL OR ? = '' THEN Email
-                    ELSE ?
-                END
-            WHERE MaND = ?
-        `,
-      [
-        normalizedRecipientName,
-        normalizedRecipientPhone,
-        normalizedShippingAddress,
-        normalizedRecipientEmail,
-        normalizedRecipientEmail,
-        normalizedRecipientEmail,
-        userId,
-      ],
-    );
-
     const checkout = await buildCheckoutSummary(
       conn,
       userId,
@@ -697,167 +650,6 @@ exports.placeOrderFromCheckout = async (req, res) => {
   }
 };
 
-exports.confirmOnlinePayment = async (req, res) => {
-  const conn = await db.getConnection();
-
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res
-        .status(401)
-        .json({ message: "Bạn cần đăng nhập để thanh toán" });
-    }
-
-    const orderId = Number(req.body?.orderId || 0);
-    const transactionCode = String(req.body?.transactionCode || "").trim();
-
-    if (!orderId) {
-      return res
-        .status(400)
-        .json({ message: "Thiếu mã đơn hàng để xác nhận thanh toán" });
-    }
-
-    await conn.beginTransaction();
-
-    const [[order]] = await conn.execute(
-      `
-            SELECT MaDH, MaND, TrangThai
-            FROM DonHang
-            WHERE MaDH = ?
-            FOR UPDATE
-        `,
-      [orderId],
-    );
-
-    if (!order) {
-      await conn.rollback();
-      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
-    }
-
-    if (String(order.MaND) !== String(userId)) {
-      await conn.rollback();
-      return res
-        .status(403)
-        .json({ message: "Bạn không có quyền thanh toán đơn hàng này" });
-    }
-
-    if (order.TrangThai === "DaHuy") {
-      await conn.rollback();
-      return res.status(400).json({ message: "Đơn hàng đã bị hủy" });
-    }
-
-    const [[payment]] = await conn.execute(
-      `
-            SELECT PhuongThuc, TrangThai
-            FROM ThanhToan
-            WHERE MaDH = ?
-            FOR UPDATE
-        `,
-      [orderId],
-    );
-
-    if (!payment) {
-      await conn.rollback();
-      return res
-        .status(404)
-        .json({ message: "Không tìm thấy thông tin thanh toán của đơn hàng" });
-    }
-
-    if (payment.PhuongThuc !== "VNPAY") {
-      await conn.rollback();
-      return res
-        .status(400)
-        .json({
-          message: "Đơn hàng này không sử dụng phương thức thanh toán online",
-        });
-    }
-
-    const latestStockMovement = await getLatestOrderStockMovement(
-      conn,
-      orderId,
-    );
-    if (latestStockMovement !== STOCK_OUT_MOVEMENT) {
-      await deductOrderStock(
-        conn,
-        orderId,
-        "Trừ kho khi xác nhận thanh toán online",
-      );
-    }
-
-    const orderedItems = await loadOrderItems(conn, orderId);
-    await removePurchasedCartItems(
-      conn,
-      userId,
-      orderedItems.map((item) => ({ maBienThe: item.MaBienThe })),
-    );
-
-    if (payment.TrangThai === "DaThanhToan") {
-      await conn.commit();
-      return res.json({
-        message: "Đơn hàng đã được xác nhận thanh toán trước đó",
-        data: {
-          orderId,
-          stockDeducted: latestStockMovement !== STOCK_OUT_MOVEMENT,
-        },
-      });
-    }
-
-    await conn.execute(
-      `
-            UPDATE ThanhToan
-            SET TrangThai = 'DaThanhToan', NgayThanhToan = NOW()
-            WHERE MaDH = ?
-        `,
-      [orderId],
-    );
-
-    await conn.execute(
-      `
-            INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, GhiChu, NguoiThaoTac, NgayTao)
-            VALUES (?, ?, ?, ?, ?, NOW())
-        `,
-      [
-        orderId,
-        order.TrangThai,
-        order.TrangThai,
-        transactionCode
-          ? `Khách hàng xác nhận thanh toán online. Mã GD: ${transactionCode}`
-          : "Khách hàng xác nhận thanh toán online",
-        userId,
-      ],
-    );
-
-    const io = req.app.get("io");
-    await createNotification({
-      userId,
-      title: "Thanh toán online đã được xác nhận",
-      content: `Đơn hàng #${orderId} đã được xác nhận thanh toán thành công.`,
-      io,
-    });
-
-    await conn.commit();
-
-    return res.json({
-      message: "Xác nhận thanh toán thành công",
-      data: { orderId },
-    });
-  } catch (err) {
-    await conn.rollback();
-
-    const statusCode = isCheckoutValidationError(err.message) ? 400 : 500;
-
-    if (statusCode === 500) {
-      console.error("Loi confirmOnlinePayment:", err);
-    }
-
-    return res
-      .status(statusCode)
-      .json({ message: err.message || "Lỗi server" });
-  } finally {
-    conn.release();
-  }
-};
-
 exports.getOnlinePaymentStatus = async (req, res) => {
   const conn = await db.getConnection();
 
@@ -920,10 +712,9 @@ exports.getOnlinePaymentStatus = async (req, res) => {
       },
     });
   } catch (err) {
-    const statusCode = err?.message ? 500 : 500;
     console.error("Loi getOnlinePaymentStatus:", err);
     return res
-      .status(statusCode)
+      .status(500)
       .json({ message: err.message || "Lỗi server" });
   } finally {
     conn.release();
@@ -935,42 +726,22 @@ exports.cancelUnpaidOrder = async (req, res) => {
   let conn;
   let txStarted = false;
 
-  console.log("[cancelUnpaidOrder] REQUEST RECEIVED", {
-    body: req.body,
-    userId: req.user?.id,
-    headers: req.headers.authorization
-      ? "Bearer token present"
-      : "No auth header",
-  });
-  appendCancelDebugLog({
-    stage: "request-received",
-    body: req.body,
-    userId: req.user?.id,
-    hasAuthHeader: Boolean(req.headers.authorization),
-  });
-
   try {
     conn = await db.getConnection();
 
     const userId = req.user?.id;
     if (!userId) {
-      console.log("[cancelUnpaidOrder] NO USER ID - returning 401");
-      appendCancelDebugLog({ stage: "no-user-id" });
       return res.status(401).json({ message: "Bạn cần đăng nhập để hủy đơn" });
     }
 
     const orderId = Number(req.body?.orderId);
     if (!orderId) {
-      console.log("[cancelUnpaidOrder] NO ORDER ID - returning 400");
-      appendCancelDebugLog({ stage: "no-order-id", userId });
       return res.status(400).json({ message: "Thiếu mã đơn hàng" });
     }
 
     await conn.beginTransaction();
     txStarted = true;
 
-    console.log("[cancelUnpaidOrder] start", { orderId, userId });
-    appendCancelDebugLog({ stage: "start", orderId, userId });
 
     // 1. Kiểm tra đơn hàng tồn tại
     const [[order]] = await conn.execute(
@@ -986,7 +757,6 @@ exports.cancelUnpaidOrder = async (req, res) => {
     if (!order) {
       await conn.rollback();
       txStarted = false;
-      appendCancelDebugLog({ stage: "order-not-found", orderId, userId });
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
@@ -994,24 +764,14 @@ exports.cancelUnpaidOrder = async (req, res) => {
     if (String(order.MaND) !== String(userId)) {
       await conn.rollback();
       txStarted = false;
-      appendCancelDebugLog({
-        stage: "forbidden",
-        orderId,
-        userId,
-        orderOwnerId: order.MaND,
-      });
       return res.status(403).json({
         message: "Bạn không có quyền hủy đơn hàng này",
-        debug: {
-          orderOwnerId: order.MaND,
-          currentUserId: userId,
-        },
       });
     }
 
     const [[payment]] = await conn.execute(
       `
-            SELECT TrangThai
+            SELECT TrangThai, PhuongThuc
             FROM ThanhToan
             WHERE MaDH = ?
             FOR UPDATE
@@ -1022,7 +782,6 @@ exports.cancelUnpaidOrder = async (req, res) => {
     if (payment?.TrangThai === "DaThanhToan") {
       await conn.rollback();
       txStarted = false;
-      appendCancelDebugLog({ stage: "already-paid", orderId, userId });
       return res
         .status(400)
         .json({
@@ -1030,31 +789,31 @@ exports.cancelUnpaidOrder = async (req, res) => {
         });
     }
 
-    // Xóa dữ liệu liên quan trước, sau đó mới xóa đơn hàng.
-    const [deletedOrderDetails] = await conn.execute(
-      `DELETE FROM ChiTietDonHang WHERE MaDH = ?`,
-      [orderId],
-    );
-    const [deletedPayments] = await conn.execute(
-      `DELETE FROM ThanhToan WHERE MaDH = ?`,
-      [orderId],
-    );
-    const [deletedReviews] = await conn.execute(
-      `DELETE FROM DanhGia WHERE MaDH = ?`,
-      [orderId],
-    );
-    const [deletedOrderLogs] = await conn.execute(
-      `DELETE FROM LogDonHang WHERE MaDH = ?`,
-      [orderId],
-    );
-    const [deletedOrders] = await conn.execute(
-      `DELETE FROM DonHang WHERE MaDH = ?`,
-      [orderId],
-    );
-
-    if (!deletedOrders?.affectedRows) {
-      throw new Error("Không thể xóa đơn hàng");
+    if (payment?.PhuongThuc !== 'VNPAY') {
+      await conn.rollback();
+      txStarted = false;
+      return res.status(400).json({ message: 'Đơn hàng không dùng thanh toán online' });
     }
+
+    if (order.TrangThai === 'DaHuy') {
+      await conn.rollback();
+      txStarted = false;
+      return res.json({ message: 'Đơn hàng đã hủy trước đó', data: { orderId, cancelled: true } });
+    }
+
+    if (order.TrangThai !== 'ChoXacNhan') {
+      await conn.rollback();
+      txStarted = false;
+      return res.status(409).json({ message: 'Đơn hàng đã được xử lý; không thể hủy thanh toán theo cách này' });
+    }
+
+    // Giữ đơn để đối soát nếu khách chuyển khoản sau khi hủy.
+    await conn.execute(`UPDATE DonHang SET TrangThai = 'DaHuy' WHERE MaDH = ?`, [orderId]);
+    await conn.execute(
+      `INSERT INTO LogDonHang (MaDH, TrangThaiCu, TrangThaiMoi, GhiChu, NguoiThaoTac, NgayTao)
+       VALUES (?, ?, 'DaHuy', 'Khách hủy trước khi thanh toán', ?, NOW())`,
+      [orderId, order.TrangThai, userId]
+    );
 
     if (order.MaVoucher) {
       await conn.execute(
@@ -1070,42 +829,9 @@ exports.cancelUnpaidOrder = async (req, res) => {
     await conn.commit();
     txStarted = false;
 
-    console.log("[cancelUnpaidOrder] success", {
-      orderId,
-      userId,
-      deleted: {
-        chiTietDonHang: deletedOrderDetails?.affectedRows || 0,
-        thanhToan: deletedPayments?.affectedRows || 0,
-        danhGia: deletedReviews?.affectedRows || 0,
-        logDonHang: deletedOrderLogs?.affectedRows || 0,
-        donHang: deletedOrders?.affectedRows || 0,
-      },
-    });
-    appendCancelDebugLog({
-      stage: "success",
-      orderId,
-      userId,
-      deleted: {
-        chiTietDonHang: deletedOrderDetails?.affectedRows || 0,
-        thanhToan: deletedPayments?.affectedRows || 0,
-        danhGia: deletedReviews?.affectedRows || 0,
-        logDonHang: deletedOrderLogs?.affectedRows || 0,
-        donHang: deletedOrders?.affectedRows || 0,
-      },
-    });
-
     res.json({
-      message: "Đã xóa đơn hàng thành công",
-      data: {
-        orderId,
-        deleted: {
-          chiTietDonHang: deletedOrderDetails?.affectedRows || 0,
-          thanhToan: deletedPayments?.affectedRows || 0,
-          danhGia: deletedReviews?.affectedRows || 0,
-          logDonHang: deletedOrderLogs?.affectedRows || 0,
-          donHang: deletedOrders?.affectedRows || 0,
-        },
-      },
+      message: "Đã hủy đơn hàng thành công",
+      data: { orderId, cancelled: true },
     });
   } catch (err) {
     if (conn && txStarted) {
@@ -1119,11 +845,6 @@ exports.cancelUnpaidOrder = async (req, res) => {
       }
     }
     console.error("Loi cancelUnpaidOrder:", err);
-    appendCancelDebugLog({
-      stage: "error",
-      message: err.message,
-      stack: err.stack,
-    });
     res.status(500).json({ message: err.message || "Lỗi server" });
   } finally {
     if (conn) {
@@ -1152,7 +873,7 @@ exports.customerCancelOrder = async (req, res) => {
     // 1. Kiểm tra đơn hàng tồn tại và thuộc về khách hàng
     const [[order]] = await conn.execute(
       `
-            SELECT MaDH, MaND, TrangThai
+            SELECT MaDH, MaND, TrangThai, MaVoucher
             FROM DonHang
             WHERE MaDH = ?
             FOR UPDATE
@@ -1185,15 +906,18 @@ exports.customerCancelOrder = async (req, res) => {
       return res.status(400).json({ message });
     }
 
-    // 3. Kiểm tra nếu đơn đã trừ kho (DaXacNhan hoặc DangGiao) - hoàn lại kho
+    const [[paymentRecord]] = await conn.execute(
+      'SELECT TrangThai FROM ThanhToan WHERE MaDH = ? FOR UPDATE',
+      [orderId],
+    );
+    const hasCassoPayment = paymentRecord?.TrangThai === 'DaThanhToan';
+
+    // Hoàn kho dựa trên log thực tế; Casso có thể đã trừ kho khi đơn còn Chờ xác nhận.
     const latestStockMovement = await getLatestOrderStockMovement(
       conn,
       orderId,
     );
-    if (
-      (order.TrangThai === "DaXacNhan" || order.TrangThai === "DangGiao") &&
-      latestStockMovement === "XUAT_DON_HANG"
-    ) {
+    if (latestStockMovement === STOCK_OUT_MOVEMENT) {
       await restoreOrderStock(conn, orderId);
     }
 
@@ -1201,11 +925,18 @@ exports.customerCancelOrder = async (req, res) => {
     await conn.execute(
       `
             UPDATE DonHang
-            SET TrangThai = 'DaHuy'
+            SET TrangThai = 'DaHuy', DaHoanTien = 0
             WHERE MaDH = ?
         `,
       [orderId],
     );
+
+    if (order.MaVoucher) {
+      await conn.execute(
+        'UPDATE Voucher SET SoLuongDaDung = GREATEST(COALESCE(SoLuongDaDung, 0) - 1, 0) WHERE MaVoucher = ?',
+        [order.MaVoucher],
+      );
+    }
 
     // 5. Ghi log
     await conn.execute(
@@ -1217,16 +948,6 @@ exports.customerCancelOrder = async (req, res) => {
     );
 
     await conn.commit();
-
-    // Check nếu đơn có ghi nhận thanh toán từ Casso
-    const [[paymentRecord]] = await conn.execute(
-      `
-            SELECT TrangThai FROM ThanhToan WHERE MaDH = ? LIMIT 1
-        `,
-      [orderId],
-    );
-
-    const hasCassoPayment = paymentRecord?.TrangThai === "DaThanhToan";
 
     return res.json({
       message: "Đã hủy đơn hàng thành công",

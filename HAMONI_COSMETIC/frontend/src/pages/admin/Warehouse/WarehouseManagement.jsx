@@ -81,6 +81,11 @@ const WarehouseDashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [data, setData] = useState(null);
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 60000);
+        return () => clearInterval(timer);
+    }, []);
     const [loading, setLoading] = useState(true);
     const [logSearchTerm, setLogSearchTerm] = useState('');
     const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -212,7 +217,7 @@ const exportLogs = () => {
     const formatTimeAgo = (time) => {
     if (!time) return "Chưa có";
 
-    const diff = Math.floor((Date.now() - new Date(time)) / 60000);
+    const diff = Math.floor((now - new Date(time)) / 60000);
 
     if (diff < 1) return "Vừa xong";
     if (diff < 60) return `${diff} phút trước`;

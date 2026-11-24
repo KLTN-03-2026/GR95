@@ -16,12 +16,12 @@ import {
 import { useStore } from "../../store/useStore";
 import ChatWidget from "./ChatWidget";
 import io from "socket.io-client";
+import axiosClient from "../../services/axiosClient";
 import "./ClientLayout.css";
 
 // CẤU HÌNH API VÀ SOCKET
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const SOCKET_BASE = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "");
-const socket = io(SOCKET_BASE, { transports: ["websocket"] });
+const socket = io(SOCKET_BASE, { transports: ["websocket"], auth: (cb) => cb({ token: localStorage.getItem('token') }) });
 
 const getStoredUserInfo = () => {
   try {
@@ -147,6 +147,9 @@ const ClientLayout = () => {
   useEffect(() => {
     if (!user?.id) return;
 
+    socket.auth = { token: localStorage.getItem('token') };
+    socket.disconnect().connect();
+
     // ĐÃ FIX: Hàm đảm bảo Socket luôn join đúng phòng dù mạng chậm
     const joinRoom = () => {
       socket.emit("join_notification_room", user.id);
@@ -154,12 +157,9 @@ const ClientLayout = () => {
 
     const fetchNotifications = async () => {
       try {
-        const res = await fetch(`${API_BASE}/notifications/${user.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setNotifications(data);
-          setUnreadCount(data.filter((n) => !n.isRead).length);
-        }
+        const data = await axiosClient.get(`/notifications/${user.id}`);
+        setNotifications(data);
+        setUnreadCount(data.filter((n) => !n.isRead).length);
       } catch (error) {
         console.error("Lỗi lấy thông báo:", error);
       }
@@ -218,9 +218,7 @@ const ClientLayout = () => {
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
     try {
-      await fetch(`${API_BASE}/notifications/${notifId}/read`, {
-        method: "PUT",
-      });
+      await axiosClient.put(`/notifications/${notifId}/read`);
     } catch (error) {
       console.error("Lỗi đánh dấu đã đọc:", error);
     }
@@ -230,9 +228,7 @@ const ClientLayout = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
     try {
-      await fetch(`${API_BASE}/notifications/user/${user.id}/read-all`, {
-        method: "PUT",
-      });
+      await axiosClient.put(`/notifications/user/${user.id}/read-all`);
     } catch (error) {
       console.error("Lỗi đánh dấu đọc tất cả:", error);
     }

@@ -5,9 +5,10 @@ const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const xlsx = require('xlsx'); // Thêm thư viện xlsx
 const db = require('../config/db');
+const rateLimit = require('../middlewares/rateLimit');
 
 // Cấu hình lưu tạm file trong bộ nhớ (Buffer)
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 // 1. API Lấy cấu hình hiện tại
 router.get('/config', async (req, res) => {
@@ -39,7 +40,7 @@ router.get('/config', async (req, res) => {
 });
 
 // 2. API Cập nhật Prompt và Huấn luyện file (Hỗ trợ PDF, Word, Excel)
-router.post('/train', upload.single('file'), async (req, res) => {
+router.post('/train', rateLimit('ai-train', 10, 60 * 60 * 1000), upload.single('file'), async (req, res) => {
     try {
         const { promptCoBan } = req.body;
         let extractedText = "";

@@ -37,7 +37,7 @@ const getEmployees = async (req, res) => {
 const deleteEmployee = async (req, res) => {
     try {
         const { id } = req.params;
-        await db.execute('UPDATE NguoiDung SET TrangThai = 0 WHERE MaND = ?', [id]);
+        await db.execute("UPDATE NguoiDung SET TrangThai = 0 WHERE MaND = ? AND MaQuyen != 'CUST'", [id]);
         res.status(200).json({ message: "Đã khóa tài khoản nhân viên thành công!" });
     } catch (error) {
         console.error("Lỗi khóa nhân viên:", error);

@@ -1,28 +1,44 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const db = require("../config/db");
+const jwt = require('jsonwebtoken');
 
 // Khởi tạo Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 module.exports = function (io) {
+  io.use(async (socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next();
+    try {
+      if (!process.env.JWT_SECRET) throw new Error('Thiếu cấu hình xác thực');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const [[user]] = await db.execute('SELECT MaND, MaQuyen, TrangThai FROM NguoiDung WHERE MaND = ?', [decoded.id]);
+      if (!user || Number(user.TrangThai) !== 1) throw new Error('Tài khoản không hoạt động');
+      socket.data.user = { id: user.MaND, role: user.MaQuyen };
+      next();
+    } catch (error) { next(new Error('Xác thực socket thất bại')); }
+  });
   io.on("connection", (socket) => {
     console.log(`🔌 Kết nối mới: ${socket.id}`);
 
     socket.on("join_notification_room", (userId) => {
       const recipientId = Number(userId);
-      if (Number.isInteger(recipientId) && recipientId > 0) {
+      if (socket.data.user && recipientId === Number(socket.data.user.id)) {
         socket.join(`NOTIF_${recipientId}`);
       }
     });
 
     socket.on("join_staff_room", () => {
+      if (!['ADMIN', 'STAFF'].includes(socket.data.user?.role)) return;
       socket.join("STAFF_ROOM");
       console.log(`Nhân viên đã tham gia trực chat.`);
     });
 
     // 1. KHÁCH HÀNG BẮT ĐẦU HOẶC TIẾP TỤC CHAT
     socket.on("join_chat", async (data) => {
-      const { maND, sessionID } = data;
+      const { maND, sessionID } = data || {};
+      if (maND && Number(maND) !== Number(socket.data.user?.id)) return;
+      if (!maND && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(sessionID || ''))) return;
       const roomName = maND ? `CUST_${maND}` : `GUEST_${sessionID}`;
       socket.join(roomName);
 
@@ -80,6 +96,8 @@ module.exports = function (io) {
           }),
         }));
 
+        socket.data.chat = { maPhien, roomName };
+
         socket.emit("chat_ready", {
           maPhien,
           roomName,
@@ -93,7 +111,8 @@ module.exports = function (io) {
 
     // 2. XỬ LÝ KHI KHÁCH HÀNG GỬI TIN NHẮN
     socket.on("send_message", async (data) => {
-      const { maPhien, roomName, text, isHandoverToHuman } = data;
+      const { maPhien, roomName, text, isHandoverToHuman } = data || {};
+      if (Number(maPhien) !== Number(socket.data.chat?.maPhien) || roomName !== socket.data.chat?.roomName || !String(text || '').trim()) return;
 
       try {
         await db.query(
@@ -308,8 +327,13 @@ ${duLieuHuanLuyen}
 
     // 3. XỬ LÝ KHI NHÂN VIÊN GỬI TIN NHẮN TRẢ LỜI KHÁCH
     socket.on("staff_send_message", async (data) => {
-      const { id, maPhien, maNhanVien, roomName, text } = data;
+      if (!['ADMIN', 'STAFF'].includes(socket.data.user?.role)) return;
+      const { id, maPhien, text } = data || {};
+      if (!Number.isInteger(Number(maPhien)) || !String(text || '').trim()) return;
       try {
+        const [[session]] = await db.execute('SELECT MaND, SessionID FROM PhienChat WHERE MaPhien = ?', [maPhien]);
+        if (!session) return;
+        const roomName = session.MaND ? `CUST_${session.MaND}` : `GUEST_${session.SessionID}`;
         const messageId = id || Date.now();
         const timeNow = new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
@@ -319,7 +343,7 @@ ${duLieuHuanLuyen}
 
         await db.query(
           `UPDATE PhienChat SET MaNhanVienXuLy = ?, TrangThai = 'human' WHERE MaPhien = ?`,
-          [maNhanVien, maPhien],
+          [socket.data.user.id, maPhien],
         );
         await db.query(
           `INSERT INTO ChiTietChat (MaPhien, VaiTro, NoiDung) VALUES (?, 'STAFF', ?)`,
@@ -348,8 +372,13 @@ ${duLieuHuanLuyen}
 
     // 4. XỬ LÝ KHI NHÂN VIÊN/ADMIN KẾT THÚC CUỘC TRÒ CHUYỆN
     socket.on("end_chat", async (data) => {
-      const { maPhien, roomName } = data;
+      if (!['ADMIN', 'STAFF'].includes(socket.data.user?.role)) return;
+      const { maPhien } = data || {};
+      if (!Number.isInteger(Number(maPhien))) return;
       try {
+        const [[session]] = await db.execute('SELECT MaND, SessionID FROM PhienChat WHERE MaPhien = ?', [maPhien]);
+        if (!session) return;
+        const roomName = session.MaND ? `CUST_${session.MaND}` : `GUEST_${session.SessionID}`;
         await db.query(
           `UPDATE PhienChat SET TrangThai = 'bot', MaNhanVienXuLy = NULL WHERE MaPhien = ?`,
           [maPhien],

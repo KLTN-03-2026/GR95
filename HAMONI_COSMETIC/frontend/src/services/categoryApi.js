@@ -11,9 +11,13 @@ export const categoryApi = {
     
     delete: (id) => axiosClient.delete(`/categories/${id}`),
     
-    // Riêng tải file xuất Excel thì phải dùng window.location nên cần gọi biến môi trường
-    exportExcel: () => {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL;
-        window.location.href = `${baseUrl}/categories/export`;
+    exportExcel: async () => {
+        const blob = await axiosClient.get('/categories/export', { responseType: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'danh-muc.xlsx';
+        link.click();
+        URL.revokeObjectURL(url);
     }
 };

@@ -3,6 +3,13 @@ const { createNotification } = require("./notificationController");
 
 const STOCK_OUTGOING_STATUS = "DaXacNhan";
 const STOCK_RETURN_STATUS = "DaHuy";
+const ALLOWED_ORDER_TRANSITIONS = {
+  ChoXacNhan: new Set(['ChoXacNhan', 'DaXacNhan', 'DaHuy']),
+  DaXacNhan: new Set(['DaXacNhan', 'DangGiao', 'DaHuy']),
+  DangGiao: new Set(['DangGiao', 'HoanThanh', 'DaHuy']),
+  HoanThanh: new Set(['HoanThanh']),
+  DaHuy: new Set(['DaHuy']),
+};
 
 const loadOrderItems = async (conn, orderId) => {
   const [items] = await conn.execute(
@@ -332,23 +339,47 @@ exports.updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { newStatus, daHoanTien } = req.body;
 
-    try {
-      await conn.query(
-        `ALTER TABLE DonHang ADD COLUMN DaHoanTien TINYINT(1) DEFAULT 0`,
-      );
-    } catch (err) {}
-
     await conn.beginTransaction();
 
     // ĐÃ FIX: Thêm MaND để lát nữa gửi thông báo
     const [[old]] = await conn.execute(
-      `SELECT TrangThai, COALESCE(DaHoanTien, 0) AS DaHoanTien, MaND FROM DonHang WHERE MaDH = ?`,
+      `SELECT TrangThai, COALESCE(DaHoanTien, 0) AS DaHoanTien, MaND, MaVoucher FROM DonHang WHERE MaDH = ? FOR UPDATE`,
       [id],
     );
 
     if (!old) {
       await conn.rollback();
       return res.status(404).json({ message: "Không tìm thấy" });
+    }
+
+    if (!ALLOWED_ORDER_TRANSITIONS[old.TrangThai]?.has(newStatus)) {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Chuyển trạng thái đơn hàng không hợp lệ' });
+    }
+
+    if (newStatus === 'DaXacNhan' && old.TrangThai !== 'DaXacNhan') {
+      const [[payment]] = await conn.execute('SELECT PhuongThuc, TrangThai FROM ThanhToan WHERE MaDH = ? FOR UPDATE', [id]);
+      if (payment?.PhuongThuc === 'VNPAY' && payment.TrangThai !== 'DaThanhToan') {
+        await conn.rollback();
+        return res.status(409).json({ message: 'Chưa nhận được thanh toán online' });
+      }
+    }
+
+    const refundValue = daHoanTien === true || daHoanTien === 1;
+    if (typeof daHoanTien !== 'undefined' && Number(refundValue) !== Number(old.DaHoanTien) && req.user.role !== 'ADMIN') {
+      await conn.rollback();
+      return res.status(403).json({ message: 'Chỉ quản trị viên được cập nhật trạng thái hoàn tiền' });
+    }
+    if (refundValue && newStatus !== 'DaHuy') {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Chỉ hoàn tiền cho đơn đã hủy' });
+    }
+    if (refundValue && !old.DaHoanTien) {
+      const [[payment]] = await conn.execute('SELECT TrangThai FROM ThanhToan WHERE MaDH = ? FOR UPDATE', [id]);
+      if (payment?.TrangThai !== 'DaThanhToan') {
+        await conn.rollback();
+        return res.status(400).json({ message: 'Đơn hàng chưa ghi nhận thanh toán' });
+      }
     }
 
     if (old.TrangThai === newStatus && typeof daHoanTien === "undefined") {
@@ -370,20 +401,21 @@ exports.updateOrderStatus = async (req, res) => {
       newStatus === STOCK_RETURN_STATUS &&
       old.TrangThai !== STOCK_RETURN_STATUS
     ) {
-      if (
-        (old.TrangThai === "ChoXacNhan" ||
-          old.TrangThai === STOCK_OUTGOING_STATUS ||
-          old.TrangThai === "DangGiao") &&
-        latestStockMovement === "XUAT_DON_HANG"
-      ) {
+      if (latestStockMovement === "XUAT_DON_HANG") {
         await restoreOrderStock(conn, id);
+      }
+      if (old.MaVoucher) {
+        await conn.execute(
+          'UPDATE Voucher SET SoLuongDaDung = GREATEST(COALESCE(SoLuongDaDung, 0) - 1, 0) WHERE MaVoucher = ?',
+          [old.MaVoucher],
+        );
       }
     }
 
     if (typeof daHoanTien !== "undefined") {
       await conn.execute(
         `UPDATE DonHang SET TrangThai = ?, DaHoanTien = ? WHERE MaDH = ?`,
-        [newStatus, daHoanTien ? 1 : 0, id],
+        [newStatus, refundValue ? 1 : 0, id],
       );
     } else {
       await conn.execute(`UPDATE DonHang SET TrangThai = ? WHERE MaDH = ?`, [
@@ -436,7 +468,7 @@ exports.cancelOrder = async (req, res) => {
 
     // ĐÃ FIX: Thêm MaND để gửi thông báo khi huỷ đơn
     const [[order]] = await conn.execute(
-      `SELECT TrangThai, MaND FROM DonHang WHERE MaDH = ?`,
+      `SELECT TrangThai, MaND, MaVoucher FROM DonHang WHERE MaDH = ? FOR UPDATE`,
       [id],
     );
 
@@ -445,15 +477,22 @@ exports.cancelOrder = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy đơn" });
     }
 
+    if (order.TrangThai === 'DaHuy' || order.TrangThai === 'HoanThanh') {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Không thể hủy đơn ở trạng thái hiện tại' });
+    }
+
     const latestStockMovement = await getLatestOrderStockMovement(conn, id);
 
-    if (
-      (order.TrangThai === "ChoXacNhan" ||
-        order.TrangThai === STOCK_OUTGOING_STATUS ||
-        order.TrangThai === "DangGiao") &&
-      latestStockMovement === "XUAT_DON_HANG"
-    ) {
+    if (latestStockMovement === "XUAT_DON_HANG") {
       await restoreOrderStock(conn, id);
+    }
+
+    if (order.MaVoucher) {
+      await conn.execute(
+        'UPDATE Voucher SET SoLuongDaDung = GREATEST(COALESCE(SoLuongDaDung, 0) - 1, 0) WHERE MaVoucher = ?',
+        [order.MaVoucher],
+      );
     }
 
     await conn.execute(

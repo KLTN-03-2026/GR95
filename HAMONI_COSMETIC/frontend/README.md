@@ -1,16 +1,11 @@
-# React + Vite
+# Hamoni Cosmetic frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Giao diện khách hàng và quản trị dùng React 19, Vite 8, React Router và Zustand. Xem [README gốc](../README.md) để thiết lập backend và cơ sở dữ liệu; xem [HANDOFF](../HANDOFF.md) để biết rủi ro còn lại.
 
-Currently, two official plugins are available:
+## Chạy local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Tạo `frontend/.env` với `VITE_API_BASE_URL=http://localhost:5000/api` và `VITE_SOCKET_URL=http://localhost:5000` nếu dùng chat/thông báo thời gian thực.
+2. Chạy `npm.cmd install` rồi `npm.cmd run dev` trong thư mục này.
+3. Chạy `npm.cmd run build` để kiểm tra bản production và `npm.cmd run lint` để xem các lỗi React/ESLint còn lại.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Các biến `VITE_*` được đưa vào bundle công khai. Không đặt token, mật khẩu hoặc khóa dịch vụ vào đây.

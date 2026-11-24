@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosClient from "../../../services/axiosClient";
 import "./OrderLogsPage.css";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const OrderLogsPage = () => {
   const { id } = useParams();
@@ -20,8 +18,8 @@ const OrderLogsPage = () => {
     setLoading(true);
 
     try {
-      const res = await axios.get(`${API_BASE_URL}/orders/${id}`);
-      setOrderData(res.data);
+      const res = await axiosClient.get(`/orders/${id}`);
+      setOrderData(res);
     } catch (err) {
       console.error("🔥 Lỗi API:", err);
       setOrderData({ id: "Lỗi", khachHang: {}, chiTiet: [], lichSu: [] });

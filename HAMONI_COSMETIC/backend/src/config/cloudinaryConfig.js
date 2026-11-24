@@ -15,13 +15,20 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'HAMONI_Uploads', // Tên thư mục nó sẽ tự tạo trên Cloudinary
-    resource_type: 'auto', // Tự động nhận diện loại file (ảnh, video...)
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp','mp4','mov'], // Chỉ cho phép up ảnh
+    resource_type: 'image',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     // transformation: [{ width: 500, height: 500, crop: 'limit' }] // Bạn có thể mở comment dòng này nếu muốn tự động thu nhỏ ảnh
   },
 });
 
 // 3. Đóng gói thành middleware
-const uploadCloud = multer({ storage });
+const uploadCloud = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, callback) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) return callback(null, true);
+    callback(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname));
+  },
+});
 
 module.exports = uploadCloud;

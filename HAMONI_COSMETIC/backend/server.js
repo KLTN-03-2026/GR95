@@ -1,6 +1,7 @@
 // Import các thư viện cần thiết
 const express = require("express");
 const cors = require("cors");
+const multer = require('multer');
 require("dotenv").config();
 require("./src/config/db");
 
@@ -9,6 +10,8 @@ const { Server } = require("socket.io");
 
 // Khởi tạo app Express
 const app = express();
+const { verifyToken, requireRole } = require('./src/middlewares/authMiddleware');
+const staffOnly = [verifyToken, requireRole('ADMIN', 'STAFF')];
 
 // ===============================
 // CẤU HÌNH CORS
@@ -30,11 +33,6 @@ const checkCorsOrigin = (origin, callback) => {
 
   // Cho phép các origin có trong danh sách
   if (allowedOrigins.includes(origin)) {
-    return callback(null, true);
-  }
-
-  // Cho phép các domain Vercel preview/production
-  if (origin.endsWith(".vercel.app")) {
     return callback(null, true);
   }
 
@@ -105,26 +103,26 @@ const { startCassoCron } = require("./src/config/cassoService");
 
 // Đăng ký các API vào hệ thống
 app.use("/api/auth", authRoutes);
-app.use("/api/roles", roleRoutes);
+app.use("/api/roles", staffOnly, roleRoutes);
 app.use("/api/categories", categoryRoutes);
-app.use("/api/customers", customerRoutes);
-app.use("/api/employees", employeeRoutes);
-app.use("/api/orders", orderRoutes);
+app.use("/api/customers", staffOnly, customerRoutes);
+app.use("/api/employees", verifyToken, requireRole('ADMIN'), employeeRoutes);
+app.use("/api/orders", staffOnly, orderRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/upload", uploadRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/reports", reportRoutes);
-app.use("/api/reviews", reviewRoutes);
-app.use("/api/vouchers", voucherRoutes);
+app.use("/api/dashboard", staffOnly, dashboardRoutes);
+app.use("/api/reports", staffOnly, reportRoutes);
+app.use("/api/reviews", staffOnly, reviewRoutes);
+app.use("/api/vouchers", staffOnly, voucherRoutes);
 app.use("/api/promotions", promotionRoutes);
 app.use("/api/orderpayment", orderpaymentRoutes);
 app.use("/api/shopping-cart", shoppingcartRoutes);
-app.use("/api/warehouse", warehouseRoutes);
+app.use("/api/warehouse", verifyToken, requireRole('ADMIN', 'STAFF', 'KHO'), warehouseRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/client/products", clientProductRoutes);
-app.use("/api/ai-config", aiConfigRoutes);
-app.use("/api/admin/chats", adminChatRoutes);
+app.use("/api/ai-config", staffOnly, aiConfigRoutes);
+app.use("/api/admin/chats", staffOnly, adminChatRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/product-reviews", productreviewRoutes);
 app.use("/api/orderhistory", orderhistoryRoutes);
@@ -139,33 +137,12 @@ app.get("/", (req, res) => {
   });
 });
 
-// ===============================
-// WEBHOOK CASSO
-// ===============================
-
-app.post("/webhook", (req, res) => {
-  try {
-    console.log("[Webhook Casso] Nhận được dữ liệu từ Casso:", req.body);
-
-    // Verify secret key nếu cần dùng sau
-    const signature = req.headers["x-signature"] || "";
-    const secretKey = process.env.CASSO_WEBHOOK_SECRET || "1212";
-
-    // Return 200 OK to Casso immediately
-    res.status(200).json({
-      status: "ok",
-      message: "Webhook received",
-    });
-
-    console.log("[Webhook Casso] Xử lý giao dịch từ Casso...");
-  } catch (error) {
-    console.error("[Webhook Casso] Lỗi:", error.message);
-
-    // Return 200 để tránh Casso retry liên tục
-    res.status(200).json({
-      status: "ok",
-    });
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    return res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ message: 'File tải lên không hợp lệ hoặc quá lớn' });
   }
+  console.error('API error:', error);
+  return res.status(500).json({ message: 'Lỗi server' });
 });
 
 // ===============================

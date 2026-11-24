@@ -1,5 +1,4 @@
 import axiosClient from './axiosClient';
-import axios from 'axios';
 
 export const bannerApi = {
     // Lấy danh sách banner, có hỗ trợ tìm kiếm qua params
@@ -15,7 +14,7 @@ export const bannerApi = {
     delete: (id) => axiosClient.delete(`/banners/${id}`),
     
     uploadImage: (formData) => {
-    return axios.post('/api/upload', formData, {
+    return axiosClient.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
 }

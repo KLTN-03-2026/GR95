@@ -55,7 +55,10 @@ const shoppingcartController = {
                 ) gh
                 JOIN BienTheSanPham bt ON gh.MaBienThe = bt.MaBienThe
                 JOIN SanPham sp ON bt.MaSP = sp.MaSP
-                LEFT JOIN TonKho tk ON bt.MaBienThe = tk.MaBienThe
+                LEFT JOIN (
+                    SELECT MaBienThe, SUM(SoLuongTon) AS SoLuongTon
+                    FROM TonKho GROUP BY MaBienThe
+                ) tk ON bt.MaBienThe = tk.MaBienThe
                 LEFT JOIN (
                     SELECT
                         MaThamChieu,
@@ -64,6 +67,7 @@ const shoppingcartController = {
                             MIN(DuongDanAnh)
                         ) AS DuongDanAnh
                     FROM HinhAnh
+                    WHERE LoaiThamChieu = 'SanPham'
                     GROUP BY MaThamChieu
                 ) h ON h.MaThamChieu = sp.MaSP
             `;
@@ -92,7 +96,10 @@ const shoppingcartController = {
 
             const [stock] = await conn.query(`SELECT SoLuongTon FROM TonKho WHERE MaBienThe = ? FOR UPDATE`, [maBienThe]);
 
-            if (stock.length === 0) return res.status(404).json({ success: false, message: "Sản phẩm không tồn tại" });
+            if (stock.length === 0) {
+                await conn.rollback();
+                return res.status(404).json({ success: false, message: "Sản phẩm không tồn tại" });
+            }
 
             const [check] = await conn.query(
 `SELECT COALESCE(SUM(SoLuong), 0) AS SoLuongTrongGio, COALESCE(MAX(IsSelected), 1) AS IsSelected
@@ -103,7 +110,7 @@ const shoppingcartController = {
             const isSelected = Number(check?.[0]?.IsSelected ?? 1);
             const soLuongMoi = soLuongTrongGio + Number(soLuong);
             
-            const soLuongTonKho = Number(stock[0].SoLuongTon || 0);
+            const soLuongTonKho = stock.reduce((total, row) => total + Number(row.SoLuongTon || 0), 0);
 
             if (soLuongMoi > soLuongTonKho) {
                 await conn.rollback();
@@ -147,7 +154,7 @@ const shoppingcartController = {
             await conn.beginTransaction();
             const [stock] = await conn.query(`SELECT SoLuongTon FROM TonKho WHERE MaBienThe = ? FOR UPDATE`, [maBienThe]);
 
-            const soLuongTonKho = Number(stock?.[0]?.SoLuongTon || 0);
+            const soLuongTonKho = stock.reduce((total, row) => total + Number(row.SoLuongTon || 0), 0);
 
             if (stock.length > 0 && Number(soLuong) > soLuongTonKho) {
                 await conn.rollback();
@@ -208,7 +215,10 @@ const shoppingcartController = {
             const [items] = await conn.query(`
                 SELECT gh.MaBienThe, gh.SoLuong, tk.SoLuongTon, sp.TenSP
                 FROM GioHang gh
-                JOIN TonKho tk ON gh.MaBienThe = tk.MaBienThe
+                JOIN (
+                    SELECT MaBienThe, SUM(SoLuongTon) AS SoLuongTon
+                    FROM TonKho GROUP BY MaBienThe
+                ) tk ON gh.MaBienThe = tk.MaBienThe
                 JOIN BienTheSanPham bt ON gh.MaBienThe = bt.MaBienThe
                 JOIN SanPham sp ON bt.MaSP = sp.MaSP
                 WHERE gh.MaND = ? AND gh.IsSelected = 1

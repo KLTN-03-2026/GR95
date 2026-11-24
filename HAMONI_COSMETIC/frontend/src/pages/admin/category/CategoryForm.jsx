@@ -2,10 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, CheckCircle, AlertCircle, Upload } from "lucide-react";
-import axios from "axios";
+import axiosClient from "../../../services/axiosClient";
 import { categoryApi } from "../../../services/categoryApi";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const CategoryForm = ({
   isOpen,
@@ -102,11 +100,8 @@ const CategoryForm = ({
         const uploadData = new FormData();
         uploadData.append("image", selectedFile);
 
-        const uploadRes = await axios.post(
-          `${API_BASE_URL}/upload`,
-          uploadData,
-        );
-        imageUrl = uploadRes.data.url;
+        const uploadRes = await axiosClient.post('/upload', uploadData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        imageUrl = uploadRes.url;
       }
 
       const formData = {

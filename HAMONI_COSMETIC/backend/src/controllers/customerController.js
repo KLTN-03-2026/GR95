@@ -30,7 +30,7 @@ exports.getCustomers = async (req, res) => {
 // 2. Lấy chi tiết 1 khách hàng 
 exports.getCustomerById = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT * FROM NguoiDung WHERE MaND = ? AND MaQuyen = "CUST"', [req.params.id]);
+        const [rows] = await db.execute('SELECT MaND, MaQuyen, HoTen, Email, SoDienThoai, DiaChi, GioiTinh, NgaySinh, AvatarUrl, TrangThai, NgayDangKy FROM NguoiDung WHERE MaND = ? AND MaQuyen = "CUST"', [req.params.id]);
         if (rows.length === 0) {
             return res.status(404).json({ message: "Không tìm thấy khách hàng" });
         }
@@ -68,7 +68,7 @@ exports.updateCustomerStatus = async (req, res) => {
 // 3. Xóa khách hàng
 exports.deleteCustomer = async (req, res) => {
     try {
-        const [result] = await db.execute('DELETE FROM NguoiDung WHERE MaND = ?', [req.params.id]);
+        const [result] = await db.execute('DELETE FROM NguoiDung WHERE MaND = ? AND MaQuyen = "CUST"', [req.params.id]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "Không tìm thấy khách hàng để xóa" });
         }
@@ -90,7 +90,7 @@ exports.exportExcel = async (req, res) => {
             { header: 'SĐT', key: 'SoDienThoai', width: 15 },
             { header: 'Trạng Thái', key: 'TrangThaiText', width: 15 },
         ];
-        const [rows] = await db.execute('SELECT * FROM NguoiDung WHERE MaQuyen = "CUST"');
+        const [rows] = await db.execute('SELECT MaND, HoTen, Email, SoDienThoai, TrangThai FROM NguoiDung WHERE MaQuyen = "CUST"');
         const dataForExcel = rows.map(item => ({
             ...item,
             TrangThaiText: item.TrangThai === 1 ? 'Hoạt động' : 'Bị chặn'

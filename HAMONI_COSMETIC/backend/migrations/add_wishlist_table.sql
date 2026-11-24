@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS DanhSachYeuThich (
+    MaND INT NOT NULL,
+    MaBienThe INT NOT NULL,
+    PRIMARY KEY (MaND, MaBienThe),
+    CONSTRAINT FK_YeuThich_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND),
+    CONSTRAINT FK_YeuThich_BienThe FOREIGN KEY (MaBienThe) REFERENCES BienTheSanPham(MaBienThe)
+);

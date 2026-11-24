@@ -59,7 +59,7 @@ const EmployeeDetail = () => {
     };
 
     // ← THÊM: component avatar tái sử dụng, xử lý cả lỗi load ảnh
-    const AvatarDisplay = ({ size = 120, fontSize = 48 }) => {
+    const renderAvatar = (size = 120, fontSize = 48) => {
         const hasValidUrl = formData.AvatarUrl && formData.AvatarUrl.trim() !== '' && !avatarError;
 
         if (hasValidUrl) {
@@ -125,7 +125,7 @@ const EmployeeDetail = () => {
                         <div className="card-body text-center p-5">
                             
                             {/* ← SỬA: dùng component AvatarDisplay */}
-                            <AvatarDisplay size={120} fontSize={48} />
+                            {renderAvatar(120, 48)}
 
                             <h3 className="fw-bold text-dark mb-1">{formData.HoTen}</h3>
                             <p className="text-muted mb-4">Mã số: <strong>NV-{id}</strong></p>

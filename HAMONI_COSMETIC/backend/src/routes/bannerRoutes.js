@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const bannerController = require('../controllers/bannerController');
+const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
+const staffOnly = [verifyToken, requireRole('ADMIN', 'STAFF')];
 
 // Lấy toàn bộ danh sách banner (hỗ trợ search)
 router.get('/', bannerController.getBanners);
@@ -9,12 +11,12 @@ router.get('/', bannerController.getBanners);
 router.get('/:id', bannerController.getBannerById);
 
 // Thêm mới banner
-router.post('/', bannerController.createBanner);
+router.post('/', staffOnly, bannerController.createBanner);
 
 // Cập nhật banner
-router.put('/:id', bannerController.updateBanner);
+router.put('/:id', staffOnly, bannerController.updateBanner);
 
 // Xóa banner
-router.delete('/:id', bannerController.deleteBanner);
+router.delete('/:id', staffOnly, bannerController.deleteBanner);
 
 module.exports = router;

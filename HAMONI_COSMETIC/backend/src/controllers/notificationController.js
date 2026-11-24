@@ -69,9 +69,8 @@ const notificationController = {
   markAsRead: async (req, res) => {
     const notifId = req.params.notifId;
     try {
-      await db.query(`UPDATE ThongBao SET TrangThaiDoc = 1 WHERE MaTB = ?`, [
-        notifId,
-      ]);
+      const [result] = await db.query(`UPDATE ThongBao SET TrangThaiDoc = 1 WHERE MaTB = ? AND MaND = ?`, [notifId, req.user.id]);
+      if (!result.affectedRows) return res.status(404).json({ message: 'Không tìm thấy thông báo' });
       res.status(200).json({ message: "Đã cập nhật trạng thái đọc" });
     } catch (error) {
       console.error(`Lỗi khi đánh dấu đã đọc cho thông báo ${notifId}:`, error);

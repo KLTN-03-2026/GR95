@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Search, Filter, Download } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import * as XLSX from "xlsx";
 
 import axiosClient from "../../../services/axiosClient";
 import "./ProductManagement.css";
@@ -190,6 +189,7 @@ const ProductManagement = () => {
         };
       });
 
+      const XLSX = await import('xlsx');
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
 

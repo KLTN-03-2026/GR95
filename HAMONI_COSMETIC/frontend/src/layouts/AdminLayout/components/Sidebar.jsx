@@ -29,6 +29,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [userInfo, setUserInfo] = useState({
     name: "Đang tải...",
     role: "...",
+    roleCode: "",
     avatar: "",
     permissions: [],
   });
@@ -48,6 +49,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         setUserInfo({
           name: userData.hoTen,
           role: userData.role,
+          roleCode: userData.maQuyen,
           avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.hoTen}&backgroundColor=635F40`,
           permissions: apiPermissions,
         });
@@ -102,6 +104,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   };
 
   const canViewModule = (hideCode) => {
+    if (userInfo.roleCode === 'KHO') return hideCode === 'HIDE_MODULE_INVENTORY';
     if (userInfo.permissions.includes("ALL")) return true;
     return !userInfo.permissions.includes(hideCode);
   };

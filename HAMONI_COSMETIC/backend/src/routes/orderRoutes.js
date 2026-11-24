@@ -8,11 +8,10 @@ router.get('/logs/:id', orderController.getOrderLogs);
 // 🔥 list
 router.get('/', orderController.getOrders);
 
+router.get('/alerts', orderController.getRefundAlerts);
+
 // 🔥 detail
 router.get('/:id', orderController.getOrderDetail);
-
-// Alerts: transfer-paid canceled orders not refunded
-router.get('/alerts', orderController.getRefundAlerts);
 
 router.put('/:id/status', orderController.updateOrderStatus);
 router.put('/:id/cancel', orderController.cancelOrder);

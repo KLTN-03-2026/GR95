@@ -151,6 +151,14 @@ CREATE TABLE GioHang (
     CONSTRAINT FK_GioHang_BienThe FOREIGN KEY (MaBienThe) REFERENCES BienTheSanPham(MaBienThe)
 );
 
+CREATE TABLE DanhSachYeuThich (
+    MaND INT NOT NULL,
+    MaBienThe INT NOT NULL,
+    PRIMARY KEY (MaND, MaBienThe),
+    CONSTRAINT FK_YeuThich_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND),
+    CONSTRAINT FK_YeuThich_BienThe FOREIGN KEY (MaBienThe) REFERENCES BienTheSanPham(MaBienThe)
+);
+
 CREATE TABLE GiuHangTam (
     MaND INT NOT NULL,
     MaBienThe INT NOT NULL,
@@ -191,7 +199,7 @@ CREATE TABLE ThanhToan (
     MaDH INT,
     PhuongThuc VARCHAR(50), 
     TrangThai VARCHAR(50), 
-    MaGiaoDichDoiTac VARCHAR(100) NULL, 
+    MaGiaoDichDoiTac VARCHAR(100) NULL UNIQUE,
     MaPhanHoi VARCHAR(10) NULL, 
     DuLieuWebhook TEXT NULL, 
     NgayThanhToan DATETIME,
@@ -212,7 +220,8 @@ CREATE TABLE DanhGia (
     NgayDanhGia DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT FK_DanhGia_NguoiDung FOREIGN KEY (MaND) REFERENCES NguoiDung(MaND),
     CONSTRAINT FK_DanhGia_SanPham FOREIGN KEY (MaSP) REFERENCES SanPham(MaSP),
-    CONSTRAINT FK_DanhGia_DonHang FOREIGN KEY (MaDH) REFERENCES DonHang(MaDH)
+    CONSTRAINT FK_DanhGia_DonHang FOREIGN KEY (MaDH) REFERENCES DonHang(MaDH),
+    UNIQUE KEY uq_danh_gia_don_san_pham (MaND, MaDH, MaSP)
 );
 
 CREATE TABLE DanhGia_PhanHoi (

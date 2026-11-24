@@ -40,8 +40,6 @@ const OrderManagement = () => {
     limit: 5
 });
 
-console.log("🔥 API:", res.data);
-
 let dataList = res.data || [];
 let totalPages = res.pagination?.totalPages || 1;
 
@@ -64,26 +62,6 @@ setTotalPages(totalPages);
         return () => clearTimeout(timer);
     }, [loadOrders]);
 
-    // show toast for transfer-paid canceled orders that are not refunded
-    useEffect(() => {
-        if (loading) return;
-        if (!orders || orders.length === 0) return;
-
-        const flagged = orders.filter(o => {
-            try {
-                return o.trangThai === 'DaHuy' && isTransferPaidOrder(o) && !o.daHoanTien;
-            } catch {
-                return false;
-            }
-        });
-
-        if (flagged.length > 0) {
-            const ids = flagged.map(o => `#HM-${o.id}`).slice(0, 10).join(', ');
-            const msg = `Có ${flagged.length} đơn chuyển khoản đã hủy chưa hoàn tiền: ${ids}`;
-            toast.warning(msg, { position: 'top-right', autoClose: 8000 });
-        }
-    }, [orders, loading]);
-
     // also fetch alerts endpoint to show server-side computed alerts (keeps list in sync)
     useEffect(() => {
         let cancelled = false;
@@ -91,8 +69,8 @@ setTotalPages(totalPages);
             try {
                 const res = await orderApi.getRefundAlerts();
                 if (cancelled) return;
-                if (!res || !res.data) return;
-                const { count, ids } = res.data;
+                if (!res) return;
+                const { count, ids } = res;
                 if (count > 0) {
                     const msg = `Có ${count} đơn chuyển khoản đã hủy chưa hoàn tiền: ${ids.slice(0,10).map(i=>`#HM-${i}`).join(', ')}`;
                     toast.warning(msg, { position: 'top-right', autoClose: 8000 });
@@ -104,11 +82,6 @@ setTotalPages(totalPages);
 
         return () => { cancelled = true; };
     }, []);
-
-    // ===== RESET PAGE =====
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [search, statusFilter, dateRange.start, dateRange.end]);
 
     // ===== FORMAT =====
     const formatCurrency = (amount) =>
@@ -169,7 +142,7 @@ setTotalPages(totalPages);
                     <select 
                         className="status-select"
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
                     >
                         {tabs.map(tab => (
                             <option key={tab.id} value={tab.id}>
@@ -186,7 +159,7 @@ setTotalPages(totalPages);
                         className="search-input"
                         placeholder="Tìm theo Mã đơn hàng, Tên khách hàng..." 
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     />
                 </div>
 
@@ -197,13 +170,13 @@ setTotalPages(totalPages);
                         <input 
                             type="date" 
                             value={dateRange.start}
-                            onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                            onChange={(e) => { setDateRange({...dateRange, start: e.target.value}); setCurrentPage(1); }}
                         />
                         <span className="date-separator">-</span>
                         <input 
                             type="date" 
                             value={dateRange.end}
-                            onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                            onChange={(e) => { setDateRange({...dateRange, end: e.target.value}); setCurrentPage(1); }}
                         />
                     </div>
                 </div>

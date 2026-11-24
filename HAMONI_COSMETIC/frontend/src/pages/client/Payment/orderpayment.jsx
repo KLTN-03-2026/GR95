@@ -454,12 +454,12 @@ const OrderPayment = () => {
     }
   };
 
-  const handleCloseOnlinePayment = (isOrderDeleted = false) => {
+  const handleCloseOnlinePayment = (isOrderCancelled = false) => {
     if (confirmingOnlinePayment) return;
     setShowOnlinePaymentModal(false);
     setOnlinePaymentInfo(null);
-    if (isOrderDeleted) {
-      pushNotice("Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.");
+    if (isOrderCancelled) {
+      pushNotice("Bạn đã hủy thanh toán. Đơn hàng được lưu ở trạng thái đã hủy.");
       return;
     }
     pushNotice(
@@ -478,15 +478,15 @@ const OrderPayment = () => {
       const response = await orderApi.cancelUnpaidOrder({
         orderId: onlinePaymentInfo.orderId,
       });
-      const deletedOrderCount = Number(response?.data?.deleted?.donHang || 0);
+      const cancelled = response?.data?.cancelled;
 
-      if (deletedOrderCount !== 1) {
-        throw new Error("API hủy không xóa được đơn hàng trong bảng DonHang.");
+      if (!cancelled) {
+        throw new Error("Không xác nhận được trạng thái hủy đơn hàng.");
       }
 
       setShowOnlinePaymentModal(false);
       setOnlinePaymentInfo(null);
-      pushNotice("Bạn đã hủy thanh toán. Đơn hàng đã được xóa khỏi hệ thống.");
+      pushNotice("Bạn đã hủy thanh toán. Đơn hàng được lưu ở trạng thái đã hủy.");
 
       await loadCheckoutPreview(voucherCode, selectedVariantIds);
     } catch (error) {

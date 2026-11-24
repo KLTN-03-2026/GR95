@@ -2,7 +2,8 @@
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-// const bcrypt = require('bcrypt'); // Mở comment nếu sau này bạn làm chức năng Đăng ký có mã hóa pass
+const { randomInt } = require('crypto');
+const { hashPassword, verifyPassword, isHashed } = require('../utils/password');
 
 // ==========================================
 // CẤU HÌNH GỬI MAIL OTP & LƯU TRỮ TẠM
@@ -10,12 +11,19 @@ const nodemailer = require("nodemailer");
 const otpStore = {};
 const pendingRegisterStore = {};
 const forgotPasswordStore = {};
+setInterval(() => {
+  for (const store of [otpStore, pendingRegisterStore, forgotPasswordStore]) {
+    for (const [email, entry] of Object.entries(store)) {
+      if (Date.now() > entry.expire) delete store[email];
+    }
+  }
+}, 60 * 1000).unref();
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "dinhthiphuong5@dtu.edu.vn",
-    pass: "ecga ucyl zrfo adhy",
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
   },
 });
 
@@ -53,13 +61,18 @@ const login = async (req, res) => {
         .json({ message: "Tài khoản chưa được kích hoạt hoặc đã bị khóa!" });
     }
 
-    // Kiểm tra mật khẩu (Sử dụng text thường)
-    const isMatch = password === user.MatKhau;
+    const isMatch = await verifyPassword(password, user.MatKhau);
 
     if (!isMatch) {
       return res
         .status(401)
         .json({ message: "Email hoặc mật khẩu không chính xác!" });
+    }
+
+    if (!isHashed(user.MatKhau)) {
+      await db.execute('UPDATE NguoiDung SET MatKhau = ? WHERE MaND = ? AND MatKhau = ?', [
+        await hashPassword(password), user.MaND, user.MatKhau
+      ]);
     }
 
     const payload = {
@@ -72,7 +85,7 @@ const login = async (req, res) => {
 
     const token = jwt.sign(
       payload,
-      process.env.JWT_SECRET || "HAMONI_SECRET_KEY_2026",
+      process.env.JWT_SECRET,
       { expiresIn: tokenExpiresIn },
     );
 
@@ -286,7 +299,7 @@ const changePassword = async (req, res) => {
     }
 
     const currentPassword = users[0].MatKhau;
-    if (oldPassword !== currentPassword) {
+    if (!(await verifyPassword(oldPassword, currentPassword))) {
       return res.status(401).json({ message: "Mật khẩu cũ không chính xác!" });
     }
 
@@ -298,7 +311,7 @@ const changePassword = async (req, res) => {
 
     const [result] = await db.execute(
       "UPDATE NguoiDung SET MatKhau = ? WHERE MaND = ?",
-      [newPassword, userId],
+      [await hashPassword(newPassword), userId],
     );
 
     if (result.affectedRows === 0) {
@@ -325,6 +338,9 @@ const register = async (req, res) => {
 
   try {
     // 1. Kiểm tra rỗng
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      return res.status(503).json({ message: 'Dịch vụ email chưa được cấu hình' });
+    }
     if (!hoTen || !email || !password) {
       return res
         .status(400)
@@ -364,12 +380,12 @@ const register = async (req, res) => {
         .json({ message: "Email đã tồn tại trên hệ thống!" });
     }
 
-    const savedPassword = password;
+    const savedPassword = await hashPassword(password);
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
 
     const mailOptions = {
-      from: '"HAMONI COSMETIC" <dinhthiphuong5@dtu.edu.vn>',
+      from: `"HAMONI COSMETIC" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "MÃ XÁC THỰC - HAMONI",
       html: `<h3>Chào mừng ${hoTen}!</h3><p>Mã OTP của bạn là: <b style="color: #e11d48; font-size: 18px;">${otp}</b></p><p>Mã có hiệu lực trong 5 phút.</p>`,
@@ -383,6 +399,7 @@ const register = async (req, res) => {
       password: savedPassword,
       soDienThoai: soDienThoai || "",
       otp: otp,
+      attempts: 0,
       expire: Date.now() + 5 * 60 * 1000,
     };
 
@@ -399,6 +416,10 @@ const resendOTP = async (req, res) => {
   try {
     if (!email) {
       return res.status(400).json({ message: "Vui lòng nhập email!" });
+    }
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      return res.status(503).json({ message: 'Dịch vụ email chưa được cấu hình' });
     }
 
     const pendingData = pendingRegisterStore[email];
@@ -426,10 +447,10 @@ const resendOTP = async (req, res) => {
       displayName = user[0].HoTen;
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
 
     const mailOptions = {
-      from: '"HAMONI COSMETIC" <dinhthiphuong5@dtu.edu.vn>',
+      from: `"HAMONI COSMETIC" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "GỬI LẠI MÃ XÁC THỰC - HAMONI",
       html: `<h3>Chào ${displayName}!</h3><p>Mã OTP mới của bạn là: <b style="color: #e11d48; font-size: 18px;">${otp}</b></p>`,
@@ -441,11 +462,13 @@ const resendOTP = async (req, res) => {
       pendingRegisterStore[email] = {
         ...pendingData,
         otp,
+        attempts: 0,
         expire: Date.now() + 5 * 60 * 1000,
       };
     } else {
       otpStore[email] = {
         otp: otp,
+        attempts: 0,
         expire: Date.now() + 5 * 60 * 1000,
       };
     }
@@ -459,10 +482,17 @@ const resendOTP = async (req, res) => {
 const verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
+  if (!email || !otp) return res.status(400).json({ message: 'Thiếu email hoặc mã OTP' });
+
   try {
     const pendingData = pendingRegisterStore[email];
 
     if (pendingData) {
+      pendingData.attempts = (pendingData.attempts || 0) + 1;
+      if (pendingData.attempts > 5) {
+        delete pendingRegisterStore[email];
+        return res.status(429).json({ message: 'Đã nhập sai quá số lần cho phép' });
+      }
       if (
         pendingData.otp !== otp.toString() ||
         Date.now() > pendingData.expire
@@ -499,6 +529,13 @@ const verifyOTP = async (req, res) => {
     }
 
     const data = otpStore[email];
+    if (data) {
+      data.attempts = (data.attempts || 0) + 1;
+      if (data.attempts > 5) {
+        delete otpStore[email];
+        return res.status(429).json({ message: 'Đã nhập sai quá số lần cho phép' });
+      }
+    }
     if (!data || data.otp !== otp.toString() || Date.now() > data.expire) {
       return res
         .status(400)
@@ -530,6 +567,10 @@ const forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "Vui lòng nhập email!" });
     }
 
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      return res.status(503).json({ message: 'Dịch vụ email chưa được cấu hình' });
+    }
+
     const [users] = await db.execute(
       "SELECT MaND, HoTen FROM NguoiDung WHERE Email = ?",
       [email],
@@ -541,15 +582,16 @@ const forgotPassword = async (req, res) => {
     }
 
     const user = users[0];
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
 
     forgotPasswordStore[email] = {
       otp: otp,
+      attempts: 0,
       expire: Date.now() + 10 * 60 * 1000,
     };
 
     const mailOptions = {
-      from: '"HAMONI COSMETIC" <dinhthiphuong5@dtu.edu.vn>',
+      from: `"HAMONI COSMETIC" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "MÃ XÁC THỰC ĐẶT LẠI MẬT KHẨU - HAMONI",
       html: `
@@ -581,6 +623,8 @@ const resetPassword = async (req, res) => {
         .json({ message: "Vui lòng cung cấp đầy đủ thông tin!" });
     }
 
+    if (newPassword.length < 6) return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+
     const storeData = forgotPasswordStore[email];
 
     if (!storeData) {
@@ -591,6 +635,12 @@ const resetPassword = async (req, res) => {
         });
     }
 
+    storeData.attempts = (storeData.attempts || 0) + 1;
+    if (storeData.attempts > 5) {
+      delete forgotPasswordStore[email];
+      return res.status(429).json({ message: 'Đã nhập sai quá số lần cho phép' });
+    }
+
     if (storeData.otp !== otp.toString() || Date.now() > storeData.expire) {
       return res
         .status(400)
@@ -598,7 +648,7 @@ const resetPassword = async (req, res) => {
     }
 
     await db.execute("UPDATE NguoiDung SET MatKhau = ? WHERE Email = ?", [
-      newPassword,
+      await hashPassword(newPassword),
       email,
     ]);
 

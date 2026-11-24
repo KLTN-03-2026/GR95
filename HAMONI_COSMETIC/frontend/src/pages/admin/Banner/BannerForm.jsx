@@ -215,8 +215,8 @@ const BannerForm = ({ isOpen, onClose, data, onSuccess }) => {
         const formData = new FormData();
         formData.append("image", fileToUpload);
 
-        const uploadRes = await axios.post(`${API_BASE_URL}/upload`, formData);
-        urlToSave = uploadRes.data.url;
+        const uploadRes = await bannerApi.uploadImage(formData);
+        urlToSave = uploadRes.url;
       }
 
       const dataToSend = {

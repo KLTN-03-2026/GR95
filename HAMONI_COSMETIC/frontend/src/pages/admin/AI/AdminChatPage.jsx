@@ -30,6 +30,7 @@ const API_URL = `${API_BASE.replace(/\/$/, "")}/admin`;
 const socket = io(SOCKET_BASE, {
   transports: ["websocket"],
   withCredentials: true,
+  auth: (cb) => cb({ token: localStorage.getItem('token') }),
 });
 
 const AdminChatPage = () => {
@@ -75,7 +76,7 @@ const AdminChatPage = () => {
 
     const fetchSessions = async () => {
       try {
-        const response = await fetch(`${API_URL}/chats`);
+        const response = await fetch(`${API_URL}/chats`, { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } });
 
         if (!response.ok) {
           console.error(
@@ -252,7 +253,7 @@ const AdminChatPage = () => {
     );
 
     try {
-      const response = await fetch(`${API_URL}/chats/${session.maPhien}`);
+      const response = await fetch(`${API_URL}/chats/${session.maPhien}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } });
 
       if (!response.ok) {
         console.error(

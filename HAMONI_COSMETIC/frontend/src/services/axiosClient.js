@@ -1,5 +1,6 @@
 // src/services/axiosClient.js
 import axios from "axios";
+import { useStore } from '../store/useStore';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -38,9 +39,11 @@ axiosClient.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Phiên đăng nhập hết hạn!");
-      // localStorage.clear();
-      // window.location.href = "/login";
+      if (localStorage.getItem('token')) {
+        for (const key of ['token', 'user', 'user_info', 'userPermissions']) localStorage.removeItem(key);
+        useStore.getState().logout();
+        if (!['/login', '/register'].includes(window.location.pathname)) window.location.assign('/login');
+      }
     }
 
     return Promise.reject(error);

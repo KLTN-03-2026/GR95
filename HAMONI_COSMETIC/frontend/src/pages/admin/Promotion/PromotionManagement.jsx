@@ -13,12 +13,7 @@ const PromotionManagement = () => {
     // State quản lý việc mở/đóng menu Dropdown ở cột Trạng thái
     const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-    useEffect(() => {
-        fetchPromotions();
-    }, []);
-
     const fetchPromotions = async () => {
-        setIsLoading(true);
         try {
             const res = await axiosClient.get('promotions');
             setPromotions(res || []);
@@ -28,6 +23,10 @@ const PromotionManagement = () => {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchPromotions();
+    }, []);
 
     const getPromoStatusValue = (startDate, endDate) => {
         const now = new Date();
